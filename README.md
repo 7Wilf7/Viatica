@@ -31,5 +31,12 @@ npm run build
 
 ## Deployment
 
-The first web/PWA deployment target is Vercel. APK packaging comes after the PWA
-workflow is confirmed.
+Production PWA:
+
+- `https://viatica-tan.vercel.app`
+
+GitHub:
+
+- `https://github.com/7Wilf7/Viatica`
+
+APK packaging comes after the PWA workflow is confirmed.
