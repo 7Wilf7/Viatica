@@ -26,7 +26,6 @@ const state = {
     month: monthKey(new Date()),
   },
   editingTransactionId: null,
-  pendingReceiptDataUrl: "",
   pwaRefreshInProgress: false,
 };
 
@@ -72,9 +71,7 @@ const MESSAGES = {
     "capture.amount": "金额",
     "capture.type": "类型",
     "capture.title": "标题",
-    "capture.titlePlaceholder": "午餐 / 新越野鞋 / Claude 订阅",
     "capture.merchant": "商家 / 对象",
-    "capture.merchantPlaceholder": "淘宝 / 便利店",
     "capture.book": "账本",
     "capture.account": "账户",
     "capture.category": "分类",
@@ -82,9 +79,6 @@ const MESSAGES = {
     "capture.time": "时间",
     "capture.tags": "标签",
     "capture.note": "备注",
-    "capture.notePlaceholder": "用途、为什么买、后续要记住什么",
-    "capture.receiptAdded": "票据已添加",
-    "capture.addReceipt": "添加票据",
     "capture.saveEdit": "保存修改",
     "capture.save": "保存流水",
     "ledger.title": "流水",
@@ -118,9 +112,6 @@ const MESSAGES = {
     "toast.updated": "流水已更新。",
     "toast.saved": "流水已保存。",
     "toast.saveFailed": "保存失败：{message}",
-    "toast.receiptTooLarge": "票据图片太大，请选择 1MB 以内的图片。",
-    "toast.receiptPending": "票据已保存在本机待提交。",
-    "toast.receiptFailed": "票据读取失败。",
     "toast.imported": "已导入 {count} 条流水。",
     "toast.importFailed": "导入失败：{message}",
     "toast.deleted": "流水已删除。",
@@ -154,9 +145,7 @@ const MESSAGES = {
     "capture.amount": "Amount",
     "capture.type": "Type",
     "capture.title": "Title",
-    "capture.titlePlaceholder": "Lunch / new trail shoes / Claude subscription",
     "capture.merchant": "Merchant / person",
-    "capture.merchantPlaceholder": "Taobao / convenience store",
     "capture.book": "Book",
     "capture.account": "Account",
     "capture.category": "Category",
@@ -164,9 +153,6 @@ const MESSAGES = {
     "capture.time": "Time",
     "capture.tags": "Tags",
     "capture.note": "Note",
-    "capture.notePlaceholder": "Purpose, context, or anything worth remembering",
-    "capture.receiptAdded": "Receipt attached",
-    "capture.addReceipt": "Add receipt",
     "capture.saveEdit": "Save changes",
     "capture.save": "Save entry",
     "ledger.title": "Ledger",
@@ -200,9 +186,6 @@ const MESSAGES = {
     "toast.updated": "Entry updated.",
     "toast.saved": "Entry saved.",
     "toast.saveFailed": "Save failed: {message}",
-    "toast.receiptTooLarge": "Receipt image is too large. Choose an image under 1MB.",
-    "toast.receiptPending": "Receipt is saved locally and ready to submit.",
-    "toast.receiptFailed": "Could not read receipt.",
     "toast.imported": "Imported {count} entries.",
     "toast.importFailed": "Import failed: {message}",
     "toast.deleted": "Entry deleted.",
@@ -247,12 +230,50 @@ function persist() {
   });
 }
 
-function optionList(items, selected) {
-  return items.map((item) => `<option value="${escapeHtml(item)}" ${item === selected ? "selected" : ""}>${escapeHtml(item)}</option>`).join("");
+function itemOptions(items) {
+  return items.map((item) => ({ value: item, label: item }));
 }
 
-function typeOptionList(selected) {
-  return TRANSACTION_TYPES.map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === selected ? "selected" : ""}>${escapeHtml(t(`type.${item.id}`))}</option>`).join("");
+function typeOptions(includeAll = false) {
+  const options = TRANSACTION_TYPES.map((item) => ({ value: item.id, label: t(`type.${item.id}`) }));
+  return includeAll ? [{ value: "all", label: t("filter.allTypes") }, ...options] : options;
+}
+
+function renderChoiceField({ label, name, value, options }) {
+  return `
+    <div class="choice-field">
+      <span>${escapeHtml(label)}</span>
+      ${renderChoiceControl({ name, value, options })}
+    </div>
+  `;
+}
+
+function renderFilterChoice(filterKey, value, options) {
+  return `
+    <div class="choice-field filter-choice">
+      ${renderChoiceControl({ filterKey, value, options })}
+    </div>
+  `;
+}
+
+function renderChoiceControl({ name = "", filterKey = "", value, options }) {
+  const selected = options.find((option) => option.value === value) || options[0];
+  return `
+    <div class="choice-control" data-choice ${name ? `data-choice-name="${escapeHtml(name)}"` : ""} ${filterKey ? `data-choice-filter="${escapeHtml(filterKey)}"` : ""}>
+      ${name ? `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(selected.value)}">` : ""}
+      <button class="choice-trigger" type="button" data-action="toggle-choice" aria-expanded="false">
+        <span>${escapeHtml(selected.label)}</span>
+        <span class="choice-chevron">⌄</span>
+      </button>
+      <div class="choice-menu">
+        ${options.map((option) => `
+          <button class="choice-option ${option.value === selected.value ? "active" : ""}" type="button" data-action="choose-option" data-choice-value="${escapeHtml(option.value)}">
+            ${escapeHtml(option.label)}
+          </button>
+        `).join("")}
+      </div>
+    </div>
+  `;
 }
 
 function signedAmount(txn) {
@@ -522,7 +543,6 @@ function renderCaptureForm(editingTransaction) {
     reimbursable: false,
     receiptDataUrl: "",
   };
-  const receiptAttached = state.pendingReceiptDataUrl || txn.receiptDataUrl;
 
   return `
     <form id="transaction-form" class="transaction-form" autocomplete="off">
@@ -530,57 +550,40 @@ function renderCaptureForm(editingTransaction) {
       <div class="amount-line">
         <label>
           <span>${escapeHtml(t("capture.amount"))}</span>
-          <input class="money-input" name="amount" inputmode="decimal" placeholder="0.00" value="${escapeHtml(txn.amount || "")}" required>
+          <input class="money-input" name="amount" inputmode="decimal" value="${escapeHtml(txn.amount || "")}" required>
         </label>
-        <label>
-          <span>${escapeHtml(t("capture.type"))}</span>
-          <select name="type">${typeOptionList(txn.type)}</select>
-        </label>
+        ${renderChoiceField({ label: t("capture.type"), name: "type", value: txn.type, options: typeOptions() })}
       </div>
 
       <div class="field-grid">
         <label>
           <span>${escapeHtml(t("capture.title"))}</span>
-          <input name="title" placeholder="${escapeHtml(t("capture.titlePlaceholder"))}" value="${escapeHtml(txn.title || "")}" required>
+          <input name="title" value="${escapeHtml(txn.title || "")}" required>
         </label>
         <label>
           <span>${escapeHtml(t("capture.merchant"))}</span>
-          <input name="merchant" placeholder="${escapeHtml(t("capture.merchantPlaceholder"))}" value="${escapeHtml(txn.merchant || "")}">
+          <input name="merchant" value="${escapeHtml(txn.merchant || "")}">
         </label>
-        <label>
-          <span>${escapeHtml(t("capture.book"))}</span>
-          <select name="book">${optionList(BOOKS, txn.book)}</select>
-        </label>
-        <label>
-          <span>${escapeHtml(t("capture.account"))}</span>
-          <select name="account">${optionList(ACCOUNTS, txn.account)}</select>
-        </label>
-        <label>
-          <span>${escapeHtml(t("capture.category"))}</span>
-          <select name="category">${optionList(CATEGORIES, txn.category)}</select>
-        </label>
-        <label>
-          <span>${escapeHtml(t("capture.currency"))}</span>
-          <select name="currency">${optionList(CURRENCIES, txn.currency)}</select>
-        </label>
+        ${renderChoiceField({ label: t("capture.book"), name: "book", value: txn.book, options: itemOptions(BOOKS) })}
+        ${renderChoiceField({ label: t("capture.account"), name: "account", value: txn.account, options: itemOptions(ACCOUNTS) })}
+        ${renderChoiceField({ label: t("capture.category"), name: "category", value: txn.category, options: itemOptions(CATEGORIES) })}
+        ${renderChoiceField({ label: t("capture.currency"), name: "currency", value: txn.currency, options: itemOptions(CURRENCIES) })}
         <label>
           <span>${escapeHtml(t("capture.time"))}</span>
           <input type="datetime-local" name="occurredAt" value="${escapeHtml(toDateInputValue(txn.occurredAt || new Date()))}">
         </label>
         <label>
           <span>${escapeHtml(t("capture.tags"))}</span>
-          <input name="tags" placeholder="trail_shoes gear" value="${escapeHtml((txn.tags || []).join(" "))}">
+          <input name="tags" value="${escapeHtml((txn.tags || []).join(" "))}">
         </label>
       </div>
 
       <label>
         <span>${escapeHtml(t("capture.note"))}</span>
-        <textarea name="note" rows="2" placeholder="${escapeHtml(t("capture.notePlaceholder"))}">${escapeHtml(txn.note || "")}</textarea>
+        <textarea name="note" rows="2">${escapeHtml(txn.note || "")}</textarea>
       </label>
 
       <div class="capture-footer">
-        <button class="btn secondary" type="button" data-action="attach-receipt">${escapeHtml(receiptAttached ? t("capture.receiptAdded") : t("capture.addReceipt"))}</button>
-        <input id="receipt-input" type="file" accept="image/*" hidden>
         <button class="btn primary" type="submit">${escapeHtml(editingTransaction ? t("capture.saveEdit") : t("capture.save"))}</button>
       </div>
     </form>
@@ -625,22 +628,10 @@ function renderFilters() {
   return `
     <div class="filters">
       <input data-filter="query" placeholder="${escapeHtml(t("filter.search"))}" value="${escapeHtml(state.filters.query)}">
-      <select data-filter="type">
-        <option value="all">${escapeHtml(t("filter.allTypes"))}</option>
-        ${TRANSACTION_TYPES.map((item) => `<option value="${escapeHtml(item.id)}" ${state.filters.type === item.id ? "selected" : ""}>${escapeHtml(t(`type.${item.id}`))}</option>`).join("")}
-      </select>
-      <select data-filter="book">
-        <option value="all">${escapeHtml(t("filter.allBooks"))}</option>
-        ${BOOKS.map((item) => `<option value="${escapeHtml(item)}" ${state.filters.book === item ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
-      </select>
-      <select data-filter="category">
-        <option value="all">${escapeHtml(t("filter.allCategories"))}</option>
-        ${CATEGORIES.map((item) => `<option value="${escapeHtml(item)}" ${state.filters.category === item ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
-      </select>
-      <select data-filter="account">
-        <option value="all">${escapeHtml(t("filter.allAccounts"))}</option>
-        ${ACCOUNTS.map((item) => `<option value="${escapeHtml(item)}" ${state.filters.account === item ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
-      </select>
+      ${renderFilterChoice("type", state.filters.type, typeOptions(true))}
+      ${renderFilterChoice("book", state.filters.book, [{ value: "all", label: t("filter.allBooks") }, ...itemOptions(BOOKS)])}
+      ${renderFilterChoice("category", state.filters.category, [{ value: "all", label: t("filter.allCategories") }, ...itemOptions(CATEGORIES)])}
+      ${renderFilterChoice("account", state.filters.account, [{ value: "all", label: t("filter.allAccounts") }, ...itemOptions(ACCOUNTS)])}
       <input type="month" data-filter="month" value="${escapeHtml(state.filters.month)}">
     </div>
   `;
@@ -667,9 +658,7 @@ function renderTransactionRow(txn) {
 function formToTransaction(form) {
   const data = Object.fromEntries(new FormData(form).entries());
   data.reimbursable = state.transactions.find((txn) => txn.id === data.id)?.reimbursable || false;
-  data.receiptDataUrl = state.pendingReceiptDataUrl
-    || state.transactions.find((txn) => txn.id === data.id)?.receiptDataUrl
-    || "";
+  data.receiptDataUrl = state.transactions.find((txn) => txn.id === data.id)?.receiptDataUrl || "";
   return normalizeTransaction(data);
 }
 
@@ -692,6 +681,42 @@ async function clearPwaCacheAndReload() {
   window.location.reload();
 }
 
+function closeChoiceMenus(except = null) {
+  document.querySelectorAll(".choice-control.open").forEach((choice) => {
+    if (choice === except) return;
+    choice.classList.remove("open");
+    choice.querySelector(".choice-trigger")?.setAttribute("aria-expanded", "false");
+  });
+}
+
+function toggleChoiceMenu(choice) {
+  if (!choice) return;
+  const willOpen = !choice.classList.contains("open");
+  closeChoiceMenus(choice);
+  choice.classList.toggle("open", willOpen);
+  choice.querySelector(".choice-trigger")?.setAttribute("aria-expanded", willOpen ? "true" : "false");
+}
+
+function chooseOption(optionNode) {
+  const choice = optionNode.closest("[data-choice]");
+  if (!choice) return;
+  const value = optionNode.dataset.choiceValue || "";
+  const label = optionNode.textContent.trim();
+  const input = choice.querySelector("input[type=\"hidden\"]");
+  if (input) input.value = value;
+  choice.querySelector(".choice-trigger span:first-child").textContent = label;
+  choice.querySelectorAll(".choice-option").forEach((option) => {
+    option.classList.toggle("active", option === optionNode);
+  });
+  closeChoiceMenus();
+
+  const filterKey = choice.dataset.choiceFilter;
+  if (filterKey) {
+    state.filters[filterKey] = value;
+    render();
+  }
+}
+
 document.addEventListener("submit", (event) => {
   if (event.target.id !== "transaction-form") return;
   event.preventDefault();
@@ -708,7 +733,6 @@ document.addEventListener("submit", (event) => {
       toast(t("toast.saved"));
     }
     state.preferences.activeBook = data.book;
-    state.pendingReceiptDataUrl = "";
     persist();
     render();
   } catch (err) {
@@ -724,23 +748,6 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("change", (event) => {
-  if (event.target.id === "receipt-input") {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (file.size > 1024 * 1024) {
-      toast(t("toast.receiptTooLarge"));
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      state.pendingReceiptDataUrl = String(reader.result || "");
-      toast(t("toast.receiptPending"));
-      render();
-    };
-    reader.onerror = () => toast(t("toast.receiptFailed"));
-    reader.readAsDataURL(file);
-  }
-
   if (event.target.id === "csv-import") {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -762,9 +769,18 @@ document.addEventListener("change", (event) => {
 
 document.addEventListener("click", (event) => {
   const node = event.target.closest("[data-action]");
-  if (!node) return;
+  if (!node) {
+    if (!event.target.closest("[data-choice]")) closeChoiceMenus();
+    return;
+  }
   const action = node.dataset.action;
 
+  if (action === "toggle-choice") {
+    toggleChoiceMenu(node.closest("[data-choice]"));
+  }
+  if (action === "choose-option") {
+    chooseOption(node);
+  }
   if (action === "tab") {
     state.activeTab = node.dataset.tab || "today";
     render();
@@ -777,17 +793,12 @@ document.addEventListener("click", (event) => {
     state.activeTab = "ledger";
     render();
   }
-  if (action === "attach-receipt") {
-    document.querySelector("#receipt-input")?.click();
-  }
   if (action === "cancel-edit") {
     state.editingTransactionId = null;
-    state.pendingReceiptDataUrl = "";
     render();
   }
   if (action === "edit") {
     state.editingTransactionId = node.dataset.id;
-    state.pendingReceiptDataUrl = "";
     state.activeTab = "capture";
     render();
     document.querySelector("#transaction-form")?.scrollIntoView({ behavior: "smooth", block: "start" });

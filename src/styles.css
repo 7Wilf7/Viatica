@@ -154,6 +154,12 @@ label span {
   font-weight: 650;
 }
 
+.choice-field > span {
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .app-shell {
   width: min(1180px, calc(100% - 24px));
   margin: 0 auto;
@@ -174,6 +180,10 @@ label span {
   border-radius: var(--r-md);
   overflow: hidden;
   backdrop-filter: blur(16px) saturate(1.1);
+}
+
+.panel {
+  overflow: visible;
 }
 
 .ledger-hero::before,
@@ -364,8 +374,97 @@ label span {
 }
 
 input[type="datetime-local"] {
+  overflow: hidden;
   font-size: 12px;
   padding-inline: 8px;
+}
+
+.choice-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.choice-control {
+  position: relative;
+  min-width: 0;
+}
+
+.choice-trigger {
+  width: 100%;
+  min-height: var(--tap);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  background: oklch(0.145 0.014 258 / 0.74);
+  color: var(--ink);
+  text-align: left;
+  transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+}
+
+.choice-trigger span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.choice-control.open .choice-trigger {
+  border-color: var(--blue-strong);
+  background: oklch(0.17 0.018 258 / 0.86);
+  box-shadow: 0 0 0 3px oklch(0.61 0.17 258 / 0.16);
+}
+
+.choice-chevron {
+  flex: 0 0 auto;
+  color: var(--ink-2);
+  font-size: 14px;
+  transform: translateY(-1px);
+}
+
+.choice-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  max-height: 220px;
+  padding: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  display: none;
+  overflow: auto;
+  background: oklch(0.13 0.014 258);
+  box-shadow: var(--shadow);
+}
+
+.choice-control.open .choice-menu {
+  display: grid;
+  gap: 2px;
+}
+
+.choice-option {
+  min-height: 34px;
+  border-radius: calc(var(--r-sm) - 3px);
+  padding: 7px 9px;
+  background: transparent;
+  color: var(--ink-2);
+  text-align: left;
+  font-weight: 680;
+}
+
+.choice-option:hover,
+.choice-option.active {
+  color: var(--ink);
+  background: oklch(0.21 0.026 258 / 0.82);
+}
+
+.filter-choice {
+  gap: 0;
 }
 
 .filters {
@@ -383,7 +482,7 @@ input[type="datetime-local"] {
 
 .capture-footer {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .capture-footer .btn {
