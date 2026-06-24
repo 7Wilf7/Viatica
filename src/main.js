@@ -3,7 +3,6 @@ import { ACCOUNTS, BOOKS, CATEGORIES, CURRENCIES, DEFAULT_BUDGETS, TRANSACTION_T
 import { exportTransactionsCsv, importTransactionsCsv } from "./core/csv.js";
 import { formatCurrency, formatDateTime, monthKey, toDateInputValue } from "./core/format.js";
 import {
-  buildAevumOverview,
   filterTransactions,
   normalizeTransaction,
   summarizeLedger,
@@ -57,7 +56,6 @@ const MESSAGES = {
     "today.monthExpense": "本月支出，当前结余 {balance}。",
     "today.todayExpense": "今日支出",
     "today.todayIncome": "今日收入",
-    "today.reimbursable": "待报销",
     "today.transactionCount": "记录数",
     "today.capture": "记一笔",
     "today.ledger": "查流水",
@@ -88,8 +86,7 @@ const MESSAGES = {
     "capture.time": "时间",
     "capture.tags": "标签",
     "capture.note": "备注",
-    "capture.notePlaceholder": "用途、为什么买、后续是否需要报销",
-    "capture.reimbursable": "标记为可报销",
+    "capture.notePlaceholder": "用途、为什么买、后续要记住什么",
     "capture.receiptAdded": "票据已添加",
     "capture.addReceipt": "添加票据",
     "capture.saveEdit": "保存修改",
@@ -103,19 +100,12 @@ const MESSAGES = {
     "budgets.bookHint": "用于判断钱花在哪个生活域。",
     "budgets.noBudget": "暂无预算数据。",
     "budgets.noBookExpense": "还没有本月账本支出。",
-    "settings.localDataTitle": "本机数据",
-    "settings.localDataHint": "当前数据只保存在这台设备的浏览器里。",
-    "settings.storageKey": "存储 key",
-    "settings.currentBook": "当前账本",
-    "settings.syncStatus": "同步状态",
-    "settings.notUploaded": "未上传数据库",
     "settings.languageTitle": "界面语言",
     "settings.languageHint": "只切换界面文案，不改已有流水、账本、分类和导出数据。",
-    "settings.importExportTitle": "导入导出",
-    "settings.importExportHint": "导出后可恢复，也可以交给 Aevum 读取概览。",
+    "settings.importExportTitle": "备份与迁移",
+    "settings.importExportHint": "云同步上线前，用于换设备、恢复数据或保留本地备份。",
     "settings.exportCsv": "导出 CSV",
     "settings.importCsv": "导入 CSV",
-    "settings.exportOverview": "导出 Aevum 概览",
     "settings.exportJson": "导出完整备份",
     "settings.pwaTitle": "PWA 更新",
     "settings.pwaHint": "更新后仍看到旧界面时使用；不会清除 viatica:v1 账本数据。",
@@ -126,7 +116,6 @@ const MESSAGES = {
     "filter.allBooks": "全部账本",
     "filter.allCategories": "全部分类",
     "filter.allAccounts": "全部账户",
-    "txn.reimbursable": "可报销",
     "txn.edit": "编辑",
     "txn.delete": "删除",
     "confirm.delete": "删除这笔流水？",
@@ -153,7 +142,6 @@ const MESSAGES = {
     "today.monthExpense": "This month's spending. Current balance {balance}.",
     "today.todayExpense": "Today spent",
     "today.todayIncome": "Today income",
-    "today.reimbursable": "Reimbursable",
     "today.transactionCount": "Entries",
     "today.capture": "Capture",
     "today.ledger": "Ledger",
@@ -184,8 +172,7 @@ const MESSAGES = {
     "capture.time": "Time",
     "capture.tags": "Tags",
     "capture.note": "Note",
-    "capture.notePlaceholder": "Purpose, why you bought it, reimbursement follow-up",
-    "capture.reimbursable": "Mark as reimbursable",
+    "capture.notePlaceholder": "Purpose, context, or anything worth remembering",
     "capture.receiptAdded": "Receipt attached",
     "capture.addReceipt": "Add receipt",
     "capture.saveEdit": "Save changes",
@@ -199,19 +186,12 @@ const MESSAGES = {
     "budgets.bookHint": "Shows which life area the money went to.",
     "budgets.noBudget": "No budget data yet.",
     "budgets.noBookExpense": "No book spending this month yet.",
-    "settings.localDataTitle": "Local data",
-    "settings.localDataHint": "Your data is stored only in this browser on this device.",
-    "settings.storageKey": "Storage key",
-    "settings.currentBook": "Current book",
-    "settings.syncStatus": "Sync status",
-    "settings.notUploaded": "Not uploaded",
     "settings.languageTitle": "Interface language",
     "settings.languageHint": "Switches interface copy only; existing entries, books, categories, and exports stay unchanged.",
-    "settings.importExportTitle": "Import / export",
-    "settings.importExportHint": "Export for restore, or let Aevum read an overview.",
+    "settings.importExportTitle": "Backup and transfer",
+    "settings.importExportHint": "Use this to move devices, restore data, or keep a local backup until cloud sync is available.",
     "settings.exportCsv": "Export CSV",
     "settings.importCsv": "Import CSV",
-    "settings.exportOverview": "Export Aevum overview",
     "settings.exportJson": "Export full backup",
     "settings.pwaTitle": "PWA refresh",
     "settings.pwaHint": "Use this when the app still shows an old interface; viatica:v1 ledger data is kept.",
@@ -222,7 +202,6 @@ const MESSAGES = {
     "filter.allBooks": "All books",
     "filter.allCategories": "All categories",
     "filter.allAccounts": "All accounts",
-    "txn.reimbursable": "reimbursable",
     "txn.edit": "Edit",
     "txn.delete": "Delete",
     "confirm.delete": "Delete this entry?",
@@ -252,7 +231,7 @@ function displayLocale() {
 }
 
 function formatMoney(amount, currency) {
-  return formatCurrency(amount, currency, displayLocale());
+  return formatCurrency(amount, currency, currency === "CNY" ? "zh-CN" : displayLocale());
 }
 
 function formatWhen(value) {
@@ -345,7 +324,7 @@ function renderActiveTab(summary, filteredTransactions, editingTransaction) {
   if (state.activeTab === "capture") return renderCaptureTab(editingTransaction);
   if (state.activeTab === "ledger") return renderLedgerTab(filteredTransactions);
   if (state.activeTab === "budgets") return renderBudgetTab(summary);
-  if (state.activeTab === "settings") return renderSettingsTab(summary);
+  if (state.activeTab === "settings") return renderSettingsTab();
   return renderTodayTab(summary);
 }
 
@@ -374,7 +353,6 @@ function renderTodayTab(summary) {
       <div class="hero-grid">
         ${renderStat(t("today.todayExpense"), formatMoney(summary.todayExpense))}
         ${renderStat(t("today.todayIncome"), formatMoney(summary.todayIncome))}
-        ${renderStat(t("today.reimbursable"), formatMoney(summary.reimbursableExpense))}
         ${renderStat(t("today.transactionCount"), `${summary.transactionCount}`)}
       </div>
     </section>
@@ -472,23 +450,8 @@ function renderBudgetTab(summary) {
   `;
 }
 
-function renderSettingsTab(summary) {
+function renderSettingsTab() {
   return `
-    <section class="panel">
-      <div class="section-title">
-        <div>
-          <h2>${escapeHtml(t("settings.localDataTitle"))}</h2>
-          <p>${escapeHtml(t("settings.localDataHint"))}</p>
-        </div>
-      </div>
-      <div class="settings-grid">
-        ${renderStat(t("settings.storageKey"), "viatica:v1")}
-        ${renderStat(t("today.transactionCount"), `${summary.transactionCount}`)}
-        ${renderStat(t("settings.currentBook"), state.preferences.activeBook)}
-        ${renderStat(t("settings.syncStatus"), t("settings.notUploaded"))}
-      </div>
-    </section>
-
     <section class="panel">
       <div class="section-title">
         <div>
@@ -511,7 +474,6 @@ function renderSettingsTab(summary) {
       <div class="action-grid">
         <button class="btn secondary" data-action="export-csv">${escapeHtml(t("settings.exportCsv"))}</button>
         <button class="btn secondary" data-action="import-csv">${escapeHtml(t("settings.importCsv"))}</button>
-        <button class="btn secondary" data-action="export-overview">${escapeHtml(t("settings.exportOverview"))}</button>
         <button class="btn secondary" data-action="export-json">${escapeHtml(t("settings.exportJson"))}</button>
       </div>
     </section>
@@ -626,14 +588,10 @@ function renderCaptureForm(editingTransaction) {
 
       <label>
         <span>${escapeHtml(t("capture.note"))}</span>
-        <textarea name="note" rows="3" placeholder="${escapeHtml(t("capture.notePlaceholder"))}">${escapeHtml(txn.note || "")}</textarea>
+        <textarea name="note" rows="2" placeholder="${escapeHtml(t("capture.notePlaceholder"))}">${escapeHtml(txn.note || "")}</textarea>
       </label>
 
       <div class="capture-footer">
-        <label class="check-line">
-          <input type="checkbox" name="reimbursable" ${txn.reimbursable ? "checked" : ""}>
-          <span>${escapeHtml(t("capture.reimbursable"))}</span>
-        </label>
         <button class="btn secondary" type="button" data-action="attach-receipt">${escapeHtml(receiptAttached ? t("capture.receiptAdded") : t("capture.addReceipt"))}</button>
         <input id="receipt-input" type="file" accept="image/*" hidden>
         <button class="btn primary" type="submit">${escapeHtml(editingTransaction ? t("capture.saveEdit") : t("capture.save"))}</button>
@@ -711,7 +669,7 @@ function renderTransactionRow(txn) {
       <div class="txn-main">
         <div>
           <strong>${escapeHtml(txn.title)}</strong>
-          <span>${escapeHtml(formatWhen(txn.occurredAt))} · ${escapeHtml(txn.book)} · ${escapeHtml(txn.category)} · ${escapeHtml(txn.account)}${txn.reimbursable ? ` · ${escapeHtml(t("txn.reimbursable"))}` : ""}</span>
+          <span>${escapeHtml(formatWhen(txn.occurredAt))} · ${escapeHtml(txn.book)} · ${escapeHtml(txn.category)} · ${escapeHtml(txn.account)}</span>
         </div>
         <div class="amount ${transactionAmountClass(txn)}">${signedAmount(txn)}</div>
       </div>
@@ -725,7 +683,7 @@ function renderTransactionRow(txn) {
 
 function formToTransaction(form) {
   const data = Object.fromEntries(new FormData(form).entries());
-  data.reimbursable = form.elements.reimbursable.checked;
+  data.reimbursable = state.transactions.find((txn) => txn.id === data.id)?.reimbursable || false;
   data.receiptDataUrl = state.pendingReceiptDataUrl
     || state.transactions.find((txn) => txn.id === data.id)?.receiptDataUrl
     || "";
@@ -881,9 +839,6 @@ document.addEventListener("click", (event) => {
       budgets: state.budgets,
       preferences: state.preferences,
     }));
-  }
-  if (action === "export-overview") {
-    download("viatica-aevum-overview.json", JSON.stringify(buildAevumOverview(state.transactions, state.budgets), null, 2));
   }
   if (action === "clear-cache-reload") {
     clearPwaCacheAndReload();

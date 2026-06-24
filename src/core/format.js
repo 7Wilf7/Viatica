@@ -1,8 +1,14 @@
 export function formatCurrency(amount, currency = "CNY", locale = "zh-CN") {
   const value = Number(amount || 0);
+  if (currency === "CNY") {
+    return `¥${new Intl.NumberFormat(locale, {
+      maximumFractionDigits: value % 1 === 0 ? 0 : 2,
+    }).format(value)}`;
+  }
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
+    currencyDisplay: "narrowSymbol",
     maximumFractionDigits: value % 1 === 0 ? 0 : 2,
   }).format(value);
 }

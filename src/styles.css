@@ -236,13 +236,13 @@ label span {
 
 .hero-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .stat {
-  min-height: 76px;
-  padding: 10px;
+  min-height: 64px;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   background: oklch(0.16 0.018 258 / 0.62);
@@ -253,13 +253,13 @@ label span {
 
 .stat span {
   color: var(--ink-2);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 650;
 }
 
 .stat strong {
   color: var(--ink);
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.1;
   letter-spacing: 0;
 }
@@ -275,7 +275,7 @@ label span {
 }
 
 .panel {
-  padding: 14px;
+  padding: 12px;
   background: var(--panel);
   box-shadow: 0 1px 0 oklch(1 0 0 / 0.04) inset;
 }
@@ -300,7 +300,7 @@ label span {
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .section-title h2 {
@@ -310,30 +310,30 @@ label span {
 
 .transaction-form {
   display: grid;
-  gap: 12px;
+  gap: 9px;
 }
 
 .amount-line {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 136px;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) 118px;
+  gap: 8px;
 }
 
 .money-input {
-  min-height: 60px;
-  font-size: 28px;
+  min-height: 54px;
+  font-size: 24px;
   font-weight: 760;
 }
 
 .template-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .template-chip {
-  min-height: 34px;
-  padding: 7px 11px;
+  min-height: 31px;
+  padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: oklch(0.17 0.018 258 / 0.7);
@@ -351,7 +351,7 @@ label span {
 .field-grid,
 .filters {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .field-grid {
@@ -369,6 +369,15 @@ label span {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.capture-footer {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.capture-footer .btn {
+  width: 100%;
 }
 
 .language-switch {
@@ -405,24 +414,6 @@ label span {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-}
-
-.check-line {
-  min-height: var(--tap);
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: oklch(0.145 0.014 258 / 0.58);
-  display: inline-flex;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 8px;
-}
-
-.check-line input {
-  width: 16px;
-  min-height: 16px;
-  accent-color: var(--blue);
 }
 
 .btn {
@@ -699,22 +690,29 @@ label span {
     width: min(100% - 16px, 480px);
   }
 
-  .hero-grid,
-  .field-grid,
-  .amount-line,
   .filters {
     grid-template-columns: 1fr;
   }
 
+  .hero-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .amount-line {
+    grid-template-columns: minmax(0, 1fr) 106px;
+  }
+
   .money-input {
-    min-height: 56px;
-    font-size: 24px;
+    min-height: 50px;
+    font-size: 22px;
   }
 
   .action-panel,
-  .capture-footer .btn,
   .action-grid .btn {
-    grid-template-columns: 1fr;
     width: 100%;
   }
 
