@@ -1,0 +1,18 @@
+{
+  "name": "Viatica",
+  "short_name": "Viatica",
+  "description": "Local-first personal ledger for fast expense tracking.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#07101f",
+  "theme_color": "#07101f",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

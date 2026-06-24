@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Viatica">
+  <rect width="512" height="512" rx="112" fill="#07101f"/>
+  <path d="M116 142h280L284 370h-56L116 142Z" fill="#dbeafe"/>
+  <path d="M178 186h156l-78 160-78-160Z" fill="#1d4ed8"/>
+  <path d="M204 222h104l-52 106-52-106Z" fill="#93c5fd"/>
+</svg>

@@ -1,0 +1,17 @@
+{
+  "name": "viatica",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "lint": "node scripts/lint.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "vite": "^8.0.12"
+  },
+  "devDependencies": {}
+}
