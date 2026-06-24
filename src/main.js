@@ -24,6 +24,7 @@ const state = {
   },
   editingTransactionId: null,
   pendingReceiptDataUrl: "",
+  pwaRefreshInProgress: false,
 };
 
 state.budgets = { ...DEFAULT_BUDGETS, ...state.budgets };
@@ -291,6 +292,20 @@ function renderSettingsTab(summary) {
         <button class="btn secondary" data-action="export-json">导出完整备份</button>
       </div>
     </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <div>
+          <h2>PWA 更新</h2>
+          <p>更新后仍看到旧界面时使用；不会清除 viatica:v1 账本数据。</p>
+        </div>
+      </div>
+      <div class="action-grid">
+        <button class="btn secondary" data-action="clear-cache-reload" ${state.pwaRefreshInProgress ? "disabled aria-busy=\"true\"" : ""}>
+          ${state.pwaRefreshInProgress ? "正在清理..." : "清缓存并重载"}
+        </button>
+      </div>
+    </section>
   `;
 }
 
@@ -493,6 +508,25 @@ function fillForm(values) {
   });
 }
 
+async function clearPwaCacheAndReload() {
+  if (state.pwaRefreshInProgress) return;
+  state.pwaRefreshInProgress = true;
+  render();
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+    if ("caches" in globalThis) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    }
+  } catch (err) {
+    console.warn("[clear-cache] failed:", err);
+  }
+  window.location.reload();
+}
+
 document.addEventListener("submit", (event) => {
   if (event.target.id !== "transaction-form") return;
   event.preventDefault();
@@ -618,6 +652,9 @@ document.addEventListener("click", (event) => {
   }
   if (action === "export-overview") {
     download("viatica-aevum-overview.json", JSON.stringify(buildAevumOverview(state.transactions, state.budgets), null, 2));
+  }
+  if (action === "clear-cache-reload") {
+    clearPwaCacheAndReload();
   }
 });
 

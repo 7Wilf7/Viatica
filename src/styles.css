@@ -510,6 +510,13 @@ label span {
   color: var(--ink);
 }
 
+.btn:disabled {
+  cursor: wait;
+  opacity: 0.68;
+  transform: none;
+  box-shadow: none;
+}
+
 .danger-text {
   color: var(--danger);
 }
