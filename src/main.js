@@ -53,7 +53,7 @@ const MESSAGES = {
     "type.expense": "支出",
     "type.income": "收入",
     "type.transfer": "转账",
-    "today.monthExpense": "本月支出，当前结余 {balance}。",
+    "today.monthExpense": "本月支出 · 当前结余 {balance}",
     "today.todayExpense": "今日支出",
     "today.todayIncome": "今日收入",
     "today.transactionCount": "记录数",
@@ -71,10 +71,6 @@ const MESSAGES = {
     "capture.cancel": "取消",
     "capture.amount": "金额",
     "capture.type": "类型",
-    "capture.templateLunch": "午餐",
-    "capture.templateCoffee": "咖啡",
-    "capture.templateCommute": "通勤",
-    "capture.templateGear": "装备",
     "capture.title": "标题",
     "capture.titlePlaceholder": "午餐 / 新越野鞋 / Claude 订阅",
     "capture.merchant": "商家 / 对象",
@@ -139,7 +135,7 @@ const MESSAGES = {
     "type.expense": "Expense",
     "type.income": "Income",
     "type.transfer": "Transfer",
-    "today.monthExpense": "This month's spending. Current balance {balance}.",
+    "today.monthExpense": "This month · Balance {balance}",
     "today.todayExpense": "Today spent",
     "today.todayIncome": "Today income",
     "today.transactionCount": "Entries",
@@ -157,10 +153,6 @@ const MESSAGES = {
     "capture.cancel": "Cancel",
     "capture.amount": "Amount",
     "capture.type": "Type",
-    "capture.templateLunch": "Lunch",
-    "capture.templateCoffee": "Coffee",
-    "capture.templateCommute": "Commute",
-    "capture.templateGear": "Gear",
     "capture.title": "Title",
     "capture.titlePlaceholder": "Lunch / new trail shoes / Claude subscription",
     "capture.merchant": "Merchant / person",
@@ -347,8 +339,10 @@ function renderTodayTab(summary) {
     <section class="ledger-hero">
       <div>
         <p class="eyebrow">${escapeHtml(summary.monthKey)}</p>
-        <h2>${formatMoney(summary.monthExpense)}</h2>
-        <p>${escapeHtml(t("today.monthExpense", { balance: formatMoney(summary.monthBalance) }))}</p>
+        <div class="ledger-total">
+          <h2>${formatMoney(summary.monthExpense)}</h2>
+          <p>${escapeHtml(t("today.monthExpense", { balance: formatMoney(summary.monthBalance) }))}</p>
+        </div>
       </div>
       <div class="hero-grid">
         ${renderStat(t("today.todayExpense"), formatMoney(summary.todayExpense))}
@@ -544,13 +538,6 @@ function renderCaptureForm(editingTransaction) {
         </label>
       </div>
 
-      <div class="template-row">
-        ${renderTemplateButton(t("capture.templateLunch"), { amount: "35", title: "午餐", category: "餐饮", account: "微信" })}
-        ${renderTemplateButton(t("capture.templateCoffee"), { amount: "22", title: "咖啡", category: "餐饮", account: "微信" })}
-        ${renderTemplateButton(t("capture.templateCommute"), { amount: "8", title: "通勤", category: "交通", account: "支付宝" })}
-        ${renderTemplateButton(t("capture.templateGear"), { amount: "899", title: "跑步装备", category: "运动装备", book: "训练账本", tags: "gear ultreia" })}
-      </div>
-
       <div class="field-grid">
         <label>
           <span>${escapeHtml(t("capture.title"))}</span>
@@ -598,10 +585,6 @@ function renderCaptureForm(editingTransaction) {
       </div>
     </form>
   `;
-}
-
-function renderTemplateButton(label, values) {
-  return `<button class="template-chip" type="button" data-action="template" data-values='${escapeHtml(JSON.stringify(values))}'>${escapeHtml(label)}</button>`;
 }
 
 function renderBudgetRows(summary, limit = 6) {
@@ -688,14 +671,6 @@ function formToTransaction(form) {
     || state.transactions.find((txn) => txn.id === data.id)?.receiptDataUrl
     || "";
   return normalizeTransaction(data);
-}
-
-function fillForm(values) {
-  const form = document.querySelector("#transaction-form");
-  if (!form) return;
-  Object.entries(values).forEach(([key, value]) => {
-    if (form.elements[key]) form.elements[key].value = value;
-  });
 }
 
 async function clearPwaCacheAndReload() {
@@ -790,9 +765,6 @@ document.addEventListener("click", (event) => {
   if (!node) return;
   const action = node.dataset.action;
 
-  if (action === "template") {
-    fillForm(JSON.parse(node.dataset.values || "{}"));
-  }
   if (action === "tab") {
     state.activeTab = node.dataset.tab || "today";
     render();
