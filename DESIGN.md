@@ -3,7 +3,8 @@
 ## System
 Viatica shares Aevum's Linear-inspired product language: dark surfaces, precise
 thin lines, subtle ambient light, restrained blur, and short stateful motion.
-The accent shifts from Aevum's violet-blue glow to a deeper ledger blue.
+The accent shifts from Aevum's violet-blue glow to a low-saturation deep ledger
+blue / steel blue.
 
 The current UI target is a mobile app shell, not a one-page dashboard. Primary
 navigation is a persistent bottom tab bar:
@@ -20,8 +21,10 @@ navigation is a persistent bottom tab bar:
 - Ink: `oklch(0.965 0.006 258)`
 - Muted ink: `oklch(0.77 0.022 258)`
 - Line: fine translucent blue lines around `oklch(0.43 0.046 258 / 0.48)`
-- Accent: deep blue for primary actions, active focus, budget fills, and the
-  Viatica mark.
+- Accent: deep ledger blue / steel blue for primary actions, active focus,
+  budget fills, and the Viatica mark. Keep it cool, low-saturation, and used in
+  small areas only; avoid bright blue, technology-blue, or fintech-marketing
+  glow.
 
 ## Typography
 - Font stack: `Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`.

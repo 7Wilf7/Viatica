@@ -9,15 +9,15 @@
   --ink-3: oklch(0.62 0.026 258);
   --line: oklch(0.43 0.046 258 / 0.48);
   --line-strong: oklch(0.67 0.078 258 / 0.66);
-  --blue: oklch(0.61 0.17 258);
-  --blue-strong: oklch(0.71 0.14 250);
-  --blue-soft: oklch(0.29 0.08 258 / 0.72);
-  --cyan: oklch(0.78 0.105 224);
+  --blue: oklch(0.52 0.075 255);
+  --blue-strong: oklch(0.70 0.055 250);
+  --blue-soft: oklch(0.25 0.04 255 / 0.72);
+  --cyan: oklch(0.72 0.045 225);
   --danger: oklch(0.72 0.16 28);
   --success: oklch(0.75 0.11 155);
   --warning: oklch(0.78 0.13 78);
   --shadow: 0 12px 40px oklch(0 0 0 / 0.22);
-  --glow: 0 0 0 1px oklch(0.78 0.105 224 / 0.16), 0 0 28px oklch(0.61 0.17 258 / 0.16);
+  --glow: 0 0 0 1px oklch(0.72 0.045 225 / 0.12), 0 0 24px oklch(0.52 0.075 255 / 0.12);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --r-sm: 8px;
   --r-md: 12px;
@@ -37,9 +37,9 @@ body {
 body {
   margin: 0;
   background:
-    radial-gradient(circle at 18% -12%, oklch(0.38 0.13 258 / 0.34), transparent 340px),
-    radial-gradient(circle at 92% 8%, oklch(0.47 0.12 224 / 0.22), transparent 360px),
-    radial-gradient(circle at 44% 110%, oklch(0.30 0.11 268 / 0.22), transparent 430px),
+    radial-gradient(circle at 18% -12%, oklch(0.34 0.06 255 / 0.24), transparent 340px),
+    radial-gradient(circle at 92% 8%, oklch(0.42 0.045 225 / 0.16), transparent 360px),
+    radial-gradient(circle at 44% 110%, oklch(0.25 0.045 265 / 0.16), transparent 430px),
     var(--bg);
   color: var(--ink);
   overflow-x: hidden;
@@ -56,8 +56,8 @@ body::after {
 body::before {
   z-index: -2;
   background:
-    linear-gradient(116deg, transparent 0 18%, oklch(0.70 0.16 258 / 0.09) 32%, transparent 48% 100%),
-    linear-gradient(244deg, transparent 0 52%, oklch(0.78 0.105 224 / 0.08) 64%, transparent 78% 100%);
+    linear-gradient(116deg, transparent 0 18%, oklch(0.62 0.055 255 / 0.06) 32%, transparent 48% 100%),
+    linear-gradient(244deg, transparent 0 52%, oklch(0.70 0.045 225 / 0.05) 64%, transparent 78% 100%);
   background-size: 160% 160%, 140% 140%;
   animation: ambient-flow 18s var(--ease-out) infinite alternate;
 }
@@ -139,7 +139,7 @@ select:focus,
 textarea:focus {
   border-color: var(--blue-strong);
   background-color: oklch(0.17 0.018 258 / 0.86);
-  box-shadow: 0 0 0 3px oklch(0.61 0.17 258 / 0.16);
+  box-shadow: 0 0 0 3px oklch(0.52 0.075 255 / 0.14);
 }
 
 label {
@@ -196,7 +196,7 @@ label span {
 }
 
 .ledger-hero::before {
-  background: linear-gradient(105deg, transparent 0 18%, oklch(0.78 0.105 224 / 0.16) 32%, transparent 48% 100%);
+  background: linear-gradient(105deg, transparent 0 18%, oklch(0.72 0.045 225 / 0.10) 32%, transparent 48% 100%);
   transform: translateX(-38%);
   animation: line-sheen 8s var(--ease-out) infinite;
 }
@@ -239,7 +239,7 @@ label span {
   gap: 14px;
   padding: 14px;
   background:
-    radial-gradient(circle at 12% 8%, oklch(0.61 0.17 258 / 0.18), transparent 38%),
+    radial-gradient(circle at 12% 8%, oklch(0.52 0.075 255 / 0.12), transparent 38%),
     linear-gradient(160deg, oklch(0.20 0.026 258 / 0.88), oklch(0.135 0.016 258 / 0.9));
 }
 
@@ -416,7 +416,7 @@ input[type="datetime-local"] {
 .choice-control.open .choice-trigger {
   border-color: var(--blue-strong);
   background: oklch(0.17 0.018 258 / 0.86);
-  box-shadow: 0 0 0 3px oklch(0.61 0.17 258 / 0.16);
+  box-shadow: 0 0 0 3px oklch(0.52 0.075 255 / 0.14);
 }
 
 .choice-chevron {
@@ -510,8 +510,8 @@ input[type="datetime-local"] {
 
 .locale-button.active {
   color: var(--ink);
-  background: linear-gradient(180deg, oklch(0.25 0.056 258 / 0.88), oklch(0.17 0.026 258));
-  box-shadow: 0 0 0 1px oklch(0.71 0.14 250 / 0.24) inset;
+  background: linear-gradient(180deg, oklch(0.23 0.035 255 / 0.88), oklch(0.16 0.022 258));
+  box-shadow: 0 0 0 1px oklch(0.70 0.055 250 / 0.20) inset;
 }
 
 .locale-button:hover {
@@ -742,8 +742,8 @@ input[type="datetime-local"] {
 .tab-button.active {
   color: var(--ink);
   background:
-    linear-gradient(180deg, oklch(0.25 0.056 258 / 0.82), oklch(0.17 0.026 258 / 0.88));
-  box-shadow: 0 0 0 1px oklch(0.71 0.14 250 / 0.24) inset;
+    linear-gradient(180deg, oklch(0.23 0.035 255 / 0.82), oklch(0.16 0.022 258 / 0.88));
+  box-shadow: 0 0 0 1px oklch(0.70 0.055 250 / 0.20) inset;
 }
 
 .tab-button:active {
