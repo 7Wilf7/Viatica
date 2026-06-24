@@ -1,16 +1,16 @@
-export function formatCurrency(amount, currency = "CNY") {
+export function formatCurrency(amount, currency = "CNY", locale = "zh-CN") {
   const value = Number(amount || 0);
-  return new Intl.NumberFormat("zh-CN", {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     maximumFractionDigits: value % 1 === 0 ? 0 : 2,
   }).format(value);
 }
 
-export function formatDateTime(value) {
+export function formatDateTime(value, locale = "zh-CN") {
   const d = value ? new Date(value) : new Date();
   if (Number.isNaN(d.getTime())) return "";
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat(locale, {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",

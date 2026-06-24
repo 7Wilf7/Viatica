@@ -5,6 +5,7 @@ export const EMPTY_STATE = {
   budgets: {},
   preferences: {
     activeBook: "日常账本",
+    locale: "zh",
   },
 };
 

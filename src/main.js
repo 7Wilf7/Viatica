@@ -11,6 +11,10 @@ import {
 import { exportState, loadState, saveState } from "./core/storage.js";
 
 const app = document.querySelector("#app");
+const LOCALES = [
+  { id: "zh", label: "中文" },
+  { id: "en", label: "English" },
+];
 const state = {
   ...loadState(),
   activeTab: "today",
@@ -28,15 +32,232 @@ const state = {
 };
 
 state.budgets = { ...DEFAULT_BUDGETS, ...state.budgets };
-state.preferences = { activeBook: "日常账本", ...state.preferences };
+state.preferences = { activeBook: "日常账本", locale: "zh", ...state.preferences };
+if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
 
 const TABS = [
-  { id: "today", label: "今日", icon: "⌂" },
-  { id: "capture", label: "记一笔", icon: "+" },
-  { id: "ledger", label: "流水", icon: "≡" },
-  { id: "budgets", label: "预算", icon: "%" },
-  { id: "settings", label: "设置", icon: "⚙" },
+  { id: "today", labelKey: "tab.today", icon: "⌂" },
+  { id: "capture", labelKey: "tab.capture", icon: "+" },
+  { id: "ledger", labelKey: "tab.ledger", icon: "≡" },
+  { id: "budgets", labelKey: "tab.budgets", icon: "%" },
+  { id: "settings", labelKey: "tab.settings", icon: "⚙" },
 ];
+
+const MESSAGES = {
+  zh: {
+    "app.sections": "Viatica 页面",
+    "tab.today": "今日",
+    "tab.capture": "记一笔",
+    "tab.ledger": "流水",
+    "tab.budgets": "预算",
+    "tab.settings": "设置",
+    "type.expense": "支出",
+    "type.income": "收入",
+    "type.transfer": "转账",
+    "today.monthExpense": "本月支出，当前结余 {balance}。",
+    "today.todayExpense": "今日支出",
+    "today.todayIncome": "今日收入",
+    "today.reimbursable": "待报销",
+    "today.transactionCount": "记录数",
+    "today.capture": "记一笔",
+    "today.ledger": "查流水",
+    "today.recentTitle": "最近流水",
+    "today.recentSorted": "按发生时间排序。",
+    "today.recentEmptyHint": "今天可以从第一笔开始。",
+    "today.recentEmpty": "还没有流水。点击“记一笔”开始记录。",
+    "today.budgetPressure": "预算压力",
+    "today.budgetPressureHint": "先看本月支出最高的分类。",
+    "capture.editTitle": "编辑流水",
+    "capture.quickTitle": "快速记一笔",
+    "capture.hint": "先把真实流水记下来，分类和备注可以稍后补。",
+    "capture.cancel": "取消",
+    "capture.amount": "金额",
+    "capture.type": "类型",
+    "capture.templateLunch": "午餐",
+    "capture.templateCoffee": "咖啡",
+    "capture.templateCommute": "通勤",
+    "capture.templateGear": "装备",
+    "capture.title": "标题",
+    "capture.titlePlaceholder": "午餐 / 新越野鞋 / Claude 订阅",
+    "capture.merchant": "商家 / 对象",
+    "capture.merchantPlaceholder": "淘宝 / 便利店",
+    "capture.book": "账本",
+    "capture.account": "账户",
+    "capture.category": "分类",
+    "capture.currency": "币种",
+    "capture.time": "时间",
+    "capture.tags": "标签",
+    "capture.note": "备注",
+    "capture.notePlaceholder": "用途、为什么买、后续是否需要报销",
+    "capture.reimbursable": "标记为可报销",
+    "capture.receiptAdded": "票据已添加",
+    "capture.addReceipt": "添加票据",
+    "capture.saveEdit": "保存修改",
+    "capture.save": "保存流水",
+    "ledger.title": "流水",
+    "ledger.matchCount": "{count} 条匹配记录。",
+    "ledger.empty": "还没有匹配流水。先记录一笔，或调整筛选条件。",
+    "budgets.categoryTitle": "分类预算",
+    "budgets.categoryHint": "按本月已花金额排序。",
+    "budgets.bookTitle": "账本分布",
+    "budgets.bookHint": "用于判断钱花在哪个生活域。",
+    "budgets.noBudget": "暂无预算数据。",
+    "budgets.noBookExpense": "还没有本月账本支出。",
+    "settings.localDataTitle": "本机数据",
+    "settings.localDataHint": "当前数据只保存在这台设备的浏览器里。",
+    "settings.storageKey": "存储 key",
+    "settings.currentBook": "当前账本",
+    "settings.syncStatus": "同步状态",
+    "settings.notUploaded": "未上传数据库",
+    "settings.languageTitle": "界面语言",
+    "settings.languageHint": "只切换界面文案，不改已有流水、账本、分类和导出数据。",
+    "settings.importExportTitle": "导入导出",
+    "settings.importExportHint": "导出后可恢复，也可以交给 Aevum 读取概览。",
+    "settings.exportCsv": "导出 CSV",
+    "settings.importCsv": "导入 CSV",
+    "settings.exportOverview": "导出 Aevum 概览",
+    "settings.exportJson": "导出完整备份",
+    "settings.pwaTitle": "PWA 更新",
+    "settings.pwaHint": "更新后仍看到旧界面时使用；不会清除 viatica:v1 账本数据。",
+    "settings.clearing": "正在清理...",
+    "settings.clearCache": "清缓存并重载",
+    "filter.search": "搜索标题、商家、标签",
+    "filter.allTypes": "全部类型",
+    "filter.allBooks": "全部账本",
+    "filter.allCategories": "全部分类",
+    "filter.allAccounts": "全部账户",
+    "txn.reimbursable": "可报销",
+    "txn.edit": "编辑",
+    "txn.delete": "删除",
+    "confirm.delete": "删除这笔流水？",
+    "toast.updated": "流水已更新。",
+    "toast.saved": "流水已保存。",
+    "toast.saveFailed": "保存失败：{message}",
+    "toast.receiptTooLarge": "票据图片太大，请选择 1MB 以内的图片。",
+    "toast.receiptPending": "票据已保存在本机待提交。",
+    "toast.receiptFailed": "票据读取失败。",
+    "toast.imported": "已导入 {count} 条流水。",
+    "toast.importFailed": "导入失败：{message}",
+    "toast.deleted": "流水已删除。",
+  },
+  en: {
+    "app.sections": "Viatica sections",
+    "tab.today": "Today",
+    "tab.capture": "Capture",
+    "tab.ledger": "Ledger",
+    "tab.budgets": "Budgets",
+    "tab.settings": "Settings",
+    "type.expense": "Expense",
+    "type.income": "Income",
+    "type.transfer": "Transfer",
+    "today.monthExpense": "This month's spending. Current balance {balance}.",
+    "today.todayExpense": "Today spent",
+    "today.todayIncome": "Today income",
+    "today.reimbursable": "Reimbursable",
+    "today.transactionCount": "Entries",
+    "today.capture": "Capture",
+    "today.ledger": "Ledger",
+    "today.recentTitle": "Recent entries",
+    "today.recentSorted": "Sorted by time.",
+    "today.recentEmptyHint": "Start with the first entry today.",
+    "today.recentEmpty": "No entries yet. Tap Capture to start.",
+    "today.budgetPressure": "Budget pressure",
+    "today.budgetPressureHint": "Top categories by spending this month.",
+    "capture.editTitle": "Edit entry",
+    "capture.quickTitle": "Quick capture",
+    "capture.hint": "Record the real transaction first. Category and notes can come later.",
+    "capture.cancel": "Cancel",
+    "capture.amount": "Amount",
+    "capture.type": "Type",
+    "capture.templateLunch": "Lunch",
+    "capture.templateCoffee": "Coffee",
+    "capture.templateCommute": "Commute",
+    "capture.templateGear": "Gear",
+    "capture.title": "Title",
+    "capture.titlePlaceholder": "Lunch / new trail shoes / Claude subscription",
+    "capture.merchant": "Merchant / person",
+    "capture.merchantPlaceholder": "Taobao / convenience store",
+    "capture.book": "Book",
+    "capture.account": "Account",
+    "capture.category": "Category",
+    "capture.currency": "Currency",
+    "capture.time": "Time",
+    "capture.tags": "Tags",
+    "capture.note": "Note",
+    "capture.notePlaceholder": "Purpose, why you bought it, reimbursement follow-up",
+    "capture.reimbursable": "Mark as reimbursable",
+    "capture.receiptAdded": "Receipt attached",
+    "capture.addReceipt": "Add receipt",
+    "capture.saveEdit": "Save changes",
+    "capture.save": "Save entry",
+    "ledger.title": "Ledger",
+    "ledger.matchCount": "{count} matching entries.",
+    "ledger.empty": "No matching entries yet. Record one or adjust filters.",
+    "budgets.categoryTitle": "Category budgets",
+    "budgets.categoryHint": "Sorted by spending this month.",
+    "budgets.bookTitle": "Book distribution",
+    "budgets.bookHint": "Shows which life area the money went to.",
+    "budgets.noBudget": "No budget data yet.",
+    "budgets.noBookExpense": "No book spending this month yet.",
+    "settings.localDataTitle": "Local data",
+    "settings.localDataHint": "Your data is stored only in this browser on this device.",
+    "settings.storageKey": "Storage key",
+    "settings.currentBook": "Current book",
+    "settings.syncStatus": "Sync status",
+    "settings.notUploaded": "Not uploaded",
+    "settings.languageTitle": "Interface language",
+    "settings.languageHint": "Switches interface copy only; existing entries, books, categories, and exports stay unchanged.",
+    "settings.importExportTitle": "Import / export",
+    "settings.importExportHint": "Export for restore, or let Aevum read an overview.",
+    "settings.exportCsv": "Export CSV",
+    "settings.importCsv": "Import CSV",
+    "settings.exportOverview": "Export Aevum overview",
+    "settings.exportJson": "Export full backup",
+    "settings.pwaTitle": "PWA refresh",
+    "settings.pwaHint": "Use this when the app still shows an old interface; viatica:v1 ledger data is kept.",
+    "settings.clearing": "Clearing...",
+    "settings.clearCache": "Clear cache and reload",
+    "filter.search": "Search title, merchant, tags",
+    "filter.allTypes": "All types",
+    "filter.allBooks": "All books",
+    "filter.allCategories": "All categories",
+    "filter.allAccounts": "All accounts",
+    "txn.reimbursable": "reimbursable",
+    "txn.edit": "Edit",
+    "txn.delete": "Delete",
+    "confirm.delete": "Delete this entry?",
+    "toast.updated": "Entry updated.",
+    "toast.saved": "Entry saved.",
+    "toast.saveFailed": "Save failed: {message}",
+    "toast.receiptTooLarge": "Receipt image is too large. Choose an image under 1MB.",
+    "toast.receiptPending": "Receipt is saved locally and ready to submit.",
+    "toast.receiptFailed": "Could not read receipt.",
+    "toast.imported": "Imported {count} entries.",
+    "toast.importFailed": "Import failed: {message}",
+    "toast.deleted": "Entry deleted.",
+  },
+};
+
+function t(key, replacements = {}) {
+  const messages = MESSAGES[state.preferences.locale] || MESSAGES.zh;
+  const template = messages[key] || MESSAGES.zh[key] || key;
+  return Object.entries(replacements).reduce(
+    (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
+    template,
+  );
+}
+
+function displayLocale() {
+  return state.preferences.locale === "en" ? "en-US" : "zh-CN";
+}
+
+function formatMoney(amount, currency) {
+  return formatCurrency(amount, currency, displayLocale());
+}
+
+function formatWhen(value) {
+  return formatDateTime(value, displayLocale());
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -60,12 +281,12 @@ function optionList(items, selected) {
 }
 
 function typeOptionList(selected) {
-  return TRANSACTION_TYPES.map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === selected ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("");
+  return TRANSACTION_TYPES.map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === selected ? "selected" : ""}>${escapeHtml(t(`type.${item.id}`))}</option>`).join("");
 }
 
 function signedAmount(txn) {
   const prefix = txn.type === "income" ? "+" : txn.type === "transfer" ? "" : "-";
-  return `${prefix}${formatCurrency(txn.amount, txn.currency)}`;
+  return `${prefix}${formatMoney(txn.amount, txn.currency)}`;
 }
 
 function transactionAmountClass(txn) {
@@ -100,6 +321,7 @@ function toast(message) {
 }
 
 function render() {
+  document.documentElement.lang = state.preferences.locale === "en" ? "en" : "zh-CN";
   const summary = summarizeLedger(state.transactions, state.budgets, new Date());
   const filteredTransactions = filterTransactions(state.transactions, state.filters)
     .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt));
@@ -107,22 +329,11 @@ function render() {
 
   app.innerHTML = `
     <main class="app-shell">
-      <header class="topbar">
-        <div class="brand">
-          <div class="brand-mark">V</div>
-          <div>
-            <h1>Viatica</h1>
-            <p>本机优先的个人账本，准备 7 月 1 日正式日用。</p>
-          </div>
-        </div>
-        <div class="sync-pill"><span></span> Local PWA</div>
-      </header>
-
       <section class="tab-stage">
         ${renderActiveTab(summary, filteredTransactions, editingTransaction)}
       </section>
 
-      <nav class="bottom-tabs" aria-label="Viatica sections">
+      <nav class="bottom-tabs" aria-label="${escapeHtml(t("app.sections"))}">
         ${TABS.map(renderTabButton).join("")}
       </nav>
     </main>
@@ -143,7 +354,7 @@ function renderTabButton(tab) {
   return `
     <button class="tab-button ${active ? "active" : ""}" data-action="tab" data-tab="${escapeHtml(tab.id)}" aria-current="${active ? "page" : "false"}">
       <span class="tab-icon">${escapeHtml(tab.icon)}</span>
-      <span>${escapeHtml(tab.label)}</span>
+      <span>${escapeHtml(t(tab.labelKey))}</span>
     </button>
   `;
 }
@@ -157,39 +368,39 @@ function renderTodayTab(summary) {
     <section class="ledger-hero">
       <div>
         <p class="eyebrow">${escapeHtml(summary.monthKey)}</p>
-        <h2>${formatCurrency(summary.monthExpense)}</h2>
-        <p>本月支出，当前结余 ${formatCurrency(summary.monthBalance)}。</p>
+        <h2>${formatMoney(summary.monthExpense)}</h2>
+        <p>${escapeHtml(t("today.monthExpense", { balance: formatMoney(summary.monthBalance) }))}</p>
       </div>
       <div class="hero-grid">
-        ${renderStat("今日支出", formatCurrency(summary.todayExpense))}
-        ${renderStat("今日收入", formatCurrency(summary.todayIncome))}
-        ${renderStat("待报销", formatCurrency(summary.reimbursableExpense))}
-        ${renderStat("记录数", `${summary.transactionCount}`)}
+        ${renderStat(t("today.todayExpense"), formatMoney(summary.todayExpense))}
+        ${renderStat(t("today.todayIncome"), formatMoney(summary.todayIncome))}
+        ${renderStat(t("today.reimbursable"), formatMoney(summary.reimbursableExpense))}
+        ${renderStat(t("today.transactionCount"), `${summary.transactionCount}`)}
       </div>
     </section>
 
     <section class="panel action-panel">
-      <button class="btn primary wide" data-action="open-capture">记一笔</button>
-      <button class="btn secondary wide" data-action="open-ledger">查流水</button>
+      <button class="btn primary wide" data-action="open-capture">${escapeHtml(t("today.capture"))}</button>
+      <button class="btn secondary wide" data-action="open-ledger">${escapeHtml(t("today.ledger"))}</button>
     </section>
 
     <section class="panel">
       <div class="section-title">
         <div>
-          <h2>最近流水</h2>
-          <p>${recent.length ? "按发生时间排序。" : "今天可以从第一笔开始。"}</p>
+          <h2>${escapeHtml(t("today.recentTitle"))}</h2>
+          <p>${escapeHtml(recent.length ? t("today.recentSorted") : t("today.recentEmptyHint"))}</p>
         </div>
       </div>
       <div class="list compact-list">
-        ${recent.length ? recent.map(renderTransactionRow).join("") : `<div class="empty">还没有流水。点击“记一笔”开始记录。</div>`}
+        ${recent.length ? recent.map(renderTransactionRow).join("") : `<div class="empty">${escapeHtml(t("today.recentEmpty"))}</div>`}
       </div>
     </section>
 
     <section class="panel">
       <div class="section-title">
         <div>
-          <h2>预算压力</h2>
-          <p>先看本月支出最高的分类。</p>
+          <h2>${escapeHtml(t("today.budgetPressure"))}</h2>
+          <p>${escapeHtml(t("today.budgetPressureHint"))}</p>
         </div>
       </div>
       <div class="budget-list">
@@ -204,10 +415,10 @@ function renderCaptureTab(editingTransaction) {
     <section class="panel capture-panel">
       <div class="section-title">
         <div>
-          <h2>${editingTransaction ? "编辑流水" : "快速记一笔"}</h2>
-          <p>先把真实流水记下来，分类和备注可以稍后补。</p>
+          <h2>${escapeHtml(editingTransaction ? t("capture.editTitle") : t("capture.quickTitle"))}</h2>
+          <p>${escapeHtml(t("capture.hint"))}</p>
         </div>
-        ${editingTransaction ? `<button class="btn ghost" data-action="cancel-edit">取消</button>` : ""}
+        ${editingTransaction ? `<button class="btn ghost" data-action="cancel-edit">${escapeHtml(t("capture.cancel"))}</button>` : ""}
       </div>
       ${renderCaptureForm(editingTransaction)}
     </section>
@@ -219,13 +430,13 @@ function renderLedgerTab(filteredTransactions) {
     <section class="panel">
       <div class="section-title">
         <div>
-          <h2>流水</h2>
-          <p>${filteredTransactions.length} 条匹配记录。</p>
+          <h2>${escapeHtml(t("ledger.title"))}</h2>
+          <p>${escapeHtml(t("ledger.matchCount", { count: filteredTransactions.length }))}</p>
         </div>
       </div>
       ${renderFilters()}
       <div class="list">
-        ${filteredTransactions.length ? filteredTransactions.map(renderTransactionRow).join("") : `<div class="empty">还没有匹配流水。先记录一笔，或调整筛选条件。</div>`}
+        ${filteredTransactions.length ? filteredTransactions.map(renderTransactionRow).join("") : `<div class="empty">${escapeHtml(t("ledger.empty"))}</div>`}
       </div>
     </section>
   `;
@@ -237,8 +448,8 @@ function renderBudgetTab(summary) {
       <section class="panel">
         <div class="section-title">
           <div>
-            <h2>分类预算</h2>
-            <p>按本月已花金额排序。</p>
+            <h2>${escapeHtml(t("budgets.categoryTitle"))}</h2>
+            <p>${escapeHtml(t("budgets.categoryHint"))}</p>
           </div>
         </div>
         <div class="budget-list">
@@ -249,8 +460,8 @@ function renderBudgetTab(summary) {
       <section class="panel">
         <div class="section-title">
           <div>
-            <h2>账本分布</h2>
-            <p>用于判断钱花在哪个生活域。</p>
+            <h2>${escapeHtml(t("budgets.bookTitle"))}</h2>
+            <p>${escapeHtml(t("budgets.bookHint"))}</p>
           </div>
         </div>
         <div class="budget-list">
@@ -266,46 +477,67 @@ function renderSettingsTab(summary) {
     <section class="panel">
       <div class="section-title">
         <div>
-          <h2>本机数据</h2>
-          <p>当前数据只保存在这台设备的浏览器里。</p>
+          <h2>${escapeHtml(t("settings.localDataTitle"))}</h2>
+          <p>${escapeHtml(t("settings.localDataHint"))}</p>
         </div>
       </div>
       <div class="settings-grid">
-        ${renderStat("存储 key", "viatica:v1")}
-        ${renderStat("流水总数", `${summary.transactionCount}`)}
-        ${renderStat("当前账本", state.preferences.activeBook)}
-        ${renderStat("同步状态", "未上传数据库")}
+        ${renderStat(t("settings.storageKey"), "viatica:v1")}
+        ${renderStat(t("today.transactionCount"), `${summary.transactionCount}`)}
+        ${renderStat(t("settings.currentBook"), state.preferences.activeBook)}
+        ${renderStat(t("settings.syncStatus"), t("settings.notUploaded"))}
       </div>
     </section>
 
     <section class="panel">
       <div class="section-title">
         <div>
-          <h2>导入导出</h2>
-          <p>导出后可恢复，也可以交给 Aevum 读取概览。</p>
+          <h2>${escapeHtml(t("settings.languageTitle"))}</h2>
+          <p>${escapeHtml(t("settings.languageHint"))}</p>
+        </div>
+      </div>
+      <div class="language-switch">
+        ${LOCALES.map(renderLocaleButton).join("")}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <div>
+          <h2>${escapeHtml(t("settings.importExportTitle"))}</h2>
+          <p>${escapeHtml(t("settings.importExportHint"))}</p>
         </div>
       </div>
       <div class="action-grid">
-        <button class="btn secondary" data-action="export-csv">导出 CSV</button>
-        <button class="btn secondary" data-action="import-csv">导入 CSV</button>
-        <button class="btn secondary" data-action="export-overview">导出 Aevum 概览</button>
-        <button class="btn secondary" data-action="export-json">导出完整备份</button>
+        <button class="btn secondary" data-action="export-csv">${escapeHtml(t("settings.exportCsv"))}</button>
+        <button class="btn secondary" data-action="import-csv">${escapeHtml(t("settings.importCsv"))}</button>
+        <button class="btn secondary" data-action="export-overview">${escapeHtml(t("settings.exportOverview"))}</button>
+        <button class="btn secondary" data-action="export-json">${escapeHtml(t("settings.exportJson"))}</button>
       </div>
     </section>
 
     <section class="panel">
       <div class="section-title">
         <div>
-          <h2>PWA 更新</h2>
-          <p>更新后仍看到旧界面时使用；不会清除 viatica:v1 账本数据。</p>
+          <h2>${escapeHtml(t("settings.pwaTitle"))}</h2>
+          <p>${escapeHtml(t("settings.pwaHint"))}</p>
         </div>
       </div>
       <div class="action-grid">
         <button class="btn secondary" data-action="clear-cache-reload" ${state.pwaRefreshInProgress ? "disabled aria-busy=\"true\"" : ""}>
-          ${state.pwaRefreshInProgress ? "正在清理..." : "清缓存并重载"}
+          ${escapeHtml(state.pwaRefreshInProgress ? t("settings.clearing") : t("settings.clearCache"))}
         </button>
       </div>
     </section>
+  `;
+}
+
+function renderLocaleButton(locale) {
+  const active = state.preferences.locale === locale.id;
+  return `
+    <button class="locale-button ${active ? "active" : ""}" data-action="set-locale" data-locale="${escapeHtml(locale.id)}" aria-pressed="${active ? "true" : "false"}">
+      ${escapeHtml(locale.label)}
+    </button>
   `;
 }
 
@@ -341,70 +573,70 @@ function renderCaptureForm(editingTransaction) {
       <input type="hidden" name="id" value="${escapeHtml(txn.id || "")}">
       <div class="amount-line">
         <label>
-          <span>金额</span>
+          <span>${escapeHtml(t("capture.amount"))}</span>
           <input class="money-input" name="amount" inputmode="decimal" placeholder="0.00" value="${escapeHtml(txn.amount || "")}" required>
         </label>
         <label>
-          <span>类型</span>
+          <span>${escapeHtml(t("capture.type"))}</span>
           <select name="type">${typeOptionList(txn.type)}</select>
         </label>
       </div>
 
       <div class="template-row">
-        ${renderTemplateButton("午餐", { amount: "35", title: "午餐", category: "餐饮", account: "微信" })}
-        ${renderTemplateButton("咖啡", { amount: "22", title: "咖啡", category: "餐饮", account: "微信" })}
-        ${renderTemplateButton("通勤", { amount: "8", title: "通勤", category: "交通", account: "支付宝" })}
-        ${renderTemplateButton("装备", { amount: "899", title: "跑步装备", category: "运动装备", book: "训练账本", tags: "gear ultreia" })}
+        ${renderTemplateButton(t("capture.templateLunch"), { amount: "35", title: "午餐", category: "餐饮", account: "微信" })}
+        ${renderTemplateButton(t("capture.templateCoffee"), { amount: "22", title: "咖啡", category: "餐饮", account: "微信" })}
+        ${renderTemplateButton(t("capture.templateCommute"), { amount: "8", title: "通勤", category: "交通", account: "支付宝" })}
+        ${renderTemplateButton(t("capture.templateGear"), { amount: "899", title: "跑步装备", category: "运动装备", book: "训练账本", tags: "gear ultreia" })}
       </div>
 
       <div class="field-grid">
         <label>
-          <span>标题</span>
-          <input name="title" placeholder="午餐 / 新越野鞋 / Claude 订阅" value="${escapeHtml(txn.title || "")}" required>
+          <span>${escapeHtml(t("capture.title"))}</span>
+          <input name="title" placeholder="${escapeHtml(t("capture.titlePlaceholder"))}" value="${escapeHtml(txn.title || "")}" required>
         </label>
         <label>
-          <span>商家 / 对象</span>
-          <input name="merchant" placeholder="淘宝 / 便利店" value="${escapeHtml(txn.merchant || "")}">
+          <span>${escapeHtml(t("capture.merchant"))}</span>
+          <input name="merchant" placeholder="${escapeHtml(t("capture.merchantPlaceholder"))}" value="${escapeHtml(txn.merchant || "")}">
         </label>
         <label>
-          <span>账本</span>
+          <span>${escapeHtml(t("capture.book"))}</span>
           <select name="book">${optionList(BOOKS, txn.book)}</select>
         </label>
         <label>
-          <span>账户</span>
+          <span>${escapeHtml(t("capture.account"))}</span>
           <select name="account">${optionList(ACCOUNTS, txn.account)}</select>
         </label>
         <label>
-          <span>分类</span>
+          <span>${escapeHtml(t("capture.category"))}</span>
           <select name="category">${optionList(CATEGORIES, txn.category)}</select>
         </label>
         <label>
-          <span>币种</span>
+          <span>${escapeHtml(t("capture.currency"))}</span>
           <select name="currency">${optionList(CURRENCIES, txn.currency)}</select>
         </label>
         <label>
-          <span>时间</span>
+          <span>${escapeHtml(t("capture.time"))}</span>
           <input type="datetime-local" name="occurredAt" value="${escapeHtml(toDateInputValue(txn.occurredAt || new Date()))}">
         </label>
         <label>
-          <span>标签</span>
+          <span>${escapeHtml(t("capture.tags"))}</span>
           <input name="tags" placeholder="trail_shoes gear" value="${escapeHtml((txn.tags || []).join(" "))}">
         </label>
       </div>
 
       <label>
-        <span>备注</span>
-        <textarea name="note" rows="3" placeholder="用途、为什么买、后续是否需要报销">${escapeHtml(txn.note || "")}</textarea>
+        <span>${escapeHtml(t("capture.note"))}</span>
+        <textarea name="note" rows="3" placeholder="${escapeHtml(t("capture.notePlaceholder"))}">${escapeHtml(txn.note || "")}</textarea>
       </label>
 
       <div class="capture-footer">
         <label class="check-line">
           <input type="checkbox" name="reimbursable" ${txn.reimbursable ? "checked" : ""}>
-          <span>标记为可报销</span>
+          <span>${escapeHtml(t("capture.reimbursable"))}</span>
         </label>
-        <button class="btn secondary" type="button" data-action="attach-receipt">${receiptAttached ? "票据已添加" : "添加票据"}</button>
+        <button class="btn secondary" type="button" data-action="attach-receipt">${escapeHtml(receiptAttached ? t("capture.receiptAdded") : t("capture.addReceipt"))}</button>
         <input id="receipt-input" type="file" accept="image/*" hidden>
-        <button class="btn primary" type="submit">${editingTransaction ? "保存修改" : "保存流水"}</button>
+        <button class="btn primary" type="submit">${escapeHtml(editingTransaction ? t("capture.saveEdit") : t("capture.save"))}</button>
       </div>
     </form>
   `;
@@ -418,14 +650,14 @@ function renderBudgetRows(summary, limit = 6) {
   const entries = Object.entries(summary.budgets)
     .sort((a, b) => b[1].spent - a[1].spent)
     .slice(0, limit);
-  if (!entries.length) return `<div class="empty">暂无预算数据。</div>`;
+  if (!entries.length) return `<div class="empty">${escapeHtml(t("budgets.noBudget"))}</div>`;
   return entries.map(([category, data]) => {
     const ratio = Math.min(1, data.ratio || 0);
     return `
       <div class="budget-row">
         <div>
           <strong>${escapeHtml(category)}</strong>
-          <span>${formatCurrency(data.spent)} / ${formatCurrency(data.budget)}</span>
+          <span>${formatMoney(data.spent)} / ${formatMoney(data.budget)}</span>
         </div>
         <div class="budget-track"><span style="width: ${Math.round(ratio * 100)}%"></span></div>
       </div>
@@ -435,13 +667,13 @@ function renderBudgetRows(summary, limit = 6) {
 
 function renderBookRows(summary) {
   const entries = Object.entries(summary.bookExpense).sort((a, b) => b[1] - a[1]);
-  if (!entries.length) return `<div class="empty">还没有本月账本支出。</div>`;
+  if (!entries.length) return `<div class="empty">${escapeHtml(t("budgets.noBookExpense"))}</div>`;
   const total = Math.max(1, summary.monthExpense);
   return entries.map(([book, amount]) => `
     <div class="budget-row">
       <div>
         <strong>${escapeHtml(book)}</strong>
-        <span>${formatCurrency(amount)}</span>
+        <span>${formatMoney(amount)}</span>
       </div>
       <div class="budget-track"><span style="width: ${Math.round((amount / total) * 100)}%"></span></div>
     </div>
@@ -451,21 +683,21 @@ function renderBookRows(summary) {
 function renderFilters() {
   return `
     <div class="filters">
-      <input data-filter="query" placeholder="搜索标题、商家、标签" value="${escapeHtml(state.filters.query)}">
+      <input data-filter="query" placeholder="${escapeHtml(t("filter.search"))}" value="${escapeHtml(state.filters.query)}">
       <select data-filter="type">
-        <option value="all">全部类型</option>
-        ${TRANSACTION_TYPES.map((item) => `<option value="${escapeHtml(item.id)}" ${state.filters.type === item.id ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
+        <option value="all">${escapeHtml(t("filter.allTypes"))}</option>
+        ${TRANSACTION_TYPES.map((item) => `<option value="${escapeHtml(item.id)}" ${state.filters.type === item.id ? "selected" : ""}>${escapeHtml(t(`type.${item.id}`))}</option>`).join("")}
       </select>
       <select data-filter="book">
-        <option value="all">全部账本</option>
+        <option value="all">${escapeHtml(t("filter.allBooks"))}</option>
         ${BOOKS.map((item) => `<option value="${escapeHtml(item)}" ${state.filters.book === item ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
       </select>
       <select data-filter="category">
-        <option value="all">全部分类</option>
+        <option value="all">${escapeHtml(t("filter.allCategories"))}</option>
         ${CATEGORIES.map((item) => `<option value="${escapeHtml(item)}" ${state.filters.category === item ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
       </select>
       <select data-filter="account">
-        <option value="all">全部账户</option>
+        <option value="all">${escapeHtml(t("filter.allAccounts"))}</option>
         ${ACCOUNTS.map((item) => `<option value="${escapeHtml(item)}" ${state.filters.account === item ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
       </select>
       <input type="month" data-filter="month" value="${escapeHtml(state.filters.month)}">
@@ -479,13 +711,13 @@ function renderTransactionRow(txn) {
       <div class="txn-main">
         <div>
           <strong>${escapeHtml(txn.title)}</strong>
-          <span>${escapeHtml(formatDateTime(txn.occurredAt))} · ${escapeHtml(txn.book)} · ${escapeHtml(txn.category)} · ${escapeHtml(txn.account)}${txn.reimbursable ? " · 可报销" : ""}</span>
+          <span>${escapeHtml(formatWhen(txn.occurredAt))} · ${escapeHtml(txn.book)} · ${escapeHtml(txn.category)} · ${escapeHtml(txn.account)}${txn.reimbursable ? ` · ${escapeHtml(t("txn.reimbursable"))}` : ""}</span>
         </div>
         <div class="amount ${transactionAmountClass(txn)}">${signedAmount(txn)}</div>
       </div>
       <div class="txn-actions">
-        <button class="btn ghost" data-action="edit" data-id="${escapeHtml(txn.id)}">编辑</button>
-        <button class="btn ghost danger-text" data-action="delete" data-id="${escapeHtml(txn.id)}">删除</button>
+        <button class="btn ghost" data-action="edit" data-id="${escapeHtml(txn.id)}">${escapeHtml(t("txn.edit"))}</button>
+        <button class="btn ghost danger-text" data-action="delete" data-id="${escapeHtml(txn.id)}">${escapeHtml(t("txn.delete"))}</button>
       </div>
     </article>
   `;
@@ -537,17 +769,17 @@ document.addEventListener("submit", (event) => {
       const txn = normalizeTransaction({ ...existing, ...data, id: existing.id, createdAt: existing.createdAt });
       state.transactions = state.transactions.map((item) => item.id === txn.id ? txn : item);
       state.editingTransactionId = null;
-      toast("流水已更新。");
+      toast(t("toast.updated"));
     } else {
       state.transactions.unshift(data);
-      toast("流水已保存。");
+      toast(t("toast.saved"));
     }
     state.preferences.activeBook = data.book;
     state.pendingReceiptDataUrl = "";
     persist();
     render();
   } catch (err) {
-    toast(`保存失败：${err.message}`);
+    toast(t("toast.saveFailed", { message: err.message }));
   }
 });
 
@@ -563,16 +795,16 @@ document.addEventListener("change", (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
     if (file.size > 1024 * 1024) {
-      toast("票据图片太大，请选择 1MB 以内的图片。");
+      toast(t("toast.receiptTooLarge"));
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
       state.pendingReceiptDataUrl = String(reader.result || "");
-      toast("票据已保存在本机待提交。");
+      toast(t("toast.receiptPending"));
       render();
     };
-    reader.onerror = () => toast("票据读取失败。");
+    reader.onerror = () => toast(t("toast.receiptFailed"));
     reader.readAsDataURL(file);
   }
 
@@ -586,9 +818,9 @@ document.addEventListener("change", (event) => {
         state.transactions = [...imported, ...state.transactions];
         persist();
         render();
-        toast(`已导入 ${imported.length} 条流水。`);
+        toast(t("toast.imported", { count: imported.length }));
       } catch (err) {
-        toast(`导入失败：${err.message}`);
+        toast(t("toast.importFailed", { message: err.message }));
       }
     };
     reader.readAsText(file);
@@ -631,11 +863,11 @@ document.addEventListener("click", (event) => {
     document.querySelector("#transaction-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
   if (action === "delete") {
-    if (!confirm("删除这笔流水？")) return;
+    if (!confirm(t("confirm.delete"))) return;
     state.transactions = state.transactions.filter((txn) => txn.id !== node.dataset.id);
     persist();
     render();
-    toast("流水已删除。");
+    toast(t("toast.deleted"));
   }
   if (action === "export-csv") {
     download("viatica-transactions.csv", exportTransactionsCsv(state.transactions), "text/csv;charset=utf-8");
@@ -655,6 +887,13 @@ document.addEventListener("click", (event) => {
   }
   if (action === "clear-cache-reload") {
     clearPwaCacheAndReload();
+  }
+  if (action === "set-locale") {
+    const locale = node.dataset.locale;
+    if (!LOCALES.some((item) => item.id === locale)) return;
+    state.preferences.locale = locale;
+    persist();
+    render();
   }
 });
 
