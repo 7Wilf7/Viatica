@@ -44,6 +44,23 @@ The local state includes transactions, category budgets, preferences, and
 account records. Account net is calculated as each account's opening balance
 plus income minus expenses from ledger entries.
 
+## Temporary Demo Data
+
+Temporary demo data is currently enabled for pre-launch review. The seed lives
+in `src/core/demoData.js` behind `VIATICA_DEMO_DATA_ENABLED = true`.
+
+- It only appears when local `viatica:v1` has no real transactions.
+- It includes sample transactions, opening balances, and category budgets so
+  Ledger, Calendar, Charts, Assets, and budget progress can be reviewed without
+  manual entry.
+- While demo mode is active, `persist()` does not write the demo transactions,
+  demo budgets, or demo accounts into `viatica:v1`.
+- Explicit data-saving actions such as saving a transaction, importing CSV,
+  editing budgets, or editing accounts exit demo mode and start real local
+  state.
+- Remove it later by setting `VIATICA_DEMO_DATA_ENABLED = false` or deleting the
+  demo file and its import path.
+
 ## Commands
 
 ```bash

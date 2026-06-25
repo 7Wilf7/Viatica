@@ -1,6 +1,13 @@
 import "./styles.css";
 import { ACCOUNTS, BOOKS, CATEGORIES, CURRENCIES, DEFAULT_BUDGETS, TRANSACTION_TYPES } from "./core/constants.js";
 import { exportTransactionsCsv, importTransactionsCsv } from "./core/csv.js";
+import {
+  DEMO_ACCOUNTS,
+  DEMO_BUDGETS,
+  DEMO_REFERENCE_DATE,
+  DEMO_TRANSACTIONS,
+  VIATICA_DEMO_DATA_ENABLED,
+} from "./core/demoData.js";
 import { formatCurrency, formatDateTime, monthKey, todayKey, toDateInputValue } from "./core/format.js";
 import {
   filterTransactions,
@@ -16,8 +23,19 @@ const LOCALES = [
   { id: "zh", label: "中" },
   { id: "en", label: "EN" },
 ];
+const storedState = loadState();
+const demoDataEnabled = VIATICA_DEMO_DATA_ENABLED && storedState.transactions.length === 0;
 const state = {
-  ...loadState(),
+  ...storedState,
+  transactions: demoDataEnabled
+    ? DEMO_TRANSACTIONS.map((txn) => normalizeTransaction(txn, new Date(DEMO_REFERENCE_DATE)))
+    : storedState.transactions,
+  budgets: demoDataEnabled && !Object.keys(storedState.budgets || {}).length
+    ? { ...DEMO_BUDGETS }
+    : storedState.budgets,
+  accounts: demoDataEnabled && !storedState.accounts.length
+    ? DEMO_ACCOUNTS
+    : storedState.accounts,
   activeTab: "ledger",
   filters: {
     query: "",
@@ -32,6 +50,7 @@ const state = {
   dashboardRange: "month",
   ledgerView: "flow",
   settingsContent: "home",
+  demoDataEnabled,
 };
 
 state.budgets = { ...DEFAULT_BUDGETS, ...state.budgets };
@@ -166,6 +185,23 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-06-25",
+    title: {
+      zh: "临时演示流水",
+      en: "Temporary demo ledger data",
+    },
+    items: {
+      zh: [
+        "加入一组临时模拟流水、账户初始资金和分类预算，用于在正式记账前查看账本、日历、统计、资产和预算表现。",
+        "演示数据只在本机没有真实流水时展示，不写入 `viatica:v1`；后续关闭 demo 开关或删除 demo 文件即可移除。",
+      ],
+      en: [
+        "Added temporary demo transactions, opening balances, and category budgets so Ledger, Calendar, Charts, Assets, and budgets can be reviewed before real accounting starts.",
+        "Demo data only appears when no real entries exist and is not written to `viatica:v1`; disabling the demo flag or deleting the demo file removes it later.",
+      ],
+    },
+  },
   {
     date: "2026-06-25",
     title: {
@@ -634,11 +670,26 @@ function localized(copy) {
 
 function persist() {
   saveState({
-    transactions: state.transactions,
-    budgets: state.budgets,
-    accounts: state.accounts,
+    transactions: state.demoDataEnabled ? [] : state.transactions,
+    budgets: state.demoDataEnabled ? {} : state.budgets,
+    accounts: state.demoDataEnabled ? [] : state.accounts,
     preferences: state.preferences,
   });
+}
+
+function beginRealDataMode() {
+  if (!state.demoDataEnabled) return;
+  state.demoDataEnabled = false;
+  state.transactions = [];
+  state.budgets = { ...DEFAULT_BUDGETS };
+  state.accounts = normalizeAccounts([]);
+  state.filters = {
+    ...state.filters,
+    type: "all",
+    book: "all",
+    category: "all",
+    account: "all",
+  };
 }
 
 function itemOptions(items) {
@@ -1589,6 +1640,7 @@ document.addEventListener("submit", (event) => {
   if (!(form instanceof HTMLFormElement)) return;
   event.preventDefault();
   if (form.getAttribute("id") === "budget-form") {
+    beginRealDataMode();
     try {
       const nextBudgets = {};
       for (const category of CATEGORIES) {
@@ -1606,6 +1658,7 @@ document.addEventListener("submit", (event) => {
     return;
   }
   if (form.getAttribute("id") === "account-form") {
+    beginRealDataMode();
     try {
       const data = Object.fromEntries(new FormData(form).entries());
       const account = normalizeAccount(data);
@@ -1629,8 +1682,9 @@ document.addEventListener("submit", (event) => {
     return;
   }
   if (form.getAttribute("id") === "account-balances-form") {
+    const formData = new FormData(form);
+    beginRealDataMode();
     try {
-      const formData = new FormData(form);
       const nextAccounts = state.accounts.map((account) => {
         const value = Number(formData.get(account.name) || 0);
         if (!Number.isFinite(value)) throw new Error(t("assets.accountInvalid"));
@@ -1648,6 +1702,7 @@ document.addEventListener("submit", (event) => {
   if (form.getAttribute("id") !== "transaction-form") return;
   try {
     const data = formToTransaction(form);
+    beginRealDataMode();
     const existing = data.id ? state.transactions.find((txn) => txn.id === data.id) : null;
     if (existing) {
       const txn = normalizeTransaction({ ...existing, ...data, id: existing.id, createdAt: existing.createdAt });
@@ -1683,6 +1738,7 @@ document.addEventListener("change", (event) => {
     reader.onload = () => {
       try {
         const imported = importTransactionsCsv(String(reader.result || ""));
+        beginRealDataMode();
         state.transactions = [...imported, ...state.transactions];
         persist();
         render();
@@ -1771,6 +1827,7 @@ document.addEventListener("click", (event) => {
     render();
   }
   if (action === "reset-budgets") {
+    beginRealDataMode();
     state.budgets = { ...DEFAULT_BUDGETS };
     persist();
     render();

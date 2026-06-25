@@ -53,3 +53,11 @@ a gamified finance app.
 The active milestone is to make the PWA ready for real daily accounting by
 2026-07-01. The priority is not AI features yet; it is speed, clarity, account
 setup, backup, and confidence in the transaction workflow.
+
+## Temporary Demo State
+Temporary demo data is enabled before formal bookkeeping starts. It is stored in
+`src/core/demoData.js` and only shown when local `viatica:v1` has no real
+transactions. The demo seed is for reviewing Ledger, Calendar, Charts, Assets,
+and budget behavior. Explicit data-saving actions exit demo mode and start real
+local state, but the demo seed should still be removed or disabled before
+Viatica becomes the source of truth for real records.
