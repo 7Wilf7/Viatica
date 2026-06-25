@@ -7,6 +7,19 @@ books, accounts, categories, receipt attachments, and local financial records.
 Aevum only keeps overview data, app entry points, and reviewed cross-product
 events.
 
+## Product Family
+Viatica, Ultreia, and Aevum are family products in Wilf's personal tool
+ecosystem. Viatica keeps its own ledger and privacy boundary, but its mobile
+shell, settings structure, and visual language should stay compatible with the
+family.
+
+When Wilf asks to reference Ultreia, align with Ultreia, or keep the family
+design language unified, inspect the current Ultreia code and docs under
+`/Users/danxiao/Projects/ultreia` before designing or implementing. Treat the
+live Ultreia repository as the source of truth for reusable interaction
+patterns, especially mobile navigation, settings, guide, changelog, and
+restrained dark product UI.
+
 ## Stack
 - Vanilla HTML, CSS, and JavaScript.
 - Vite for local development and builds.
@@ -33,11 +46,15 @@ events.
   shares them with Aevum.
 - Aevum integration is overview-first and event-based. Do not let Aevum read or
   edit Viatica's private ledger directly.
+- Family-product alignment is a design and workflow constraint, not a data
+  sharing permission. Do not let Ultreia or Aevum read or edit Viatica's private
+  ledger directly.
 
 ## Design Rules
 - Product UI, not marketing UI.
 - Keep the interface quiet, dense, precise, and fast to scan.
-- Use a Linear-inspired dark product language with deep blue as Viatica's accent.
+- Use the Aevum/Ultreia family language: Linear-inspired dark product UI, quiet
+  density, precise controls, and deep blue as Viatica's accent.
 - Use bottom tabs for the mobile app shell: Today, Capture, Ledger, Budgets,
   Settings.
 - Avoid decorative copy, oversized hero blocks, nested cards, and UI text that

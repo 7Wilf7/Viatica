@@ -719,7 +719,8 @@ input[type="datetime-local"] {
   background: oklch(0.20 0.03 255 / 0.78);
 }
 
-.language-switch {
+.language-switch,
+.settings-content-switch {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -729,7 +730,8 @@ input[type="datetime-local"] {
   background: oklch(0.12 0.014 258);
 }
 
-.locale-button {
+.locale-button,
+.settings-content-switch button {
   min-height: var(--tap);
   border-radius: calc(var(--r-sm) - 3px);
   background: transparent;
@@ -738,15 +740,74 @@ input[type="datetime-local"] {
   transition: background 180ms var(--ease-out), color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
 }
 
-.locale-button.active {
+.locale-button.active,
+.settings-content-switch button.active {
   color: var(--ink);
   background: linear-gradient(180deg, oklch(0.23 0.035 255 / 0.88), oklch(0.16 0.022 258));
   box-shadow: 0 0 0 1px oklch(0.70 0.055 250 / 0.20) inset;
 }
 
-.locale-button:hover {
+.locale-button:hover,
+.settings-content-switch button:hover {
   color: var(--ink);
   background: oklch(0.18 0.018 258 / 0.82);
+}
+
+.guide-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.guide-panel .section-title {
+  margin-bottom: 0;
+}
+
+.reading-list {
+  display: grid;
+  gap: 8px;
+}
+
+.reading-entry {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: oklch(0.155 0.016 258 / 0.62);
+}
+
+.reading-entry h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.reading-entry ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.reading-entry li {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.changelog-head {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.changelog-head span {
+  color: var(--blue-strong);
+  font-size: 11px;
+  font-weight: 780;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
 .action-panel {
@@ -1120,6 +1181,11 @@ input[type="datetime-local"] {
   .action-panel,
   .action-grid .btn {
     width: 100%;
+  }
+
+  .changelog-head {
+    grid-template-columns: 1fr;
+    gap: 3px;
   }
 
   .txn-main {

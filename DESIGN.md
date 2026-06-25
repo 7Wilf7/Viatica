@@ -1,10 +1,16 @@
 # Design
 
 ## System
-Viatica shares Aevum's Linear-inspired product language: dark surfaces, precise
-thin lines, subtle ambient light, restrained blur, and short stateful motion.
-The accent shifts from Aevum's violet-blue glow to a low-saturation deep ledger
-blue / steel blue.
+Viatica belongs to the same product family as Aevum and Ultreia. It shares the
+family's Linear-inspired product language: dark surfaces, precise thin lines,
+subtle ambient light, restrained blur, and short stateful motion. The accent
+shifts from Aevum's violet-blue glow to a low-saturation deep ledger blue /
+steel blue.
+
+When a design task asks to reference Ultreia, inspect
+`/Users/danxiao/Projects/ultreia` first and use the current Ultreia app as the
+source of truth for family-level mobile patterns. Adapt those patterns to
+Viatica's ledger workflow instead of copying unrelated training features.
 
 The current UI target is a mobile app shell, not a one-page dashboard. Primary
 navigation is a persistent bottom tab bar:

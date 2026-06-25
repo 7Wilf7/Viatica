@@ -31,6 +31,7 @@ const state = {
   pendingReceiptDataUrl: "",
   pwaRefreshInProgress: false,
   dashboardRange: "month",
+  settingsContent: "manual",
 };
 
 state.budgets = { ...DEFAULT_BUDGETS, ...state.budgets };
@@ -66,6 +67,203 @@ const CAPTURE_TEMPLATES = [
   { labelKey: "template.coffee", values: { amount: "22", title: "咖啡", category: "餐饮", account: "微信" } },
   { labelKey: "template.commute", values: { amount: "8", title: "通勤", category: "交通", account: "支付宝" } },
   { labelKey: "template.gear", values: { amount: "899", title: "跑步装备", category: "运动装备", book: "训练账本", tags: "gear ultreia" } },
+];
+
+const SETTINGS_CONTENT_TABS = [
+  { id: "manual", labelKey: "settings.manualTab" },
+  { id: "changelog", labelKey: "settings.changelogTab" },
+];
+
+const MANUAL_SECTIONS = [
+  {
+    title: {
+      zh: "第一天怎么用",
+      en: "First-day setup",
+    },
+    items: {
+      zh: [
+        "从“记一笔”开始，先填金额和标题；分类、备注和票据可以稍后补。",
+        "午餐、咖啡、通勤、装备模板用于十秒内录入常见流水。",
+        "账本负责区分生活域，例如日常、训练、家庭、旅行；账户负责记录真实付款出口。",
+      ],
+      en: [
+        "Start in Capture. Enter amount and title first; category, notes, and receipt can come later.",
+        "Lunch, Coffee, Commute, and Gear templates cover common entries in a few taps.",
+        "Books separate life areas such as Daily, Training, Family, and Travel; accounts track the real payment source.",
+      ],
+    },
+  },
+  {
+    title: {
+      zh: "查账与修正",
+      en: "Review and correct",
+    },
+    items: {
+      zh: [
+        "“今日”用于快速看本周、本月、本年或全部流水的支出、收入、报销和记录数。",
+        "日历会标出本月有支出的日期，最近流水按发生时间排序。",
+        "“流水”可以按类型、账本、分类、账户和月份筛选；单笔流水可编辑或删除。",
+      ],
+      en: [
+        "Today shows spending, income, reimbursable amount, and entry count for week, month, year, or all time.",
+        "The calendar marks spending days in the current month, and recent entries are sorted by occurrence time.",
+        "Ledger filters by type, book, category, account, and month; each entry can be edited or deleted.",
+      ],
+    },
+  },
+  {
+    title: {
+      zh: "预算、备份和 PWA 更新",
+      en: "Budgets, backup, and PWA refresh",
+    },
+    items: {
+      zh: [
+        "“预算”看分类预算和账本分布，先关注本月支出最高的分类。",
+        "“设置”里的 CSV 适合表格分析，JSON 是完整本地备份。",
+        "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
+      ],
+      en: [
+        "Budgets shows category limits and book distribution; start with the highest-spending categories this month.",
+        "CSV is for spreadsheet review. JSON is the full local backup.",
+        "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
+      ],
+    },
+  },
+  {
+    title: {
+      zh: "家族产品边界",
+      en: "Product-family boundaries",
+    },
+    items: {
+      zh: [
+        "Viatica、Ultreia 和 Aevum 是家族产品，移动端布局和设置结构会保持同一套产品语言。",
+        "流水明细只属于 Viatica；Aevum 只能接收概览快照或经过确认的跨产品事件。",
+        "更新日志记录 Viatica 自己的产品变化，不等同于 Ultreia 或 Aevum 的发布记录。",
+      ],
+      en: [
+        "Viatica, Ultreia, and Aevum are family products, so mobile layout and settings structure should feel related.",
+        "Transaction details belong only to Viatica; Aevum receives only overview snapshots or reviewed cross-product events.",
+        "This changelog records Viatica changes only, not Ultreia or Aevum releases.",
+      ],
+    },
+  },
+];
+
+const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-06-25",
+    title: {
+      zh: "设置页加入使用手册与更新日志",
+      en: "Settings guide and changelog",
+    },
+    items: {
+      zh: [
+        "参考 Ultreia 的设置页手册入口，在 Viatica 设置页新增“使用手册 / 更新日志”分段阅读区。",
+        "补齐从 2026-06-24 初始 PWA 到当前版本的产品更新记录。",
+        "项目文档明确 Viatica、Ultreia、Aevum 是家族产品，并规定参考 Ultreia 时先查看当前 Ultreia 代码。",
+      ],
+      en: [
+        "Added a Settings reading area for Manual and Changelog, following Ultreia's guide entry pattern.",
+        "Backfilled the product changelog from the 2026-06-24 initial PWA to the current version.",
+        "Documented Viatica, Ultreia, and Aevum as family products, with Ultreia code as the reference when requested.",
+      ],
+    },
+  },
+  {
+    date: "2026-06-25",
+    title: {
+      zh: "移动端账本体验向 Ultreia 对齐",
+      en: "Mobile ledger aligned with Ultreia",
+    },
+    items: {
+      zh: [
+        "Today 改成移动端优先的概览页，加入时间范围切换、快速操作和月历支出视图。",
+        "Capture 加入常用模板和 app-native 选择控件，减少手机端表单摩擦。",
+        "Ledger 增加快捷筛选、报销/票据入口和更紧凑的流水行。",
+      ],
+      en: [
+        "Reworked Today into a mobile-first overview with range switching, quick actions, and a monthly spending calendar.",
+        "Added capture templates and app-native choice controls to reduce mobile form friction.",
+        "Added quick ledger filters, reimbursable/receipt entry points, and denser transaction rows.",
+      ],
+    },
+  },
+  {
+    date: "2026-06-25",
+    title: {
+      zh: "钢蓝主题定稿",
+      en: "Steel-blue theme tuning",
+    },
+    items: {
+      zh: [
+        "将 Viatica 的主色收敛为低饱和钢蓝，和 Aevum / Ultreia 的暗色产品语言保持同族但不混淆。",
+        "同步调整图标、背景、描边、焦点和按钮状态。",
+      ],
+      en: [
+        "Tuned Viatica's accent toward low-saturation steel blue so it feels related to Aevum / Ultreia without blending into them.",
+        "Updated icon, background, borders, focus states, and button states.",
+      ],
+    },
+  },
+  {
+    date: "2026-06-24",
+    title: {
+      zh: "手机端输入控件与账本紧凑化",
+      en: "Mobile controls and denser ledger",
+    },
+    items: {
+      zh: [
+        "用 app-native 选择控件替换普通下拉，改善手机端账本、账户、分类和币种选择。",
+        "压缩流水列表和备份设置的视觉密度，让手机屏幕一次显示更多有效信息。",
+        "收紧 Capture 布局和 Today 摘要，突出快速记账路径。",
+      ],
+      en: [
+        "Replaced plain selects with app-native choice controls for book, account, category, and currency selection.",
+        "Compressed ledger rows and backup settings so more useful information fits on mobile.",
+        "Tightened Capture layout and Today summary around the fast-capture path.",
+      ],
+    },
+  },
+  {
+    date: "2026-06-24",
+    title: {
+      zh: "PWA 更新、语言和部署路径",
+      en: "PWA refresh, language, and deployment",
+    },
+    items: {
+      zh: [
+        "设置页加入 PWA 清缓存并重载按钮，用于更新后强制刷新旧界面。",
+        "加入中文 / English 界面语言切换，且不改已有流水数据。",
+        "补充生产 PWA 地址、GitHub 地址和部署说明。",
+      ],
+      en: [
+        "Added the Settings action to clear PWA cache and reload when an old interface is still cached.",
+        "Added Chinese / English interface switching without changing existing ledger data.",
+        "Documented the production PWA URL, GitHub repository, and deployment path.",
+      ],
+    },
+  },
+  {
+    date: "2026-06-24",
+    title: {
+      zh: "初始 Viatica PWA",
+      en: "Initial Viatica PWA",
+    },
+    items: {
+      zh: [
+        "建立 vanilla HTML / CSS / JavaScript + Vite 的可安装 PWA。",
+        "确定本地优先存储：流水、预算、偏好保存在浏览器 `localStorage` 的 `viatica:v1`。",
+        "完成 Today、Capture、Ledger、Budgets、Settings 五个底部标签和核心账本逻辑测试。",
+        "加入 CSV 导入导出、JSON 完整备份、票据附件、分类预算和账本/账户/分类基础模型。",
+      ],
+      en: [
+        "Created the installable PWA with vanilla HTML / CSS / JavaScript and Vite.",
+        "Established local-first storage for transactions, budgets, and preferences under browser `localStorage` key `viatica:v1`.",
+        "Shipped the Today, Capture, Ledger, Budgets, and Settings bottom tabs plus core ledger tests.",
+        "Added CSV import/export, full JSON backup, receipt attachments, category budgets, and base book/account/category models.",
+      ],
+    },
+  },
 ];
 
 const MESSAGES = {
@@ -140,6 +338,10 @@ const MESSAGES = {
     "settings.pwaHint": "更新后仍看到旧界面时使用；不会清除 viatica:v1 账本数据。",
     "settings.clearing": "正在清理...",
     "settings.clearCache": "清缓存并重载",
+    "settings.guideTitle": "使用手册与更新日志",
+    "settings.guideHint": "参考 Ultreia 的设置入口，把 Viatica 的使用方法和产品变化放在同一处。",
+    "settings.manualTab": "使用手册",
+    "settings.changelogTab": "更新日志",
     "filter.search": "搜索标题、商家、标签",
     "filter.allTypes": "全部类型",
     "filter.allBooks": "全部账本",
@@ -245,6 +447,10 @@ const MESSAGES = {
     "settings.pwaHint": "Use this when the app still shows an old interface; viatica:v1 ledger data is kept.",
     "settings.clearing": "Clearing...",
     "settings.clearCache": "Clear cache and reload",
+    "settings.guideTitle": "Manual and changelog",
+    "settings.guideHint": "Following Ultreia's Settings entry pattern, Viatica keeps usage notes and product changes in one place.",
+    "settings.manualTab": "Manual",
+    "settings.changelogTab": "Changelog",
     "filter.search": "Search title, merchant, tags",
     "filter.allTypes": "All types",
     "filter.allBooks": "All books",
@@ -309,6 +515,11 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll("\"", "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function localized(copy) {
+  const locale = state.preferences.locale === "en" ? "en" : "zh";
+  return copy?.[locale] || copy?.zh || "";
 }
 
 function persist() {
@@ -709,6 +920,17 @@ function renderSettingsTab() {
       </div>
     </section>
 
+    <section class="panel guide-panel">
+      <div class="section-title">
+        <div>
+          <h2>${escapeHtml(t("settings.guideTitle"))}</h2>
+          <p>${escapeHtml(t("settings.guideHint"))}</p>
+        </div>
+      </div>
+      ${renderSettingsContentSwitch()}
+      ${state.settingsContent === "changelog" ? renderChangelog() : renderManual()}
+    </section>
+
     <section class="panel">
       <div class="section-title">
         <div>
@@ -736,6 +958,51 @@ function renderSettingsTab() {
         </button>
       </div>
     </section>
+  `;
+}
+
+function renderSettingsContentSwitch() {
+  return `
+    <div class="settings-content-switch" aria-label="${escapeHtml(t("settings.guideTitle"))}">
+      ${SETTINGS_CONTENT_TABS.map((item) => `
+        <button class="${state.settingsContent === item.id ? "active" : ""}" data-action="settings-content" data-content="${escapeHtml(item.id)}" aria-pressed="${state.settingsContent === item.id ? "true" : "false"}">
+          ${escapeHtml(t(item.labelKey))}
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderManual() {
+  return `
+    <div class="reading-list manual-list">
+      ${MANUAL_SECTIONS.map((section) => `
+        <article class="reading-entry">
+          <h3>${escapeHtml(localized(section.title))}</h3>
+          <ul>
+            ${localized(section.items).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+          </ul>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderChangelog() {
+  return `
+    <div class="reading-list changelog-list">
+      ${CHANGELOG_ENTRIES.map((entry) => `
+        <article class="reading-entry changelog-entry">
+          <div class="changelog-head">
+            <span>${escapeHtml(entry.date)}</span>
+            <h3>${escapeHtml(localized(entry.title))}</h3>
+          </div>
+          <ul>
+            ${localized(entry.items).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+          </ul>
+        </article>
+      `).join("")}
+    </div>
   `;
 }
 
@@ -1155,6 +1422,12 @@ document.addEventListener("click", (event) => {
     const range = node.dataset.range;
     if (!DASHBOARD_RANGES.some((item) => item.id === range)) return;
     state.dashboardRange = range;
+    render();
+  }
+  if (action === "settings-content") {
+    const content = node.dataset.content;
+    if (!SETTINGS_CONTENT_TABS.some((item) => item.id === content)) return;
+    state.settingsContent = content;
     render();
   }
   if (action === "attach-receipt") {

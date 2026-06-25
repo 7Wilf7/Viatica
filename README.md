@@ -1,8 +1,16 @@
 # Viatica
 
-Viatica is the standalone local-first ledger app for Aevum's product system. It
-is meant to live as its own installable PWA and GitHub repository, not as a
-subfolder inside Aevum.
+Viatica is the standalone local-first ledger app in Wilf's Aevum / Ultreia
+family of personal tools. It is meant to live as its own installable PWA and
+GitHub repository, not as a subfolder inside Aevum or Ultreia.
+
+## Product Family
+
+- Viatica owns private ledger data, transaction capture, budgets, and local
+  backups.
+- Aevum receives only overview snapshots and reviewed cross-product events.
+- Ultreia is the main reference for family-level mobile product patterns,
+  especially settings, guide/changelog structure, and restrained dark UI.
 
 ## Scope
 

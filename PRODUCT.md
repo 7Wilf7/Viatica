@@ -9,10 +9,10 @@ Wilf uses Viatica on mobile first to record daily expenses quickly and reliably.
 The app must be ready for real daily accounting by 2026-07-01.
 
 ## Product Purpose
-Viatica is the standalone personal ledger in the Aevum ecosystem. It owns
-transaction capture, editing, import/export, budgets, books, accounts, and local
-receipt attachments. Aevum should only receive overview snapshots and reviewed
-events from Viatica.
+Viatica is the standalone personal ledger in Wilf's Aevum / Ultreia family of
+personal tools. It owns transaction capture, editing, import/export, budgets,
+books, accounts, and local receipt attachments. Aevum should only receive
+overview snapshots and reviewed events from Viatica.
 
 ## Brand Personality
 Precise, calm, practical. It should feel like a durable ledger tool rather than
@@ -27,6 +27,9 @@ a gamified finance app.
 - Data must be portable: CSV export and full JSON backup are baseline features.
 - Aevum integration is summary-based: private notes stay inside Viatica unless a
   reviewed event explicitly shares them.
+- Ultreia alignment is product-language alignment: reuse relevant mobile
+  patterns and settings conventions, but keep Viatica's ledger workflow and data
+  boundary independent.
 - Serious product UI: dense, scannable, and quiet, with deep blue as the
   Viatica accent.
 
