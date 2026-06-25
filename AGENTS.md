@@ -66,8 +66,11 @@ restrained dark product UI.
 - Product UI, not marketing UI.
 - Keep the interface quiet, dense, precise, and fast to scan.
 - Use the Aevum/Ultreia family language: Linear-inspired dark product UI, quiet
-  density, precise controls, and restrained muted ledger yellow / beeswax gold
-  as Viatica's accent.
+  density, precise controls, and a neutral dark graphite UI with restrained
+  muted ledger-brass accent for Viatica.
+- Keep ordinary backgrounds, panels, borders, and text graphite-neutral. Use
+  ledger brass only for primary actions, the center Add tab, active/focus
+  states, progress fills, and the Viatica mark.
 - iCost is a reference for ledger information density, calendar grid clarity,
   and category/icon hierarchy only. Do not copy iCost's light theme or assets;
   translate the useful patterns into Viatica's own dark tool language.

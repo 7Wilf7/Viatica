@@ -49,8 +49,8 @@ a gamified finance app.
 - Ultreia alignment is product-language alignment: reuse relevant mobile
   patterns and settings conventions, but keep Viatica's ledger workflow and data
   boundary independent.
-- Serious product UI: dense, scannable, and quiet, with restrained muted
-  ledger yellow / beeswax gold as the Viatica accent.
+- Serious product UI: dense, scannable, and quiet, with a neutral dark graphite
+  base and restrained muted ledger-brass accent.
 
 ## Current Milestone
 The active milestone is to make the PWA ready for real daily accounting by

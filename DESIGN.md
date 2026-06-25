@@ -4,8 +4,8 @@
 Viatica belongs to the same product family as Aevum and Ultreia. It shares the
 family's Linear-inspired product language: dark surfaces, precise thin lines,
 subtle ambient light, restrained blur, and short stateful motion. The accent
-shifts from Aevum's violet-blue glow to a restrained muted ledger yellow /
-beeswax gold / aged ledger yellow.
+shifts from Aevum's violet-blue glow to a restrained muted ledger-brass accent
+on a neutral dark graphite base.
 
 When a design task asks to reference Ultreia, inspect
 `/Users/danxiao/Projects/ultreia` first and use the current Ultreia app as the
@@ -33,16 +33,17 @@ ledger tool: fewer heavy borders and glows, clear category glyphs, compact
 transaction rows, and data-first cards that feel useful rather than decorative.
 
 ## Colors
-- Background: `oklch(0.115 0.010 85)`
-- Panel: translucent warm black / dark olive-neutral around
-  `oklch(0.18 0.014 85 / 0.86)`
-- Ink: `oklch(0.965 0.006 85)`
-- Muted ink: `oklch(0.77 0.018 85)`
-- Line: fine translucent warm ledger lines around `oklch(0.39 0.030 85 / 0.34)`
-- Accent: restrained muted ledger yellow / beeswax gold for primary actions,
-  active focus, budget fills, progress, and the Viatica mark. Use it in small
-  areas only; avoid bright yellow, coin gold, delivery-app yellow, neon, or
-  gamified-finance styling.
+- Background: neutral dark graphite around `oklch(0.112 0.006 95)`.
+- Panel: translucent graphite around `oklch(0.175 0.008 95 / 0.86)`.
+- Ink: `oklch(0.965 0.004 95)`.
+- Muted ink: `oklch(0.765 0.010 95)`.
+- Line: fine translucent graphite around `oklch(0.400 0.014 95 / 0.46)`.
+- Accent: restrained muted ledger brass for primary actions, active/focus
+  states, budget fills, progress, the center Add tab, and the Viatica mark. Use
+  it in small areas only; avoid bright yellow, coin gold, delivery-app yellow,
+  neon, wealth-management gold, or gamified-finance styling.
+- Ambient light and panel gradients should stay graphite-first. Brass glow is a
+  small state cue, not the page atmosphere.
 
 ## Typography
 - Font stack: `Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`.

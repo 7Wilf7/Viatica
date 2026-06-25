@@ -355,6 +355,25 @@ const CHANGELOG_ENTRIES = [
   {
     date: "2026-06-25",
     title: {
+      zh: "石墨底座与黄铜强调",
+      en: "Graphite base with ledger-brass accent",
+    },
+    items: {
+      zh: [
+        "把应用底座从偏金黄/深棕的金融感收回到中性深石墨灰，普通面板、线条和文字不再整体发黄。",
+        "黄铜色只保留在主按钮、添加入口、当前 tab、焦点环、进度条和 Viatica 标识等关键状态上。",
+        "同步调整 PWA theme 色、图标和设计文档，明确 Viatica 是 serious personal ledger，而不是财富管理或促销感产品。",
+      ],
+      en: [
+        "Moved the app base from a gold-brown finance feel back to neutral dark graphite so ordinary panels, lines, and text no longer tint the whole interface yellow.",
+        "Kept ledger brass only for primary actions, the Add entry point, current tabs, focus rings, progress fills, and the Viatica mark.",
+        "Updated PWA theme color, icon, and design docs to frame Viatica as a serious personal ledger rather than a wealth-management or promotional product.",
+      ],
+    },
+  },
+  {
+    date: "2026-06-25",
+    title: {
       zh: "账本视觉与图标系统打磨",
       en: "Ledger visual and icon polish",
     },
@@ -505,16 +524,16 @@ const CHANGELOG_ENTRIES = [
   {
     date: "2026-06-25",
     title: {
-      zh: "账本黄主题定稿",
-      en: "Muted ledger-yellow theme tuning",
+      zh: "黄铜强调方向初稿",
+      en: "Initial ledger-brass accent direction",
     },
     items: {
       zh: [
-        "将 Viatica 的主色调整为低饱和账本黄 / 蜂蜡金，和 Aevum / Ultreia 的暗色产品语言保持同族但不混淆。",
+        "将 Viatica 的产品识别色调整为低饱和账本黄铜，和 Aevum / Ultreia 的暗色产品语言保持同族但不混淆。",
         "同步调整图标、背景、描边、焦点和按钮状态。",
       ],
       en: [
-        "Tuned Viatica's accent toward muted ledger yellow / beeswax gold so it feels related to Aevum / Ultreia without blending into them.",
+        "Tuned Viatica's product accent toward muted ledger brass so it feels related to Aevum / Ultreia without blending into them.",
         "Updated icon, background, borders, focus states, and button states.",
       ],
     },
