@@ -15,11 +15,16 @@ Viatica's ledger workflow instead of copying unrelated training features.
 The current UI target is a mobile app shell, not a one-page dashboard. Primary
 navigation is a persistent bottom tab bar:
 
-- Today
-- Capture
 - Ledger
-- Budgets
+- Calendar
+- Add
+- Assets
 - Settings
+
+This order follows the mobile accounting pattern Wilf wants from iCost:
+review records first, inspect dates second, put capture in the center plus
+action, keep assets separate from statistics, and reserve settings for local
+data operations and product notes.
 
 ## Colors
 - Background: `oklch(0.115 0.014 258)`
@@ -38,11 +43,14 @@ navigation is a persistent bottom tab bar:
 - Use tabular-feeling hierarchy through weight and spacing, not decorative fonts.
 
 ## Components
-- Capture form is the primary action surface and can be reached directly from
+- Add opens the capture form and is the primary action surface in the center of
   the bottom tab bar.
-- Today shows compact overview data and recent entries.
-- Ledger owns filtering, editing, and deletion.
-- Budgets owns category and book spending review.
+- Ledger owns filtering, editing, deletion, and a top Flow / Charts switch.
+  Charts means statistics.
+- Ledger must not show an All Books selector at the top; book filtering belongs
+  inside the Flow filters.
+- Calendar owns the monthly spending calendar and recent entries.
+- Assets owns account net, category budgets, and book spending review.
 - Settings owns local data actions, exports, imports, and PWA/storage notes.
 - Budget rows and transaction rows use dense panels, not oversized cards.
 - Buttons and form controls follow one shape vocabulary with visible focus.

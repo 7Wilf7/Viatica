@@ -16,7 +16,7 @@ const LOCALES = [
 ];
 const state = {
   ...loadState(),
-  activeTab: "today",
+  activeTab: "ledger",
   filters: {
     query: "",
     type: "all",
@@ -31,6 +31,7 @@ const state = {
   pendingReceiptDataUrl: "",
   pwaRefreshInProgress: false,
   dashboardRange: "month",
+  ledgerView: "flow",
   settingsContent: "manual",
 };
 
@@ -39,10 +40,10 @@ state.preferences = { activeBook: "日常账本", locale: "zh", ...state.prefere
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
 
 const TABS = [
-  { id: "today", labelKey: "tab.today", icon: "⌂" },
-  { id: "capture", labelKey: "tab.capture", icon: "+" },
   { id: "ledger", labelKey: "tab.ledger", icon: "≡" },
-  { id: "budgets", labelKey: "tab.budgets", icon: "%" },
+  { id: "calendar", labelKey: "tab.calendar", icon: "□" },
+  { id: "capture", labelKey: "tab.capture", icon: "+" },
+  { id: "assets", labelKey: "tab.assets", icon: "¥" },
   { id: "settings", labelKey: "tab.settings", icon: "⚙" },
 ];
 
@@ -60,6 +61,11 @@ const DASHBOARD_RANGES = [
   { id: "week", labelKey: "range.week" },
   { id: "year", labelKey: "range.year" },
   { id: "all", labelKey: "range.all" },
+];
+
+const LEDGER_VIEWS = [
+  { id: "flow", labelKey: "ledger.flow" },
+  { id: "chart", labelKey: "ledger.chart" },
 ];
 
 const CAPTURE_TEMPLATES = [
@@ -82,12 +88,12 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "从“记一笔”开始，先填金额和标题；分类、备注和票据可以稍后补。",
+        "从底部中间的“+”开始，先填金额和标题；分类、备注和票据可以稍后补。",
         "午餐、咖啡、通勤、装备模板用于十秒内录入常见流水。",
         "账本负责区分生活域，例如日常、训练、家庭、旅行；账户负责记录真实付款出口。",
       ],
       en: [
-        "Start in Capture. Enter amount and title first; category, notes, and receipt can come later.",
+        "Start from the centered + tab. Enter amount and title first; category, notes, and receipt can come later.",
         "Lunch, Coffee, Commute, and Gear templates cover common entries in a few taps.",
         "Books separate life areas such as Daily, Training, Family, and Travel; accounts track the real payment source.",
       ],
@@ -100,30 +106,30 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "“今日”用于快速看本周、本月、本年或全部流水的支出、收入、报销和记录数。",
-        "日历会标出本月有支出的日期，最近流水按发生时间排序。",
-        "“流水”可以按类型、账本、分类、账户和月份筛选；单笔流水可编辑或删除。",
+        "“账本”顶部只保留“流水 / 图表”：流水用于查单笔记录，图表就是统计。",
+        "“日历”会标出本月有支出的日期，最近流水按发生时间排序。",
+        "流水可以按类型、账本、分类、账户和月份筛选；单笔流水可编辑或删除。",
       ],
       en: [
-        "Today shows spending, income, reimbursable amount, and entry count for week, month, year, or all time.",
-        "The calendar marks spending days in the current month, and recent entries are sorted by occurrence time.",
-        "Ledger filters by type, book, category, account, and month; each entry can be edited or deleted.",
+        "Ledger keeps only Flow and Charts at the top: Flow reviews individual entries, and Charts means statistics.",
+        "Calendar marks spending days in the current month, and recent entries are sorted by occurrence time.",
+        "Flow filters by type, book, category, account, and month; each entry can be edited or deleted.",
       ],
     },
   },
   {
     title: {
-      zh: "预算、备份和 PWA 更新",
-      en: "Budgets, backup, and PWA refresh",
+      zh: "资产、备份和 PWA 更新",
+      en: "Assets, backup, and PWA refresh",
     },
     items: {
       zh: [
-        "“预算”看分类预算和账本分布，先关注本月支出最高的分类。",
+        "“资产”先看账户净额、分类预算和账本分布，完整资产账户以后再扩展。",
         "“设置”里的 CSV 适合表格分析，JSON 是完整本地备份。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
-        "Budgets shows category limits and book distribution; start with the highest-spending categories this month.",
+        "Assets starts with account net, category budgets, and book distribution; full asset accounts can come later.",
         "CSV is for spreadsheet review. JSON is the full local backup.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
       ],
@@ -150,6 +156,25 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-06-25",
+    title: {
+      zh: "重构为 iCost 风格五栏记账结构",
+      en: "Five-tab accounting shell inspired by iCost",
+    },
+    items: {
+      zh: [
+        "底部导航改为“账本 / 日历 / + / 资产 / 设置”，中心加号承接最高频记账动作。",
+        "账本页顶部去掉“全部账本”，只保留“流水 / 图表”；图表即统计视图。",
+        "新增保存后自动回到账本流水页，让新记录是否保存成功更容易确认。",
+      ],
+      en: [
+        "Changed bottom navigation to Ledger / Calendar / + / Assets / Settings, with the centered plus for the primary capture action.",
+        "Removed All Books from the top of Ledger and kept only Flow / Charts; Charts is the statistics view.",
+        "After saving, the app now returns to Ledger flow so the new entry is easier to confirm.",
+      ],
+    },
+  },
   {
     date: "2026-06-25",
     title: {
@@ -269,35 +294,24 @@ const CHANGELOG_ENTRIES = [
 const MESSAGES = {
   zh: {
     "app.sections": "Viatica 页面",
-    "tab.today": "今日",
-    "tab.capture": "记一笔",
-    "tab.ledger": "流水",
-    "tab.budgets": "预算",
+    "tab.capture": "添加",
+    "tab.ledger": "账本",
+    "tab.calendar": "日历",
+    "tab.assets": "资产",
     "tab.settings": "设置",
     "type.expense": "支出",
     "type.income": "收入",
     "type.transfer": "转账",
-    "today.monthExpense": "本月支出 · 当前结余 {balance}",
-    "today.todayExpense": "今日支出",
-    "today.todayIncome": "今日收入",
     "today.transactionCount": "记录数",
-    "today.capture": "记一笔",
-    "today.ledger": "查流水",
-    "today.allBooks": "全部账本",
-    "today.chart": "图表",
     "today.expense": "{range}支出",
     "today.income": "{range}收入",
     "today.reimbursable": "待报销",
-    "today.search": "搜索",
-    "today.budget": "预算",
     "today.calendarTitle": "{month} 日历",
     "today.calendarHint": "有支出的日期会显示金额。",
     "today.recentTitle": "最近流水",
     "today.recentSorted": "按发生时间排序。",
     "today.recentEmptyHint": "今天可以从第一笔开始。",
-    "today.recentEmpty": "还没有流水。点击“记一笔”开始记录。",
-    "today.budgetPressure": "预算压力",
-    "today.budgetPressureHint": "先看本月支出最高的分类。",
+    "today.recentEmpty": "还没有流水。点击底部“+”开始记录。",
     "capture.editTitle": "编辑流水",
     "capture.quickTitle": "快速记一笔",
     "capture.hint": "先把真实流水记下来，分类和备注可以稍后补。",
@@ -318,15 +332,26 @@ const MESSAGES = {
     "capture.receiptAttached": "票据已添加",
     "capture.saveEdit": "保存修改",
     "capture.save": "保存流水",
-    "ledger.title": "流水",
+    "ledger.title": "账本",
+    "ledger.flow": "流水",
+    "ledger.chart": "图表",
     "ledger.matchCount": "{count} 条匹配记录。",
     "ledger.empty": "还没有匹配流水。先记录一笔，或调整筛选条件。",
-    "budgets.categoryTitle": "分类预算",
-    "budgets.categoryHint": "按本月已花金额排序。",
-    "budgets.bookTitle": "账本分布",
-    "budgets.bookHint": "用于判断钱花在哪个生活域。",
-    "budgets.noBudget": "暂无预算数据。",
-    "budgets.noBookExpense": "还没有本月账本支出。",
+    "stats.title": "统计",
+    "stats.hint": "图表先覆盖支出、收入、报销和记录数。",
+    "stats.categoryTitle": "分类统计",
+    "stats.categoryHint": "按本月已花金额排序。",
+    "assets.title": "资产概览",
+    "assets.hint": "先基于流水汇总账户净额。",
+    "assets.accountTitle": "账户净额",
+    "assets.accountHint": "收入记正数，支出记负数，转账不计入净额。",
+    "assets.categoryTitle": "分类预算",
+    "assets.categoryHint": "按本月已花金额排序。",
+    "assets.bookTitle": "账本分布",
+    "assets.bookHint": "用于判断钱花在哪个生活域。",
+    "assets.noAccount": "还没有账户流水。",
+    "assets.noBudget": "暂无预算数据。",
+    "assets.noBookExpense": "还没有本月账本支出。",
     "settings.languageTitle": "界面语言",
     "settings.languageHint": "只切换界面文案，不改已有流水、账本、分类和导出数据。",
     "settings.importExportTitle": "备份与迁移",
@@ -344,9 +369,9 @@ const MESSAGES = {
     "settings.changelogTab": "更新日志",
     "filter.search": "搜索标题、商家、标签",
     "filter.allTypes": "全部类型",
-    "filter.allBooks": "全部账本",
-    "filter.allCategories": "全部分类",
-    "filter.allAccounts": "全部账户",
+    "filter.allBooks": "账本",
+    "filter.allCategories": "分类",
+    "filter.allAccounts": "账户",
     "quick.all": "全部",
     "quick.expense": "支出",
     "quick.income": "收入",
@@ -378,35 +403,24 @@ const MESSAGES = {
   },
   en: {
     "app.sections": "Viatica sections",
-    "tab.today": "Today",
-    "tab.capture": "Capture",
+    "tab.capture": "Add",
     "tab.ledger": "Ledger",
-    "tab.budgets": "Budgets",
+    "tab.calendar": "Calendar",
+    "tab.assets": "Assets",
     "tab.settings": "Settings",
     "type.expense": "Expense",
     "type.income": "Income",
     "type.transfer": "Transfer",
-    "today.monthExpense": "This month · Balance {balance}",
-    "today.todayExpense": "Today spent",
-    "today.todayIncome": "Today income",
     "today.transactionCount": "Entries",
-    "today.capture": "Capture",
-    "today.ledger": "Ledger",
-    "today.allBooks": "All Books",
-    "today.chart": "Charts",
     "today.expense": "{range} spent",
     "today.income": "{range} income",
     "today.reimbursable": "Reimbursable",
-    "today.search": "Search",
-    "today.budget": "Budget",
     "today.calendarTitle": "{month} calendar",
     "today.calendarHint": "Dates with spending show the amount.",
     "today.recentTitle": "Recent entries",
     "today.recentSorted": "Sorted by time.",
     "today.recentEmptyHint": "Start with the first entry today.",
-    "today.recentEmpty": "No entries yet. Tap Capture to start.",
-    "today.budgetPressure": "Budget pressure",
-    "today.budgetPressureHint": "Top categories by spending this month.",
+    "today.recentEmpty": "No entries yet. Tap the bottom + to start.",
     "capture.editTitle": "Edit entry",
     "capture.quickTitle": "Quick capture",
     "capture.hint": "Record the real transaction first. Category and notes can come later.",
@@ -428,14 +442,25 @@ const MESSAGES = {
     "capture.saveEdit": "Save changes",
     "capture.save": "Save entry",
     "ledger.title": "Ledger",
+    "ledger.flow": "Flow",
+    "ledger.chart": "Charts",
     "ledger.matchCount": "{count} matching entries.",
     "ledger.empty": "No matching entries yet. Record one or adjust filters.",
-    "budgets.categoryTitle": "Category budgets",
-    "budgets.categoryHint": "Sorted by spending this month.",
-    "budgets.bookTitle": "Book distribution",
-    "budgets.bookHint": "Shows which life area the money went to.",
-    "budgets.noBudget": "No budget data yet.",
-    "budgets.noBookExpense": "No book spending this month yet.",
+    "stats.title": "Statistics",
+    "stats.hint": "Charts start with spending, income, reimbursable amount, and entry count.",
+    "stats.categoryTitle": "Category statistics",
+    "stats.categoryHint": "Sorted by spending this month.",
+    "assets.title": "Asset overview",
+    "assets.hint": "Starts from account net based on ledger entries.",
+    "assets.accountTitle": "Account net",
+    "assets.accountHint": "Income is positive, expense is negative, and transfers are neutral.",
+    "assets.categoryTitle": "Category budgets",
+    "assets.categoryHint": "Sorted by spending this month.",
+    "assets.bookTitle": "Book distribution",
+    "assets.bookHint": "Shows which life area the money went to.",
+    "assets.noAccount": "No account entries yet.",
+    "assets.noBudget": "No budget data yet.",
+    "assets.noBookExpense": "No book spending this month yet.",
     "settings.languageTitle": "Interface language",
     "settings.languageHint": "Switches interface copy only; existing entries, books, categories, and exports stay unchanged.",
     "settings.importExportTitle": "Backup and transfer",
@@ -453,9 +478,9 @@ const MESSAGES = {
     "settings.changelogTab": "Changelog",
     "filter.search": "Search title, merchant, tags",
     "filter.allTypes": "All types",
-    "filter.allBooks": "All books",
-    "filter.allCategories": "All categories",
-    "filter.allAccounts": "All accounts",
+    "filter.allBooks": "Book",
+    "filter.allCategories": "Category",
+    "filter.allAccounts": "Account",
     "quick.all": "All",
     "quick.expense": "Expense",
     "quick.income": "Income",
@@ -699,60 +724,107 @@ function render() {
 
 function renderActiveTab(summary, filteredTransactions, editingTransaction) {
   if (state.activeTab === "capture") return renderCaptureTab(editingTransaction);
-  if (state.activeTab === "ledger") return renderLedgerTab(filteredTransactions);
-  if (state.activeTab === "budgets") return renderBudgetTab(summary);
+  if (state.activeTab === "calendar") return renderCalendarTab(summary);
+  if (state.activeTab === "assets") return renderAssetsTab(summary);
   if (state.activeTab === "settings") return renderSettingsTab();
-  return renderTodayTab(summary);
+  return renderLedgerTab(filteredTransactions, summary);
 }
 
 function renderTabButton(tab) {
   const active = state.activeTab === tab.id;
+  const primary = tab.id === "capture";
   return `
-    <button class="tab-button ${active ? "active" : ""}" data-action="tab" data-tab="${escapeHtml(tab.id)}" aria-current="${active ? "page" : "false"}">
+    <button class="tab-button ${primary ? "primary-tab" : ""} ${active ? "active" : ""}" data-action="tab" data-tab="${escapeHtml(tab.id)}" aria-current="${active ? "page" : "false"}">
       <span class="tab-icon">${escapeHtml(tab.icon)}</span>
       <span>${escapeHtml(t(tab.labelKey))}</span>
     </button>
   `;
 }
 
-function renderTodayTab(summary) {
-  const recent = [...state.transactions]
-    .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt))
-    .slice(0, 7);
+function renderLedgerModeSwitch() {
+  return `
+    <section class="ledger-mode-switch" aria-label="${escapeHtml(t("ledger.title"))}">
+      ${LEDGER_VIEWS.map((item) => `
+        <button class="${state.ledgerView === item.id ? "active" : ""}" data-action="ledger-view" data-view="${escapeHtml(item.id)}" aria-pressed="${state.ledgerView === item.id ? "true" : "false"}">
+          ${escapeHtml(t(item.labelKey))}
+        </button>
+      `).join("")}
+    </section>
+  `;
+}
+
+function renderLedgerTab(filteredTransactions, summary) {
+  return `
+    ${renderLedgerModeSwitch()}
+    ${state.ledgerView === "chart" ? renderLedgerStats(summary) : renderLedgerFlow(filteredTransactions)}
+  `;
+}
+
+function renderLedgerFlow(filteredTransactions) {
+  return `
+    <section class="panel">
+      <div class="section-title">
+        <div>
+          <h2>${escapeHtml(t("ledger.flow"))}</h2>
+          <p>${escapeHtml(t("ledger.matchCount", { count: filteredTransactions.length }))}</p>
+        </div>
+      </div>
+      ${renderQuickFilters()}
+      ${renderFilters()}
+      <div class="list">
+        ${filteredTransactions.length ? filteredTransactions.map(renderTransactionRow).join("") : `<div class="empty">${escapeHtml(t("ledger.empty"))}</div>`}
+      </div>
+    </section>
+  `;
+}
+
+function renderLedgerStats(summary) {
   const rangeSummary = summarizeDashboardRange(state.transactions, state.dashboardRange);
   const rangeLabel = t(DASHBOARD_RANGES.find((item) => item.id === state.dashboardRange)?.labelKey || "range.month");
 
   return `
-    <section class="dashboard-controls" aria-label="Ledger controls">
-      <button class="filter-toggle">${escapeHtml(t("today.allBooks"))} ▼</button>
-      <div class="segmented">
-        <button class="active">${escapeHtml(t("tab.ledger"))}</button>
-        <button data-action="open-budgets">${escapeHtml(t("today.chart"))}</button>
+    <section class="panel stats-panel">
+      <div class="section-title">
+        <div>
+          <h2>${escapeHtml(t("stats.title"))}</h2>
+          <p>${escapeHtml(t("stats.hint"))}</p>
+        </div>
+      </div>
+
+      <section class="time-switch" aria-label="Time range">
+        ${DASHBOARD_RANGES.map((item) => `
+          <button class="${state.dashboardRange === item.id ? "active" : ""}" data-action="dashboard-range" data-range="${escapeHtml(item.id)}">${escapeHtml(t(item.labelKey))}</button>
+        `).join("")}
+      </section>
+
+      <div class="ledger-hero dashboard-hero">
+        <div class="hero-grid">
+          ${renderStat(t("today.expense", { range: rangeLabel }), compactMoney(rangeSummary.expense))}
+          ${renderStat(t("today.income", { range: rangeLabel }), compactMoney(rangeSummary.income))}
+          ${renderStat(t("today.reimbursable"), compactMoney(rangeSummary.reimbursable))}
+          ${renderStat(t("today.transactionCount"), `${rangeSummary.count}`)}
+        </div>
+      </div>
+
+      <div class="section-title inline-section-title">
+        <div>
+          <h2>${escapeHtml(t("stats.categoryTitle"))}</h2>
+          <p>${escapeHtml(t("stats.categoryHint"))}</p>
+        </div>
+      </div>
+      <div class="budget-list">
+        ${renderBudgetRows(summary, 8)}
       </div>
     </section>
+  `;
+}
 
-    <section class="time-switch" aria-label="Time range">
-      ${DASHBOARD_RANGES.map((item) => `
-        <button class="${state.dashboardRange === item.id ? "active" : ""}" data-action="dashboard-range" data-range="${escapeHtml(item.id)}">${escapeHtml(t(item.labelKey))}</button>
-      `).join("")}
-    </section>
+function renderCalendarTab(summary) {
+  const recent = [...state.transactions]
+    .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt))
+    .slice(0, 7);
 
-    <section class="ledger-hero dashboard-hero">
-      <div class="hero-grid">
-        ${renderStat(t("today.expense", { range: rangeLabel }), compactMoney(rangeSummary.expense))}
-        ${renderStat(t("today.income", { range: rangeLabel }), compactMoney(rangeSummary.income))}
-        ${renderStat(t("today.reimbursable"), compactMoney(rangeSummary.reimbursable))}
-        ${renderStat(t("today.transactionCount"), `${rangeSummary.count}`)}
-      </div>
-    </section>
-
-    <section class="command-row" aria-label="Quick actions">
-      <button class="btn primary" data-action="open-capture">${escapeHtml(t("today.capture"))}</button>
-      <button class="btn secondary" data-action="open-ledger-search">${escapeHtml(t("today.search"))}</button>
-      <button class="btn secondary" data-action="open-ledger-reimbursable">${escapeHtml(t("today.reimbursable"))}</button>
-      <button class="btn secondary" data-action="open-budgets">${escapeHtml(t("today.budget"))}</button>
-    </section>
-
+  return `
     <section class="panel">
       <div class="section-title">
         <div>
@@ -772,18 +844,6 @@ function renderTodayTab(summary) {
       </div>
       <div class="list compact-list">
         ${recent.length ? recent.map(renderTransactionRow).join("") : `<div class="empty">${escapeHtml(t("today.recentEmpty"))}</div>`}
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="section-title">
-        <div>
-          <h2>${escapeHtml(t("today.budgetPressure"))}</h2>
-          <p>${escapeHtml(t("today.budgetPressureHint"))}</p>
-        </div>
-      </div>
-      <div class="budget-list">
-        ${renderBudgetRows(summary, 4)}
       </div>
     </section>
   `;
@@ -845,24 +905,6 @@ function renderCaptureTab(editingTransaction) {
   `;
 }
 
-function renderLedgerTab(filteredTransactions) {
-  return `
-    <section class="panel">
-      <div class="section-title">
-        <div>
-          <h2>${escapeHtml(t("ledger.title"))}</h2>
-          <p>${escapeHtml(t("ledger.matchCount", { count: filteredTransactions.length }))}</p>
-        </div>
-      </div>
-      ${renderQuickFilters()}
-      ${renderFilters()}
-      <div class="list">
-        ${filteredTransactions.length ? filteredTransactions.map(renderTransactionRow).join("") : `<div class="empty">${escapeHtml(t("ledger.empty"))}</div>`}
-      </div>
-    </section>
-  `;
-}
-
 function renderQuickFilters() {
   const active = activeQuickFilterId();
   return `
@@ -876,14 +918,40 @@ function renderQuickFilters() {
   `;
 }
 
-function renderBudgetTab(summary) {
+function renderAssetsTab(summary) {
   return `
+    <section class="panel">
+      <div class="section-title">
+        <div>
+          <h2>${escapeHtml(t("assets.title"))}</h2>
+          <p>${escapeHtml(t("assets.hint"))}</p>
+        </div>
+      </div>
+      <div class="hero-grid asset-summary">
+        ${renderStat(t("today.expense", { range: t("range.month") }), compactMoney(summary.monthExpense))}
+        ${renderStat(t("today.income", { range: t("range.month") }), compactMoney(summary.monthIncome))}
+        ${renderStat(t("today.reimbursable"), compactMoney(summary.reimbursableExpense))}
+      </div>
+    </section>
+
     <div class="workspace budget-workspace">
       <section class="panel">
         <div class="section-title">
           <div>
-            <h2>${escapeHtml(t("budgets.categoryTitle"))}</h2>
-            <p>${escapeHtml(t("budgets.categoryHint"))}</p>
+            <h2>${escapeHtml(t("assets.accountTitle"))}</h2>
+            <p>${escapeHtml(t("assets.accountHint"))}</p>
+          </div>
+        </div>
+        <div class="budget-list">
+          ${renderAccountRows(summary)}
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">
+          <div>
+            <h2>${escapeHtml(t("assets.categoryTitle"))}</h2>
+            <p>${escapeHtml(t("assets.categoryHint"))}</p>
           </div>
         </div>
         <div class="budget-list">
@@ -894,8 +962,8 @@ function renderBudgetTab(summary) {
       <section class="panel">
         <div class="section-title">
           <div>
-            <h2>${escapeHtml(t("budgets.bookTitle"))}</h2>
-            <p>${escapeHtml(t("budgets.bookHint"))}</p>
+            <h2>${escapeHtml(t("assets.bookTitle"))}</h2>
+            <p>${escapeHtml(t("assets.bookHint"))}</p>
           </div>
         </div>
         <div class="budget-list">
@@ -1114,7 +1182,7 @@ function renderBudgetRows(summary, limit = 6) {
   const entries = Object.entries(summary.budgets)
     .sort((a, b) => b[1].spent - a[1].spent)
     .slice(0, limit);
-  if (!entries.length) return `<div class="empty">${escapeHtml(t("budgets.noBudget"))}</div>`;
+  if (!entries.length) return `<div class="empty">${escapeHtml(t("assets.noBudget"))}</div>`;
   return entries.map(([category, data]) => {
     const ratio = Math.min(1, data.ratio || 0);
     return `
@@ -1129,9 +1197,24 @@ function renderBudgetRows(summary, limit = 6) {
   }).join("");
 }
 
+function renderAccountRows(summary) {
+  const entries = Object.entries(summary.accountNet).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+  if (!entries.length) return `<div class="empty">${escapeHtml(t("assets.noAccount"))}</div>`;
+  const total = Math.max(1, ...entries.map(([, amount]) => Math.abs(amount)));
+  return entries.map(([account, amount]) => `
+    <div class="budget-row">
+      <div>
+        <strong>${escapeHtml(account)}</strong>
+        <span class="${amount >= 0 ? "amount positive" : "amount negative"}">${amount >= 0 ? formatMoney(amount) : `-${formatMoney(Math.abs(amount))}`}</span>
+      </div>
+      <div class="budget-track"><span style="width: ${Math.round((Math.abs(amount) / total) * 100)}%"></span></div>
+    </div>
+  `).join("");
+}
+
 function renderBookRows(summary) {
   const entries = Object.entries(summary.bookExpense).sort((a, b) => b[1] - a[1]);
-  if (!entries.length) return `<div class="empty">${escapeHtml(t("budgets.noBookExpense"))}</div>`;
+  if (!entries.length) return `<div class="empty">${escapeHtml(t("assets.noBookExpense"))}</div>`;
   const total = Math.max(1, summary.monthExpense);
   return entries.map(([book, amount]) => `
     <div class="budget-row">
@@ -1308,6 +1391,8 @@ document.addEventListener("submit", (event) => {
     }
     state.preferences.activeBook = data.book;
     state.pendingReceiptDataUrl = "";
+    state.activeTab = "ledger";
+    state.ledgerView = "flow";
     persist();
     render();
   } catch (err) {
@@ -1387,7 +1472,7 @@ document.addEventListener("click", (event) => {
     pickFormField(node);
   }
   if (action === "tab") {
-    state.activeTab = node.dataset.tab || "today";
+    state.activeTab = node.dataset.tab || "ledger";
     if (state.activeTab !== "capture") state.pendingReceiptDataUrl = "";
     render();
   }
@@ -1399,20 +1484,29 @@ document.addEventListener("click", (event) => {
   }
   if (action === "open-ledger") {
     state.activeTab = "ledger";
+    state.ledgerView = "flow";
     render();
   }
   if (action === "open-ledger-search") {
     state.activeTab = "ledger";
+    state.ledgerView = "flow";
     render();
     requestAnimationFrame(() => document.querySelector("[data-filter=\"query\"]")?.focus());
   }
   if (action === "open-ledger-reimbursable") {
     state.filters = { ...state.filters, type: "all", reimbursable: "yes", receipt: "all" };
     state.activeTab = "ledger";
+    state.ledgerView = "flow";
     render();
   }
   if (action === "open-budgets") {
-    state.activeTab = "budgets";
+    state.activeTab = "assets";
+    render();
+  }
+  if (action === "ledger-view") {
+    const view = node.dataset.view;
+    if (!LEDGER_VIEWS.some((item) => item.id === view)) return;
+    state.ledgerView = view;
     render();
   }
   if (action === "quick-filter") {

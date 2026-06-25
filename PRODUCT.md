@@ -7,6 +7,8 @@ product
 ## Users
 Wilf uses Viatica on mobile first to record daily expenses quickly and reliably.
 The app must be ready for real daily accounting by 2026-07-01.
+Because Wilf has not used a dedicated ledger app for a long time, the product
+should help him restart bookkeeping without requiring a complex setup ritual.
 
 ## Product Purpose
 Viatica is the standalone personal ledger in Wilf's Aevum / Ultreia family of
@@ -21,8 +23,14 @@ a gamified finance app.
 ## Design Principles
 - Fast capture first: amount, title, account, category, and book stay within one
   short form.
-- App shell first: mobile navigation uses bottom tabs for Today, Capture,
-  Ledger, Budgets, and Settings.
+- App shell first: mobile navigation uses five bottom tabs in this order:
+  Ledger, Calendar, Add, Assets, and Settings. Add is the centered plus action.
+- Ledger first, not dashboard first: Ledger owns the top Flow / Charts switch.
+  Charts means statistics. Do not place an All Books selector at the top of
+  Ledger.
+- Requirement review first: before building new product requests, compare the
+  idea with strong mobile accounting apps such as iCost, then adapt it to
+  Wilf's personal needs instead of copying generic finance-app complexity.
 - Local-first by default: no backend write path until sync rules are explicit.
 - Data must be portable: CSV export and full JSON backup are baseline features.
 - Aevum integration is summary-based: private notes stay inside Viatica unless a

@@ -37,6 +37,15 @@ restrained dark product UI.
   documentation stay aligned.
 
 ## Product Rules
+- Wilf has not used a dedicated ledger app for a long time. Before implementing
+  new product requests, first judge whether the request is reasonable compared
+  with strong mobile accounting apps such as iCost and with Wilf's personal
+  workflow. State the conclusion first: reasonable, risky, overbuilt, or needs
+  simplification.
+- Because Viatica is personal software, do not copy market apps blindly. Adapt
+  requests to Wilf's needs: fast re-entry into bookkeeping, mobile-first use,
+  low-friction capture, local-first privacy, clear backup, and restrained family
+  product UI.
 - Mobile-first. The app must feel usable from a phone home screen.
 - Fast capture is the first workflow. Ten seconds for a normal transaction is
   the target.
@@ -55,8 +64,10 @@ restrained dark product UI.
 - Keep the interface quiet, dense, precise, and fast to scan.
 - Use the Aevum/Ultreia family language: Linear-inspired dark product UI, quiet
   density, precise controls, and deep blue as Viatica's accent.
-- Use bottom tabs for the mobile app shell: Today, Capture, Ledger, Budgets,
-  Settings.
+- Use bottom tabs for the mobile app shell, in this order: Ledger, Calendar,
+  Add, Assets, Settings. The Add tab is the center plus action.
+- The Ledger tab top switch should keep only Flow and Charts. Charts means
+  statistics. Do not put an All Books selector at the top of Ledger.
 - Avoid decorative copy, oversized hero blocks, nested cards, and UI text that
   explains obvious controls.
 

@@ -15,11 +15,19 @@ GitHub repository, not as a subfolder inside Aevum or Ultreia.
 ## Scope
 
 - Fast mobile transaction capture.
-- Bottom-tab app shell for Today, Capture, Ledger, Budgets, and Settings.
+- Bottom-tab app shell for Ledger, Calendar, Add, Assets, and Settings.
+- Ledger uses a top Flow / Charts switch. Charts is the statistics view.
 - Books, accounts, categories, budgets, reimbursable records, receipt attachment.
 - Local browser persistence under `viatica:v1`.
 - CSV import/export for portability.
 - Aevum overview snapshot export for later read-only integration.
+
+## Product Decision Rule
+
+Wilf has not used a dedicated ledger app for a while. New Viatica feature
+requests should be judged against strong mobile accounting apps such as iCost,
+then adapted to Wilf's personal workflow instead of copied as generic finance
+software.
 
 ## Data Model
 
