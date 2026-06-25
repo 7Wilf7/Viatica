@@ -11,8 +11,8 @@ import { exportState, loadState, saveState } from "./core/storage.js";
 
 const app = document.querySelector("#app");
 const LOCALES = [
-  { id: "zh", label: "中文" },
-  { id: "en", label: "English" },
+  { id: "zh", label: "中" },
+  { id: "en", label: "EN" },
 ];
 const state = {
   ...loadState(),
@@ -23,12 +23,9 @@ const state = {
     book: "all",
     category: "all",
     account: "all",
-    reimbursable: "all",
-    receipt: "all",
     month: monthKey(new Date()),
   },
   editingTransactionId: null,
-  pendingReceiptDataUrl: "",
   pwaRefreshInProgress: false,
   dashboardRange: "month",
   ledgerView: "flow",
@@ -48,12 +45,9 @@ const TABS = [
 ];
 
 const QUICK_FILTERS = [
-  { id: "all", labelKey: "quick.all", filters: { type: "all", reimbursable: "all", receipt: "all" } },
-  { id: "expense", labelKey: "quick.expense", filters: { type: "expense", reimbursable: "all", receipt: "all" } },
-  { id: "income", labelKey: "quick.income", filters: { type: "income", reimbursable: "all", receipt: "all" } },
-  { id: "transfer", labelKey: "quick.transfer", filters: { type: "transfer", reimbursable: "all", receipt: "all" } },
-  { id: "reimbursable", labelKey: "quick.reimbursable", filters: { type: "all", reimbursable: "yes", receipt: "all" } },
-  { id: "receipt", labelKey: "quick.receipt", filters: { type: "all", reimbursable: "all", receipt: "yes" } },
+  { id: "all", labelKey: "quick.all", filters: { type: "all" } },
+  { id: "expense", labelKey: "quick.expense", filters: { type: "expense" } },
+  { id: "income", labelKey: "quick.income", filters: { type: "income" } },
 ];
 
 const DASHBOARD_RANGES = [
@@ -83,12 +77,12 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "从底部中间的“+”开始，先填金额和标题；分类、备注和票据可以稍后补。",
+        "从底部中间的“+”开始，先填金额和标题；分类和备注可以稍后补。",
         "午餐、咖啡、通勤、装备模板用于十秒内录入常见流水。",
         "账本负责区分生活域，例如日常、训练、家庭、旅行；账户负责记录真实付款出口。",
       ],
       en: [
-        "Start from the centered + tab. Enter amount and title first; category, notes, and receipt can come later.",
+        "Start from the centered + tab. Enter amount and title first; category and notes can come later.",
         "Lunch, Coffee, Commute, and Gear templates cover common entries in a few taps.",
         "Books separate life areas such as Daily, Training, Family, and Travel; accounts track the real payment source.",
       ],
@@ -102,7 +96,7 @@ const MANUAL_SECTIONS = [
     items: {
       zh: [
         "“账本”顶部只保留“流水 / 图表”：流水用于查单笔记录，图表就是统计。",
-        "“日历”会标出本月有支出的日期，最近流水按发生时间排序。",
+        "“日历”用于快速定位日期，最近流水按发生时间排序。",
         "流水可以按类型、账本、分类、账户和月份筛选；单笔流水可编辑或删除。",
       ],
       en: [
@@ -172,6 +166,25 @@ const CHANGELOG_ENTRIES = [
   {
     date: "2026-06-25",
     title: {
+      zh: "记账界面收敛",
+      en: "Ledger interface cleanup",
+    },
+    items: {
+      zh: [
+        "收敛低频辅助字段入口，快速记账只保留支出和收入两种类型。",
+        "日历改为规整 6×7 格子，日期居中，只保留轻量日期标记。",
+        "设置首页删去二级说明文字，语言切换改为紧凑的中 / EN 开关。",
+      ],
+      en: [
+        "Removed low-frequency auxiliary entry points, keeping quick capture to expense and income.",
+        "Changed Calendar to a regular 6×7 grid with centered day numbers and light date markers.",
+        "Removed secondary copy from Settings home and changed language switching to a compact 中 / EN control.",
+      ],
+    },
+  },
+  {
+    date: "2026-06-25",
+    title: {
       zh: "设置页收敛与分类预算编辑",
       en: "Compact settings and editable category budgets",
     },
@@ -236,12 +249,12 @@ const CHANGELOG_ENTRIES = [
       zh: [
         "Today 改成移动端优先的概览页，加入时间范围切换、快速操作和月历支出视图。",
         "Capture 加入常用模板和 app-native 选择控件，减少手机端表单摩擦。",
-        "Ledger 增加快捷筛选、报销/票据入口和更紧凑的流水行。",
+        "Ledger 增加快捷筛选和更紧凑的流水行。",
       ],
       en: [
         "Reworked Today into a mobile-first overview with range switching, quick actions, and a monthly spending calendar.",
         "Added capture templates and app-native choice controls to reduce mobile form friction.",
-        "Added quick ledger filters, reimbursable/receipt entry points, and denser transaction rows.",
+        "Added quick ledger filters and denser transaction rows.",
       ],
     },
   },
@@ -311,13 +324,13 @@ const CHANGELOG_ENTRIES = [
         "建立 vanilla HTML / CSS / JavaScript + Vite 的可安装 PWA。",
         "确定本地优先存储：流水、预算、偏好保存在浏览器 `localStorage` 的 `viatica:v1`。",
         "完成 Today、Capture、Ledger、Budgets、Settings 五个底部标签和核心账本逻辑测试。",
-        "加入 CSV 导入导出、JSON 完整备份、票据附件、分类预算和账本/账户/分类基础模型。",
+        "加入 CSV 导入导出、JSON 完整备份、分类预算和账本/账户/分类基础模型。",
       ],
       en: [
         "Created the installable PWA with vanilla HTML / CSS / JavaScript and Vite.",
         "Established local-first storage for transactions, budgets, and preferences under browser `localStorage` key `viatica:v1`.",
         "Shipped the Today, Capture, Ledger, Budgets, and Settings bottom tabs plus core ledger tests.",
-        "Added CSV import/export, full JSON backup, receipt attachments, category budgets, and base book/account/category models.",
+        "Added CSV import/export, full JSON backup, category budgets, and base book/account/category models.",
       ],
     },
   },
@@ -333,13 +346,10 @@ const MESSAGES = {
     "tab.settings": "设置",
     "type.expense": "支出",
     "type.income": "收入",
-    "type.transfer": "转账",
     "today.transactionCount": "记录数",
     "today.expense": "{range}支出",
     "today.income": "{range}收入",
-    "today.reimbursable": "待报销",
     "today.calendarTitle": "{month} 日历",
-    "today.calendarHint": "有支出的日期会显示金额。",
     "today.recentTitle": "最近流水",
     "today.recentSorted": "按发生时间排序。",
     "today.recentEmptyHint": "今天可以从第一笔开始。",
@@ -359,9 +369,6 @@ const MESSAGES = {
     "capture.time": "时间",
     "capture.tags": "标签",
     "capture.note": "备注",
-    "capture.reimbursable": "报销",
-    "capture.attachReceipt": "添加票据",
-    "capture.receiptAttached": "票据已添加",
     "capture.saveEdit": "保存修改",
     "capture.save": "保存流水",
     "ledger.title": "账本",
@@ -370,14 +377,14 @@ const MESSAGES = {
     "ledger.matchCount": "{count} 条匹配记录。",
     "ledger.empty": "还没有匹配流水。先记录一笔，或调整筛选条件。",
     "stats.title": "统计",
-    "stats.hint": "图表先覆盖支出、收入、报销和记录数。",
+    "stats.hint": "图表先覆盖支出、收入和记录数。",
     "stats.categoryTitle": "分类统计",
     "stats.categoryHint": "只按真实流水汇总，不看预算目标。",
     "stats.noCategory": "本月还没有分类支出。",
     "assets.title": "资产概览",
     "assets.hint": "先基于流水汇总账户净额。",
     "assets.accountTitle": "账户净额",
-    "assets.accountHint": "收入记正数，支出记负数，转账不计入净额。",
+    "assets.accountHint": "收入记正数，支出记负数。",
     "assets.categoryTitle": "分类预算",
     "assets.categoryHint": "实际支出对照每月目标。",
     "assets.bookTitle": "账本分布",
@@ -422,9 +429,6 @@ const MESSAGES = {
     "quick.all": "全部",
     "quick.expense": "支出",
     "quick.income": "收入",
-    "quick.transfer": "转账",
-    "quick.reimbursable": "报销",
-    "quick.receipt": "票据",
     "range.month": "本月",
     "range.week": "本周",
     "range.year": "本年",
@@ -435,8 +439,6 @@ const MESSAGES = {
     "template.gear": "装备",
     "txn.edit": "编辑",
     "txn.delete": "删除",
-    "txn.reimbursable": "可报销",
-    "txn.receipt": "有票据",
     "confirm.delete": "删除这笔流水？",
     "toast.updated": "流水已更新。",
     "toast.saved": "流水已保存。",
@@ -444,9 +446,6 @@ const MESSAGES = {
     "toast.imported": "已导入 {count} 条流水。",
     "toast.importFailed": "导入失败：{message}",
     "toast.deleted": "流水已删除。",
-    "toast.receiptTooLarge": "票据图片太大，请选择 1MB 以内的图片。",
-    "toast.receiptSaved": "票据已保存在本机待提交。",
-    "toast.receiptFailed": "票据读取失败。",
   },
   en: {
     "app.sections": "Viatica sections",
@@ -457,13 +456,10 @@ const MESSAGES = {
     "tab.settings": "Settings",
     "type.expense": "Expense",
     "type.income": "Income",
-    "type.transfer": "Transfer",
     "today.transactionCount": "Entries",
     "today.expense": "{range} spent",
     "today.income": "{range} income",
-    "today.reimbursable": "Reimbursable",
     "today.calendarTitle": "{month} calendar",
-    "today.calendarHint": "Dates with spending show the amount.",
     "today.recentTitle": "Recent entries",
     "today.recentSorted": "Sorted by time.",
     "today.recentEmptyHint": "Start with the first entry today.",
@@ -483,9 +479,6 @@ const MESSAGES = {
     "capture.time": "Time",
     "capture.tags": "Tags",
     "capture.note": "Note",
-    "capture.reimbursable": "Reimburse",
-    "capture.attachReceipt": "Add receipt",
-    "capture.receiptAttached": "Receipt added",
     "capture.saveEdit": "Save changes",
     "capture.save": "Save entry",
     "ledger.title": "Ledger",
@@ -494,14 +487,14 @@ const MESSAGES = {
     "ledger.matchCount": "{count} matching entries.",
     "ledger.empty": "No matching entries yet. Record one or adjust filters.",
     "stats.title": "Statistics",
-    "stats.hint": "Charts start with spending, income, reimbursable amount, and entry count.",
+    "stats.hint": "Charts start with spending, income, and entry count.",
     "stats.categoryTitle": "Category statistics",
     "stats.categoryHint": "Based only on real entries, not budget targets.",
     "stats.noCategory": "No category spending this month yet.",
     "assets.title": "Asset overview",
     "assets.hint": "Starts from account net based on ledger entries.",
     "assets.accountTitle": "Account net",
-    "assets.accountHint": "Income is positive, expense is negative, and transfers are neutral.",
+    "assets.accountHint": "Income is positive and expense is negative.",
     "assets.categoryTitle": "Category budgets",
     "assets.categoryHint": "Actual spending against monthly targets.",
     "assets.bookTitle": "Book distribution",
@@ -514,7 +507,7 @@ const MESSAGES = {
     "settings.dataSection": "Data",
     "settings.productSection": "Product",
     "settings.localSection": "Local",
-    "settings.importExportTitle": "Backup and transfer",
+    "settings.importExportTitle": "Backup and migration",
     "settings.importExportHint": "Use this to move devices, restore data, or keep a local backup until cloud sync is available.",
     "settings.exportCsv": "Export CSV",
     "settings.importCsv": "Import CSV",
@@ -546,9 +539,6 @@ const MESSAGES = {
     "quick.all": "All",
     "quick.expense": "Expense",
     "quick.income": "Income",
-    "quick.transfer": "Transfer",
-    "quick.reimbursable": "Reimburse",
-    "quick.receipt": "Receipt",
     "range.month": "Month",
     "range.week": "Week",
     "range.year": "Year",
@@ -559,8 +549,6 @@ const MESSAGES = {
     "template.gear": "Gear",
     "txn.edit": "Edit",
     "txn.delete": "Delete",
-    "txn.reimbursable": "Reimbursable",
-    "txn.receipt": "Receipt",
     "confirm.delete": "Delete this entry?",
     "toast.updated": "Entry updated.",
     "toast.saved": "Entry saved.",
@@ -568,9 +556,6 @@ const MESSAGES = {
     "toast.imported": "Imported {count} entries.",
     "toast.importFailed": "Import failed: {message}",
     "toast.deleted": "Entry deleted.",
-    "toast.receiptTooLarge": "Receipt image is too large. Choose an image under 1MB.",
-    "toast.receiptSaved": "Receipt saved locally and ready to submit.",
-    "toast.receiptFailed": "Could not read the receipt image.",
   },
 };
 
@@ -666,8 +651,6 @@ function renderChoiceControl({ name = "", filterKey = "", value, options }) {
 function activeQuickFilterId() {
   const match = QUICK_FILTERS.find((item) => (
     (item.filters.type || "all") === (state.filters.type || "all")
-    && (item.filters.reimbursable || "all") === (state.filters.reimbursable || "all")
-    && (item.filters.receipt || "all") === (state.filters.receipt || "all")
   ));
   return match?.id || "custom";
 }
@@ -693,7 +676,6 @@ function summarizeDashboardRange(transactions, range = "month", now = new Date()
   const result = {
     expense: 0,
     income: 0,
-    reimbursable: 0,
     count: 0,
   };
 
@@ -701,10 +683,7 @@ function summarizeDashboardRange(transactions, range = "month", now = new Date()
     if (!transactionInDashboardRange(txn, range, now)) continue;
     const amount = Number(txn.amount || 0);
     result.count += 1;
-    if (txn.type === "expense") {
-      result.expense += amount;
-      if (txn.reimbursable) result.reimbursable += amount;
-    }
+    if (txn.type === "expense") result.expense += amount;
     if (txn.type === "income") result.income += amount;
   }
   return result;
@@ -712,8 +691,6 @@ function summarizeDashboardRange(transactions, range = "month", now = new Date()
 
 function transactionTone(txn) {
   if (txn.type === "income") return "income";
-  if (txn.type === "transfer") return "transfer";
-  if (txn.reimbursable) return "reimbursable";
   return "expense";
 }
 
@@ -728,14 +705,17 @@ function compactMoney(amount, currency = "CNY") {
 }
 
 function signedAmount(txn) {
-  const prefix = txn.type === "income" ? "+" : txn.type === "transfer" ? "" : "-";
+  const prefix = txn.type === "income" ? "+" : "-";
   return `${prefix}${formatMoney(txn.amount, txn.currency)}`;
 }
 
 function transactionAmountClass(txn) {
   if (txn.type === "income") return "positive";
-  if (txn.type === "transfer") return "neutral";
   return "negative";
+}
+
+function transactionTypeLabel(txn) {
+  return t(txn.type === "income" ? "type.income" : "type.expense");
 }
 
 function download(name, text, type = "application/json;charset=utf-8") {
@@ -863,7 +843,6 @@ function renderLedgerStats(summary) {
         <div class="hero-grid">
           ${renderStat(t("today.expense", { range: rangeLabel }), compactMoney(rangeSummary.expense))}
           ${renderStat(t("today.income", { range: rangeLabel }), compactMoney(rangeSummary.income))}
-          ${renderStat(t("today.reimbursable"), compactMoney(rangeSummary.reimbursable))}
           ${renderStat(t("today.transactionCount"), `${rangeSummary.count}`)}
         </div>
       </div>
@@ -891,7 +870,6 @@ function renderCalendarTab(summary) {
       <div class="section-title">
         <div>
           <h2>${escapeHtml(t("today.calendarTitle", { month: summary.monthKey }))}</h2>
-          <p>${escapeHtml(t("today.calendarHint"))}</p>
         </div>
       </div>
       ${renderMonthCalendar()}
@@ -926,10 +904,11 @@ function renderMonthCalendar() {
   }
 
   const weekdays = state.preferences.locale === "en"
-    ? ["S", "M", "T", "W", "T", "F", "S"]
-    : ["日", "一", "二", "三", "四", "五", "六"];
+    ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    : ["一", "二", "三", "四", "五", "六", "日"];
   const cells = [];
-  for (let i = 0; i < firstDay.getDay(); i += 1) {
+  const leadingBlanks = (firstDay.getDay() + 6) % 7;
+  for (let i = 0; i < leadingBlanks; i += 1) {
     cells.push(`<span class="calendar-cell blank"></span>`);
   }
   for (let day = 1; day <= daysInMonth; day += 1) {
@@ -939,9 +918,11 @@ function renderMonthCalendar() {
     cells.push(`
       <span class="calendar-cell ${amount ? "has-data" : ""} ${key === today ? "today" : ""}">
         <span>${day}</span>
-        ${amount ? `<strong>${escapeHtml(compactMoney(amount))}</strong>` : ""}
       </span>
     `);
+  }
+  while (cells.length < 42) {
+    cells.push(`<span class="calendar-cell blank"></span>`);
   }
 
   return `
@@ -992,7 +973,6 @@ function renderAssetsTab(summary) {
       <div class="hero-grid asset-summary">
         ${renderStat(t("today.expense", { range: t("range.month") }), compactMoney(summary.monthExpense))}
         ${renderStat(t("today.income", { range: t("range.month") }), compactMoney(summary.monthIncome))}
-        ${renderStat(t("today.reimbursable"), compactMoney(summary.reimbursableExpense))}
       </div>
     </section>
 
@@ -1044,14 +1024,14 @@ function renderSettingsTab() {
   return `
     <section class="settings-list">
       ${renderSettingsSection(t("settings.productSection"), [
-        renderSettingsCell(t("settings.languageTitle"), t("settings.languageHint"), renderLanguageSwitch()),
-        renderSettingsCell(t("settings.manualTitle"), t("settings.manualHint"), "", "manual"),
-        renderSettingsCell(t("settings.changelogTitle"), t("settings.changelogHint"), "", "changelog"),
+        renderSettingsCell(t("settings.languageTitle"), "", renderLanguageSwitch()),
+        renderSettingsCell(t("settings.manualTitle"), "", "", "manual"),
+        renderSettingsCell(t("settings.changelogTitle"), "", "", "changelog"),
       ])}
 
       ${renderSettingsSection(t("settings.dataSection"), [
-        renderSettingsCell(t("settings.budgetTitle"), t("settings.budgetHint"), "", "budgets"),
-        renderSettingsCell(t("settings.exportCsv"), t("settings.importExportHint"), "", "export-csv"),
+        renderSettingsCell(t("settings.budgetTitle"), "", "", "budgets"),
+        renderSettingsCell(t("settings.exportCsv"), "", "", "export-csv"),
         renderSettingsCell(t("settings.importCsv"), "", "", "import-csv"),
         renderSettingsCell(t("settings.exportJson"), "", "", "export-json"),
       ])}
@@ -1059,7 +1039,7 @@ function renderSettingsTab() {
       ${renderSettingsSection(t("settings.localSection"), [
         renderSettingsCell(
           state.pwaRefreshInProgress ? t("settings.clearing") : t("settings.clearCache"),
-          t("settings.pwaHint"),
+          "",
           "",
           "clear-cache-reload",
           state.pwaRefreshInProgress,
@@ -1083,8 +1063,7 @@ function renderSettingsPage(title, body) {
 
 function renderSettingsSection(title, cells) {
   return `
-    <section class="settings-group">
-      <h2>${escapeHtml(title)}</h2>
+    <section class="settings-group" aria-label="${escapeHtml(title)}">
       <div class="settings-cells">${cells.join("")}</div>
     </section>
   `;
@@ -1250,14 +1229,6 @@ function renderCaptureForm(editingTransaction) {
       </label>
 
       <div class="capture-footer">
-        <label class="check-line ${txn.reimbursable ? "active" : ""}">
-          <input type="checkbox" name="reimbursable" ${txn.reimbursable ? "checked" : ""}>
-          <span>${escapeHtml(t("capture.reimbursable"))}</span>
-        </label>
-        <button class="btn secondary" type="button" data-action="attach-receipt">
-          ${escapeHtml(state.pendingReceiptDataUrl || txn.receiptDataUrl ? t("capture.receiptAttached") : t("capture.attachReceipt"))}
-        </button>
-        <input id="receipt-input" type="file" accept="image/*" hidden>
         <button class="btn primary" type="submit">${escapeHtml(editingTransaction ? t("capture.saveEdit") : t("capture.save"))}</button>
       </div>
     </form>
@@ -1353,7 +1324,7 @@ function renderTransactionRow(txn) {
       <div class="txn-main">
         <div>
           <strong>${escapeHtml(txn.title)}</strong>
-          <span>${escapeHtml(formatWhen(txn.occurredAt))} · ${escapeHtml(t(`type.${txn.type}`))} · ${escapeHtml(txn.book)} · ${escapeHtml(txn.category)} · ${escapeHtml(txn.account)}${txn.reimbursable ? ` · ${escapeHtml(t("txn.reimbursable"))}` : ""}${txn.receiptDataUrl ? ` · ${escapeHtml(t("txn.receipt"))}` : ""}</span>
+          <span>${escapeHtml(formatWhen(txn.occurredAt))} · ${escapeHtml(transactionTypeLabel(txn))} · ${escapeHtml(txn.book)} · ${escapeHtml(txn.category)} · ${escapeHtml(txn.account)}</span>
         </div>
         <div class="amount ${transactionAmountClass(txn)}">${signedAmount(txn)}</div>
       </div>
@@ -1367,10 +1338,8 @@ function renderTransactionRow(txn) {
 
 function formToTransaction(form) {
   const data = Object.fromEntries(new FormData(form).entries());
-  data.reimbursable = form.elements.namedItem("reimbursable")?.checked || false;
-  data.receiptDataUrl = state.pendingReceiptDataUrl
-    || state.transactions.find((txn) => txn.id === data.id)?.receiptDataUrl
-    || "";
+  data.reimbursable = false;
+  data.receiptDataUrl = "";
   return normalizeTransaction(data);
 }
 
@@ -1515,7 +1484,6 @@ document.addEventListener("submit", (event) => {
       toast(t("toast.saved"));
     }
     state.preferences.activeBook = data.book;
-    state.pendingReceiptDataUrl = "";
     state.activeTab = "ledger";
     state.ledgerView = "flow";
     persist();
@@ -1552,24 +1520,6 @@ document.addEventListener("change", (event) => {
     return;
   }
 
-  if (event.target.id === "receipt-input") {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (file.size > 1024 * 1024) {
-      event.target.value = "";
-      toast(t("toast.receiptTooLarge"));
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      state.pendingReceiptDataUrl = String(reader.result || "");
-      const button = document.querySelector("[data-action=\"attach-receipt\"]");
-      if (button) button.textContent = t("capture.receiptAttached");
-      toast(t("toast.receiptSaved"));
-    };
-    reader.onerror = () => toast(t("toast.receiptFailed"));
-    reader.readAsDataURL(file);
-  }
 });
 
 document.addEventListener("click", (event) => {
@@ -1599,12 +1549,10 @@ document.addEventListener("click", (event) => {
   if (action === "tab") {
     state.activeTab = node.dataset.tab || "ledger";
     if (state.activeTab === "settings") state.settingsContent = "home";
-    if (state.activeTab !== "capture") state.pendingReceiptDataUrl = "";
     render();
   }
   if (action === "open-capture") {
     state.editingTransactionId = null;
-    state.pendingReceiptDataUrl = "";
     state.activeTab = "capture";
     render();
   }
@@ -1618,12 +1566,6 @@ document.addEventListener("click", (event) => {
     state.ledgerView = "flow";
     render();
     requestAnimationFrame(() => document.querySelector("[data-filter=\"query\"]")?.focus());
-  }
-  if (action === "open-ledger-reimbursable") {
-    state.filters = { ...state.filters, type: "all", reimbursable: "yes", receipt: "all" };
-    state.activeTab = "ledger";
-    state.ledgerView = "flow";
-    render();
   }
   if (action === "open-budgets") {
     state.activeTab = "assets";
@@ -1659,17 +1601,12 @@ document.addEventListener("click", (event) => {
     render();
     toast(t("settings.budgetResetDone"));
   }
-  if (action === "attach-receipt") {
-    document.querySelector("#receipt-input")?.click();
-  }
   if (action === "cancel-edit") {
     state.editingTransactionId = null;
-    state.pendingReceiptDataUrl = "";
     render();
   }
   if (action === "edit") {
     state.editingTransactionId = node.dataset.id;
-    state.pendingReceiptDataUrl = "";
     state.activeTab = "capture";
     render();
     document.querySelector("#transaction-form")?.scrollIntoView({ behavior: "smooth", block: "start" });

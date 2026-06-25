@@ -21,7 +21,7 @@ GitHub repository, not as a subfolder inside Aevum or Ultreia.
   spending against editable monthly targets in Settings.
 - Settings uses compact list rows; Manual, Changelog, and Category budgets open
   as second-level pages.
-- Books, accounts, categories, budgets, reimbursable records, receipt attachment.
+- Books, accounts, categories, and editable category budgets.
 - Local browser persistence under `viatica:v1`.
 - CSV import/export for portability.
 - Aevum overview snapshot export for later read-only integration.

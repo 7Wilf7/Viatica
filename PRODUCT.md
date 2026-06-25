@@ -13,7 +13,7 @@ should help him restart bookkeeping without requiring a complex setup ritual.
 ## Product Purpose
 Viatica is the standalone personal ledger in Wilf's Aevum / Ultreia family of
 personal tools. It owns transaction capture, editing, import/export, budgets,
-books, accounts, and local receipt attachments. Aevum should only receive
+books, accounts, and local ledger records. Aevum should only receive
 overview snapshots and reviewed events from Viatica.
 
 ## Brand Personality

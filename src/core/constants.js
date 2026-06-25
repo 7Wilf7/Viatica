@@ -1,7 +1,6 @@
 export const TRANSACTION_TYPES = [
   { id: "expense", label: "支出" },
   { id: "income", label: "收入" },
-  { id: "transfer", label: "转账" },
 ];
 
 export const ACCOUNTS = [
@@ -17,7 +16,6 @@ export const BOOKS = [
   "日常账本",
   "训练账本",
   "旅行账本",
-  "报销账本",
 ];
 
 export const CURRENCIES = [

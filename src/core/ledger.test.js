@@ -8,18 +8,18 @@ import {
 } from "./ledger.js";
 import { exportTransactionsCsv, importTransactionsCsv } from "./csv.js";
 
-test("normalizes an expense with book and reimbursable fields", () => {
+test("normalizes an expense with book and legacy reimbursable fields", () => {
   const txn = normalizeTransaction({
     amount: "168",
     category: "交通",
     account: "支付宝",
     title: "高铁",
-    book: "报销账本",
+    book: "旅行账本",
     reimbursable: "true",
   }, new Date("2026-06-24T08:00:00+08:00"));
 
   assert.equal(txn.amount, 168);
-  assert.equal(txn.book, "报销账本");
+  assert.equal(txn.book, "旅行账本");
   assert.equal(txn.reimbursable, true);
 });
 
@@ -41,10 +41,10 @@ test("summarizes current month and today totals", () => {
 test("filters transactions by book and query", () => {
   const txns = [
     normalizeTransaction({ amount: 20, category: "餐饮", account: "微信", title: "咖啡", book: "日常账本" }),
-    normalizeTransaction({ amount: 168, category: "交通", account: "支付宝", title: "高铁", book: "报销账本" }),
+    normalizeTransaction({ amount: 168, category: "交通", account: "支付宝", title: "高铁", book: "旅行账本" }),
   ];
 
-  assert.equal(filterTransactions(txns, { book: "报销账本" }).length, 1);
+  assert.equal(filterTransactions(txns, { book: "旅行账本" }).length, 1);
   assert.equal(filterTransactions(txns, { query: "咖啡" }).length, 1);
 });
 

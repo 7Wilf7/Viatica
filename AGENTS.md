@@ -3,7 +3,7 @@
 ## Project Purpose
 Viatica is Wilf's standalone personal ledger and resource-management app in the
 Aevum ecosystem. It owns transaction capture, editing, import/export, budgets,
-books, accounts, categories, receipt attachments, and local financial records.
+books, accounts, categories, and local financial records.
 Aevum only keeps overview data, app entry points, and reviewed cross-product
 events.
 
