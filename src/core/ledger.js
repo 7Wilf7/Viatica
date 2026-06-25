@@ -131,6 +131,8 @@ export function filterTransactions(transactions = [], filters = {}) {
   const category = filters.category || "all";
   const account = filters.account || "all";
   const book = filters.book || "all";
+  const reimbursable = filters.reimbursable || "all";
+  const receipt = filters.receipt || "all";
   const month = filters.month || "";
 
   return transactions.filter((txn) => {
@@ -138,6 +140,8 @@ export function filterTransactions(transactions = [], filters = {}) {
     if (category !== "all" && txn.category !== category) return false;
     if (account !== "all" && txn.account !== account) return false;
     if (book !== "all" && (txn.book || "日常账本") !== book) return false;
+    if (reimbursable !== "all" && Boolean(txn.reimbursable) !== (reimbursable === "yes")) return false;
+    if (receipt !== "all" && Boolean(txn.receiptDataUrl) !== (receipt === "yes")) return false;
     if (month && monthKey(txn.occurredAt) !== month) return false;
     if (!q) return true;
     const haystack = [
@@ -146,6 +150,9 @@ export function filterTransactions(transactions = [], filters = {}) {
       txn.note,
       txn.category,
       txn.account,
+      txn.type,
+      txn.reimbursable ? "报销 可报销 reimbursable" : "",
+      txn.receiptDataUrl ? "票据 图片 收据 receipt" : "",
       ...(txn.tags || []),
     ].join(" ").toLowerCase();
     return haystack.includes(q);

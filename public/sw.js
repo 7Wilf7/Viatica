@@ -1,4 +1,4 @@
-const CACHE_NAME = "viatica-v1";
+const CACHE_NAME = "viatica-v2";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -22,6 +22,15 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const url = new URL(event.request.url);
+  if (["localhost", "127.0.0.1"].includes(url.hostname)) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  if (event.request.mode === "navigate") {
+    event.respondWith(fetch(event.request).catch(() => caches.match("/index.html")));
+    return;
+  }
   event.respondWith(
     caches.match(event.request).then((cached) =>
       cached || fetch(event.request).then((response) => {

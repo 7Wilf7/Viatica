@@ -48,6 +48,18 @@ test("filters transactions by book and query", () => {
   assert.equal(filterTransactions(txns, { query: "咖啡" }).length, 1);
 });
 
+test("filters reimbursable and receipt-backed transactions", () => {
+  const txns = [
+    normalizeTransaction({ amount: 20, category: "餐饮", account: "微信", title: "咖啡" }),
+    normalizeTransaction({ amount: 168, category: "交通", account: "支付宝", title: "高铁", reimbursable: true }),
+    normalizeTransaction({ amount: 899, category: "运动装备", account: "银行卡", title: "越野鞋", receiptDataUrl: "data:image/png;base64,test" }),
+  ];
+
+  assert.equal(filterTransactions(txns, { reimbursable: "yes" }).length, 1);
+  assert.equal(filterTransactions(txns, { receipt: "yes" }).length, 1);
+  assert.equal(filterTransactions(txns, { query: "票据" }).length, 1);
+});
+
 test("csv export and import round trips ledger rows", () => {
   const txns = [
     normalizeTransaction({ amount: 20, category: "餐饮", account: "微信", title: "咖啡", tags: "work" }),
