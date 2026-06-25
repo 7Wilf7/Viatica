@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "TSSign";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../resources/brand/tssign.woff2") format("woff2");
+}
+
 :root {
   color-scheme: dark;
   --bg: oklch(0.112 0.006 95);
@@ -240,8 +248,11 @@ label span {
 }
 
 .boot-wordmark {
+  font-family: TSSign, "Segoe Script", cursive;
   color: var(--ink);
   font-size: min(12vmin, 62px);
+  font-weight: 400;
+  letter-spacing: 0;
   line-height: 1;
   text-rendering: geometricPrecision;
   animation: boot-splash-mark 420ms 80ms var(--ease-out) both;
