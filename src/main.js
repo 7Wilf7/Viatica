@@ -1291,10 +1291,11 @@ function chooseOption(optionNode) {
 }
 
 document.addEventListener("submit", (event) => {
-  if (event.target.id !== "transaction-form") return;
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement) || form.getAttribute("id") !== "transaction-form") return;
   event.preventDefault();
   try {
-    const data = formToTransaction(event.target);
+    const data = formToTransaction(form);
     const existing = data.id ? state.transactions.find((txn) => txn.id === data.id) : null;
     if (existing) {
       const txn = normalizeTransaction({ ...existing, ...data, id: existing.id, createdAt: existing.createdAt });
