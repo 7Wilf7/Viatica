@@ -68,6 +68,12 @@ restrained dark product UI.
 - Use the Aevum/Ultreia family language: Linear-inspired dark product UI, quiet
   density, precise controls, and restrained muted ledger yellow / beeswax gold
   as Viatica's accent.
+- iCost is a reference for ledger information density, calendar grid clarity,
+  and category/icon hierarchy only. Do not copy iCost's light theme or assets;
+  translate the useful patterns into Viatica's own dark tool language.
+- Use Viatica's own restrained monoline glyphs for bottom tabs, categories,
+  accounts, books, and row actions. Icons should clarify scanning, not become
+  decorative stickers.
 - Use bottom tabs for the mobile app shell, in this order: Ledger, Calendar,
   Add, Assets, Settings. The Add tab is the center plus action.
 - The Ledger tab top switch should keep only Flow and Charts. Charts means

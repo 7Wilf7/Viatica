@@ -39,6 +39,9 @@ a gamified finance app.
 - Requirement review first: before building new product requests, compare the
   idea with strong mobile accounting apps such as iCost, then adapt it to
   Wilf's personal needs instead of copying generic finance-app complexity.
+- Learn from iCost's clarity: compact ledgers, readable calendar cells,
+  category-first rows, and friendly icon grouping. Keep Viatica dark, local,
+  restrained, and purpose-built instead of copying iCost's light visual skin.
 - Local-first by default: no backend write path until sync rules are explicit.
 - Data must be portable: CSV export and full JSON backup are baseline features.
 - Aevum integration is summary-based: private notes stay inside Viatica unless a

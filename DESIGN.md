@@ -26,13 +26,19 @@ review records first, inspect dates second, put capture in the center plus
 action, keep assets separate from statistics, and reserve settings for local
 data operations and product notes.
 
+iCost is a product reference for information density, list hierarchy, calendar
+grid clarity, and friendly category icon language. Do not copy its light skin
+or assets. Viatica should translate those lessons into its own dark, restrained
+ledger tool: fewer heavy borders and glows, clear category glyphs, compact
+transaction rows, and data-first cards that feel useful rather than decorative.
+
 ## Colors
 - Background: `oklch(0.115 0.010 85)`
 - Panel: translucent warm black / dark olive-neutral around
   `oklch(0.18 0.014 85 / 0.86)`
 - Ink: `oklch(0.965 0.006 85)`
 - Muted ink: `oklch(0.77 0.018 85)`
-- Line: fine translucent warm ledger lines around `oklch(0.43 0.040 85 / 0.46)`
+- Line: fine translucent warm ledger lines around `oklch(0.39 0.030 85 / 0.34)`
 - Accent: restrained muted ledger yellow / beeswax gold for primary actions,
   active focus, budget fills, progress, and the Viatica mark. Use it in small
   areas only; avoid bright yellow, coin gold, delivery-app yellow, neon, or
@@ -47,6 +53,10 @@ data operations and product notes.
 - Add opens the capture form and is the primary action surface in the center of
   the bottom tab bar. The center tab shows a large plus only; the other four
   tabs use the same restrained monoline SVG icon style as Ultreia.
+- Viatica owns a small custom monoline glyph set for bottom navigation,
+  categories, accounts, books, and row actions. Category icons may use subtle
+  differentiated colors, but they should stay soft and tool-like, not childish
+  or promotional.
 - Ledger owns filtering, editing, deletion, and a top Flow / Charts switch.
   Charts means statistics.
 - Ledger must not show an All Books selector at the top; book filtering belongs
@@ -66,6 +76,8 @@ data operations and product notes.
 - Settings owns local data actions, exports, imports, editable budgets, and
   PWA/storage notes.
 - Budget rows and transaction rows use dense panels, not oversized cards.
+  Transaction rows prioritize category icon, title, time/book context, amount,
+  and account; edit/delete actions stay visually quiet.
 - Buttons and form controls follow one shape vocabulary with visible focus.
 - Empty states tell Wilf the next practical action.
 

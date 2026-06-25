@@ -84,6 +84,173 @@ const LEDGER_VIEWS = [
   { id: "chart", labelKey: "ledger.chart" },
 ];
 
+const GLYPHS = {
+  ledger: `
+    <path d="M2.5 2.4 H6 C6.6 2.4 7 2.9 7 3.5 V11.4 C7 10.8 6.5 10.4 5.8 10.4 H2.5 Z" />
+    <path d="M11.5 2.4 H8 C7.4 2.4 7 2.9 7 3.5 V11.4 C7 10.8 7.5 10.4 8.2 10.4 H11.5 Z" />
+    <path d="M4 5 H5.7" />
+    <path d="M8.3 5 H10" />
+  `,
+  calendar: `
+    <rect x="2.2" y="3" width="9.6" height="8.4" rx="1.4" />
+    <path d="M4.5 1.8 V4.2" />
+    <path d="M9.5 1.8 V4.2" />
+    <path d="M2.2 5.4 H11.8" />
+    <path d="M4.4 7.6 H4.45" />
+    <path d="M7 7.6 H7.05" />
+    <path d="M9.6 7.6 H9.65" />
+  `,
+  plus: `
+    <path d="M7 2.5 V11.5" />
+    <path d="M2.5 7 H11.5" />
+  `,
+  assets: `
+    <path d="M2.2 4.2 H11.8 V11.2 H2.2 Z" />
+    <path d="M3.2 4.2 V2.8 H9.8 C10.8 2.8 11.4 3.3 11.4 4.2" />
+    <path d="M9 7.4 H12.2 V9.4 H9 C8.4 9.4 8 9 8 8.4 C8 7.8 8.4 7.4 9 7.4 Z" />
+    <path d="M10 8.4 H10.1" />
+  `,
+  settings: `
+    <circle cx="7" cy="7" r="2" />
+    <path d="M7 1.8 V3" />
+    <path d="M7 11 V12.2" />
+    <path d="M1.8 7 H3" />
+    <path d="M11 7 H12.2" />
+    <path d="M3.3 3.3 L4.2 4.2" />
+    <path d="M9.8 9.8 L10.7 10.7" />
+    <path d="M10.7 3.3 L9.8 4.2" />
+    <path d="M4.2 9.8 L3.3 10.7" />
+  `,
+  edit: `
+    <path d="M3 10.9 L5.7 10.3 L10.6 5.4 C11.2 4.8 11.2 3.9 10.6 3.4 C10 2.8 9.2 2.8 8.6 3.4 L3.7 8.3 Z" />
+    <path d="M8.2 3.8 L10.2 5.8" />
+  `,
+  trash: `
+    <path d="M3.2 4.3 H10.8" />
+    <path d="M5.5 2.7 H8.5" />
+    <path d="M4.1 4.3 L4.7 11.1 H9.3 L9.9 4.3" />
+    <path d="M6.1 6.3 V9.2" />
+    <path d="M7.9 6.3 V9.2" />
+  `,
+  food: `
+    <path d="M2.8 6.8 H11.2 C11 9.5 9.3 11.3 7 11.3 C4.7 11.3 3 9.5 2.8 6.8 Z" />
+    <path d="M4.2 4.1 C5.4 3.3 8.6 3.3 9.8 4.1" />
+    <path d="M3.5 11.3 H10.5" />
+    <path d="M11 4.3 L12 3.2" />
+  `,
+  transport: `
+    <path d="M2.5 7.2 L3.7 4.4 C4 3.8 4.5 3.5 5.2 3.5 H8.8 C9.5 3.5 10 3.8 10.3 4.4 L11.5 7.2" />
+    <rect x="2.3" y="6.5" width="9.4" height="3.4" rx="1" />
+    <path d="M4.2 9.9 V11" />
+    <path d="M9.8 9.9 V11" />
+    <path d="M4.2 8.2 H4.3" />
+    <path d="M9.7 8.2 H9.8" />
+  `,
+  shopping: `
+    <path d="M3 5 H11 L10.2 11.5 H3.8 Z" />
+    <path d="M5 5 C5 3.4 5.8 2.5 7 2.5 C8.2 2.5 9 3.4 9 5" />
+    <path d="M5.2 7.7 H8.8" />
+  `,
+  gear: `
+    <path d="M3 9.5 C4.6 8.1 5.4 5.6 6.1 3.1 L8.1 3.7 C7.9 5.2 8.5 6.5 10.2 7.9 C11.3 8.8 11.1 10.8 9.4 11.2 C7.3 11.7 4.6 10.9 3 9.5 Z" />
+    <path d="M5.4 8.3 L8.9 9.3" />
+    <path d="M6 6.7 L8 7.2" />
+  `,
+  training: `
+    <path d="M2 11.2 L5.2 5.2 L7.1 8.1 L9 4.2 L12.2 11.2 Z" />
+    <path d="M5.2 5.2 L6.2 6.9" />
+    <path d="M8.8 4.8 L10.1 7.2" />
+  `,
+  health: `
+    <path d="M7 11.5 C4 9.5 2.4 7.8 2.4 5.6 C2.4 4.2 3.4 3.1 4.7 3.1 C5.6 3.1 6.4 3.6 7 4.5 C7.6 3.6 8.4 3.1 9.3 3.1 C10.6 3.1 11.6 4.2 11.6 5.6 C11.6 7.8 10 9.5 7 11.5 Z" />
+    <path d="M7 5.9 V8.5" />
+    <path d="M5.7 7.2 H8.3" />
+  `,
+  ai: `
+    <rect x="3.2" y="3.2" width="7.6" height="7.6" rx="1.4" />
+    <path d="M5.2 1.8 V3.2" />
+    <path d="M8.8 1.8 V3.2" />
+    <path d="M5.2 10.8 V12.2" />
+    <path d="M8.8 10.8 V12.2" />
+    <path d="M1.8 5.2 H3.2" />
+    <path d="M10.8 5.2 H12.2" />
+    <path d="M1.8 8.8 H3.2" />
+    <path d="M10.8 8.8 H12.2" />
+    <path d="M5.5 7 H8.5" />
+  `,
+  subscription: `
+    <rect x="2.3" y="3.4" width="9.4" height="7.2" rx="1.2" />
+    <path d="M2.3 5.6 H11.7" />
+    <path d="M4.2 8.3 H6.2" />
+    <path d="M8.5 8.3 H9.8" />
+  `,
+  learning: `
+    <path d="M2.5 2.8 H6.1 C6.7 2.8 7 3.2 7 3.8 V11 C7 10.4 6.6 10.1 5.9 10.1 H2.5 Z" />
+    <path d="M11.5 2.8 H7.9 C7.3 2.8 7 3.2 7 3.8 V11 C7 10.4 7.4 10.1 8.1 10.1 H11.5 Z" />
+  `,
+  entertainment: `
+    <path d="M7 2.2 L8.5 5.2 L11.8 5.7 L9.4 8 L10 11.3 L7 9.7 L4 11.3 L4.6 8 L2.2 5.7 L5.5 5.2 Z" />
+  `,
+  travel: `
+    <path d="M2.2 8.5 L12 3.2 L9.8 11.4 L7.2 8.1 L4.2 10.3 Z" />
+    <path d="M7.2 8.1 L12 3.2" />
+  `,
+  work: `
+    <rect x="2.3" y="4.2" width="9.4" height="6.8" rx="1.2" />
+    <path d="M5.2 4.2 V3.1 H8.8 V4.2" />
+    <path d="M2.3 7 H11.7" />
+  `,
+  cash: `
+    <path d="M2.2 4.3 H11.8 V10.7 H2.2 Z" />
+    <circle cx="7" cy="7.5" r="1.4" />
+    <path d="M4.1 6.1 V6.2" />
+    <path d="M9.9 8.8 V8.9" />
+  `,
+  bank: `
+    <path d="M2.2 5.2 L7 2.4 L11.8 5.2 Z" />
+    <path d="M3 11.2 H11" />
+    <path d="M4 5.2 V10" />
+    <path d="M7 5.2 V10" />
+    <path d="M10 5.2 V10" />
+  `,
+  more: `
+    <circle cx="4" cy="7" r="0.8" fill="currentColor" stroke="none" />
+    <circle cx="7" cy="7" r="0.8" fill="currentColor" stroke="none" />
+    <circle cx="10" cy="7" r="0.8" fill="currentColor" stroke="none" />
+  `,
+};
+
+const CATEGORY_META = {
+  "餐饮": { icon: "food", fg: "oklch(0.70 0.11 50)", bg: "oklch(0.70 0.11 50 / 0.16)" },
+  "交通": { icon: "transport", fg: "oklch(0.68 0.11 230)", bg: "oklch(0.68 0.11 230 / 0.15)" },
+  "购物": { icon: "shopping", fg: "oklch(0.72 0.10 330)", bg: "oklch(0.72 0.10 330 / 0.15)" },
+  "运动装备": { icon: "gear", fg: "oklch(0.72 0.10 145)", bg: "oklch(0.72 0.10 145 / 0.15)" },
+  "比赛/训练": { icon: "training", fg: "oklch(0.70 0.09 160)", bg: "oklch(0.70 0.09 160 / 0.15)" },
+  "健康": { icon: "health", fg: "oklch(0.72 0.13 24)", bg: "oklch(0.72 0.13 24 / 0.15)" },
+  "AI 工具": { icon: "ai", fg: "oklch(0.73 0.10 275)", bg: "oklch(0.73 0.10 275 / 0.15)" },
+  "订阅": { icon: "subscription", fg: "oklch(0.72 0.10 85)", bg: "oklch(0.72 0.10 85 / 0.16)" },
+  "学习": { icon: "learning", fg: "oklch(0.73 0.09 245)", bg: "oklch(0.73 0.09 245 / 0.15)" },
+  "娱乐": { icon: "entertainment", fg: "oklch(0.76 0.10 95)", bg: "oklch(0.76 0.10 95 / 0.16)" },
+  "旅行": { icon: "travel", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
+  "工作": { icon: "work", fg: "oklch(0.76 0.08 82)", bg: "oklch(0.76 0.08 82 / 0.16)" },
+  "其他": { icon: "more", fg: "oklch(0.76 0.05 85)", bg: "oklch(0.76 0.05 85 / 0.13)" },
+};
+
+const ACCOUNT_META = {
+  "现金": { icon: "cash", fg: "oklch(0.76 0.08 94)", bg: "oklch(0.76 0.08 94 / 0.16)" },
+  "微信": { icon: "assets", fg: "oklch(0.72 0.10 150)", bg: "oklch(0.72 0.10 150 / 0.15)" },
+  "支付宝": { icon: "assets", fg: "oklch(0.70 0.11 235)", bg: "oklch(0.70 0.11 235 / 0.15)" },
+  "银行卡": { icon: "bank", fg: "oklch(0.73 0.08 245)", bg: "oklch(0.73 0.08 245 / 0.15)" },
+  "信用卡": { icon: "subscription", fg: "oklch(0.70 0.10 25)", bg: "oklch(0.70 0.10 25 / 0.14)" },
+  "其他": { icon: "more", fg: "oklch(0.76 0.05 85)", bg: "oklch(0.76 0.05 85 / 0.13)" },
+};
+
+const BOOK_META = {
+  "日常账本": { icon: "ledger", fg: "oklch(0.76 0.08 84)", bg: "oklch(0.76 0.08 84 / 0.16)" },
+  "训练账本": { icon: "training", fg: "oklch(0.70 0.10 155)", bg: "oklch(0.70 0.10 155 / 0.15)" },
+  "旅行账本": { icon: "travel", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
+};
+
 const CAPTURE_TEMPLATES = [
   { labelKey: "template.lunch", values: { amount: "35", title: "午餐", category: "餐饮", account: "微信" } },
   { labelKey: "template.coffee", values: { amount: "22", title: "咖啡", category: "餐饮", account: "微信" } },
@@ -185,6 +352,25 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-06-25",
+    title: {
+      zh: "账本视觉与图标系统打磨",
+      en: "Ledger visual and icon polish",
+    },
+    items: {
+      zh: [
+        "参考 iCost 的信息层级和分类图标语言，重做底部导航、分类、账户、账本和流水行的小图标，但保留 Viatica 自己的暗色账本风格。",
+        "压缩流水筛选区和流水行高度，金额、账户和编辑动作更安静，手机上一屏能看到更多有效流水。",
+        "日历格子显示每日收入/支出金额，日期保持顶部居中，方便继续调整图表和月度回顾。",
+      ],
+      en: [
+        "Reworked bottom navigation, category, account, book, and row-action glyphs using iCost's hierarchy as reference while keeping Viatica's own dark ledger style.",
+        "Compressed Flow filters and entry rows so amount, account, and row actions stay quieter and more entries fit on mobile.",
+        "Calendar cells now show daily income and expense amounts with day numbers kept top-centered for review and chart tuning.",
+      ],
+    },
+  },
   {
     date: "2026-06-25",
     title: {
@@ -430,6 +616,10 @@ const MESSAGES = {
     "capture.saveEdit": "保存修改",
     "capture.save": "保存流水",
     "ledger.title": "账本",
+    "ledger.overview": "账本概览",
+    "ledger.monthBalance": "本月结余",
+    "ledger.monthExpense": "支出",
+    "ledger.monthIncome": "收入",
     "ledger.flow": "流水",
     "ledger.chart": "图表",
     "ledger.matchCount": "{count} 条匹配记录。",
@@ -548,6 +738,10 @@ const MESSAGES = {
     "capture.saveEdit": "Save changes",
     "capture.save": "Save entry",
     "ledger.title": "Ledger",
+    "ledger.overview": "Ledger overview",
+    "ledger.monthBalance": "Month balance",
+    "ledger.monthExpense": "Spent",
+    "ledger.monthIncome": "Income",
     "ledger.flow": "Flow",
     "ledger.chart": "Charts",
     "ledger.matchCount": "{count} matching entries.",
@@ -883,49 +1077,33 @@ function renderActiveTab(summary, filteredTransactions, editingTransaction) {
   return renderLedgerTab(filteredTransactions, summary);
 }
 
-function iconSvg(paths) {
+function glyphSvg(name, className = "glyph") {
+  const paths = GLYPHS[name] || GLYPHS.more;
   return `
-    <svg class="tab-svg" width="20" height="20" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <svg class="${escapeHtml(className)}" width="20" height="20" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       ${paths}
     </svg>
   `;
 }
 
 function renderTabIcon(tabId) {
-  const icons = {
-    ledger: iconSvg(`
-      <path d="M2.5 2.5 H6 C6.6 2.5 7 2.9 7 3.5 V11.5 C7 10.8 6.5 10.4 5.8 10.4 H2.5 Z" />
-      <path d="M11.5 2.5 H8 C7.4 2.5 7 2.9 7 3.5 V11.5 C7 10.8 7.5 10.4 8.2 10.4 H11.5 Z" />
-    `),
-    calendar: iconSvg(`
-      <rect x="2.2" y="3" width="9.6" height="8.4" rx="1.2" />
-      <path d="M4.5 1.8 V4.2" />
-      <path d="M9.5 1.8 V4.2" />
-      <path d="M2.2 5.4 H11.8" />
-    `),
-    capture: iconSvg(`
-      <path d="M7 2.5 V11.5" />
-      <path d="M2.5 7 H11.5" />
-    `),
-    assets: iconSvg(`
-      <path d="M2.2 4.2 H11.8 V11.2 H2.2 Z" />
-      <path d="M3.2 4.2 V2.8 H9.8 C10.8 2.8 11.4 3.3 11.4 4.2" />
-      <path d="M9 7.4 H12.2 V9.4 H9 C8.4 9.4 8 9 8 8.4 C8 7.8 8.4 7.4 9 7.4 Z" />
-      <path d="M10 8.4 H10.1" />
-    `),
-    settings: iconSvg(`
-      <circle cx="7" cy="7" r="2" />
-      <path d="M7 1.8 V3" />
-      <path d="M7 11 V12.2" />
-      <path d="M1.8 7 H3" />
-      <path d="M11 7 H12.2" />
-      <path d="M3.3 3.3 L4.2 4.2" />
-      <path d="M9.8 9.8 L10.7 10.7" />
-      <path d="M10.7 3.3 L9.8 4.2" />
-      <path d="M4.2 9.8 L3.3 10.7" />
-    `),
-  };
-  return icons[tabId] || "";
+  return glyphSvg(tabId === "capture" ? "plus" : tabId, "tab-svg");
+}
+
+function iconMeta(label, kind = "category") {
+  if (kind === "account") return ACCOUNT_META[label] || ACCOUNT_META["其他"];
+  if (kind === "book") return BOOK_META[label] || BOOK_META["日常账本"];
+  return CATEGORY_META[label] || CATEGORY_META["其他"];
+}
+
+function renderIconBadge(label, kind = "category", size = "") {
+  const meta = iconMeta(label, kind);
+  const sizeClass = size ? ` ${size}` : "";
+  return `
+    <span class="icon-badge${sizeClass}" style="--icon-bg: ${meta.bg}; --icon-fg: ${meta.fg};" aria-hidden="true">
+      ${glyphSvg(meta.icon)}
+    </span>
+  `;
 }
 
 function renderTabButton(tab) {
@@ -955,17 +1133,45 @@ function renderLedgerModeSwitch() {
 function renderLedgerTab(filteredTransactions, summary) {
   return `
     ${renderLedgerModeSwitch()}
-    ${state.ledgerView === "chart" ? renderLedgerStats(summary) : renderLedgerFlow(filteredTransactions)}
+    ${state.ledgerView === "chart" ? renderLedgerStats(summary) : renderLedgerFlow(filteredTransactions, summary)}
   `;
 }
 
-function renderLedgerFlow(filteredTransactions) {
+function renderLedgerOverview(summary, count) {
+  const activeBook = state.preferences.activeBook || "日常账本";
   return `
+    <section class="ledger-overview" aria-label="${escapeHtml(t("ledger.overview"))}">
+      <div class="book-head">
+        ${renderIconBadge(activeBook, "book", "large")}
+        <div>
+          <span>${escapeHtml(summary.monthKey)}</span>
+          <h1>${escapeHtml(activeBook)}</h1>
+        </div>
+      </div>
+      <div class="overview-card">
+        <div class="overview-main">
+          <span>${escapeHtml(t("ledger.monthBalance"))}</span>
+          <strong class="${summary.monthBalance >= 0 ? "amount positive" : "amount negative"}">
+            ${escapeHtml(summary.monthBalance >= 0 ? formatMoney(summary.monthBalance) : `-${formatMoney(Math.abs(summary.monthBalance))}`)}
+          </strong>
+        </div>
+        <div class="overview-mini">
+          <span><b>${escapeHtml(compactMoney(summary.monthExpense))}</b>${escapeHtml(t("ledger.monthExpense"))}</span>
+          <span><b>${escapeHtml(compactMoney(summary.monthIncome))}</b>${escapeHtml(t("ledger.monthIncome"))}</span>
+          <span><b>${escapeHtml(String(count))}</b>${escapeHtml(t("today.transactionCount"))}</span>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderLedgerFlow(filteredTransactions, summary) {
+  return `
+    ${renderLedgerOverview(summary, filteredTransactions.length)}
     <section class="panel">
       <div class="section-title">
         <div>
           <h2>${escapeHtml(t("ledger.flow"))}</h2>
-          <p>${escapeHtml(t("ledger.matchCount", { count: filteredTransactions.length }))}</p>
         </div>
       </div>
       ${renderQuickFilters()}
@@ -986,7 +1192,6 @@ function renderLedgerStats(summary) {
       <div class="section-title">
         <div>
           <h2>${escapeHtml(t("stats.title"))}</h2>
-          <p>${escapeHtml(t("stats.hint"))}</p>
         </div>
       </div>
 
@@ -1007,7 +1212,6 @@ function renderLedgerStats(summary) {
       <div class="section-title inline-section-title">
         <div>
           <h2>${escapeHtml(t("stats.categoryTitle"))}</h2>
-          <p>${escapeHtml(t("stats.categoryHint"))}</p>
         </div>
       </div>
       <div class="budget-list">
@@ -1051,12 +1255,15 @@ function renderMonthCalendar() {
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const dayExpense = new Map();
+  const dayIncome = new Map();
   const today = todayKey(now);
 
   for (const txn of state.transactions) {
-    if (txn.type !== "expense" || monthKey(txn.occurredAt) !== currentMonth) continue;
+    if (monthKey(txn.occurredAt) !== currentMonth) continue;
     const key = todayKey(txn.occurredAt);
-    dayExpense.set(key, (dayExpense.get(key) || 0) + Number(txn.amount || 0));
+    const amount = Number(txn.amount || 0);
+    if (txn.type === "expense") dayExpense.set(key, (dayExpense.get(key) || 0) + amount);
+    if (txn.type === "income") dayIncome.set(key, (dayIncome.get(key) || 0) + amount);
   }
 
   const weekdays = state.preferences.locale === "en"
@@ -1070,10 +1277,15 @@ function renderMonthCalendar() {
   for (let day = 1; day <= daysInMonth; day += 1) {
     const d = new Date(now.getFullYear(), now.getMonth(), day);
     const key = todayKey(d);
-    const amount = dayExpense.get(key) || 0;
+    const expense = dayExpense.get(key) || 0;
+    const income = dayIncome.get(key) || 0;
     cells.push(`
-      <span class="calendar-cell ${amount ? "has-data" : ""} ${key === today ? "today" : ""}">
-        <span>${day}</span>
+      <span class="calendar-cell ${expense || income ? "has-data" : ""} ${key === today ? "today" : ""}">
+        <span class="calendar-day">${day}</span>
+        <span class="calendar-values">
+          ${expense ? `<span class="calendar-money negative">-${escapeHtml(compactMoney(expense))}</span>` : ""}
+          ${income ? `<span class="calendar-money positive">+${escapeHtml(compactMoney(income))}</span>` : ""}
+        </span>
       </span>
     `);
   }
@@ -1247,7 +1459,10 @@ function renderBudgetSettings() {
       <div class="budget-editor-list">
         ${CATEGORIES.map((category) => `
           <label class="budget-edit-row">
-            <span>${escapeHtml(category)}</span>
+            <span class="budget-edit-copy">
+              ${renderIconBadge(category, "category", "small")}
+              <span>${escapeHtml(category)}</span>
+            </span>
             <input name="${escapeHtml(category)}" inputmode="decimal" type="number" min="0" step="1" value="${escapeHtml(state.budgets[category] ?? 0)}">
           </label>
         `).join("")}
@@ -1386,7 +1601,12 @@ function renderCaptureForm(editingTransaction) {
 }
 
 function renderTemplateButton(label, values) {
-  return `<button class="template-chip" type="button" data-action="template" data-values='${escapeHtml(JSON.stringify(values))}'>${escapeHtml(label)}</button>`;
+  return `
+    <button class="template-chip" type="button" data-action="template" data-values='${escapeHtml(JSON.stringify(values))}'>
+      ${renderIconBadge(values.category || "其他", "category", "tiny")}
+      <span>${escapeHtml(label)}</span>
+    </button>
+  `;
 }
 
 function renderAccountManager(summary) {
@@ -1408,7 +1628,10 @@ function renderAccountManager(summary) {
       <div class="account-editor-list">
         ${state.accounts.map((account) => `
           <label class="account-edit-row">
-            <span>${escapeHtml(account.name)}</span>
+            <span class="budget-edit-copy">
+              ${renderIconBadge(account.name, "account", "small")}
+              <span>${escapeHtml(account.name)}</span>
+            </span>
             <input name="${escapeHtml(account.name)}" inputmode="decimal" type="number" step="0.01" value="${escapeHtml(account.openingBalance ?? 0)}">
           </label>
         `).join("")}
@@ -1434,9 +1657,13 @@ function renderBudgetRows(summary, limit = 6) {
     const ratio = Math.min(1, data.ratio || 0);
     return `
       <div class="budget-row">
-        <div>
-          <strong>${escapeHtml(category)}</strong>
-          <span>${formatMoney(data.spent)} / ${formatMoney(data.budget)}</span>
+        <div class="metric-row-head">
+          ${renderIconBadge(category, "category", "small")}
+          <div class="metric-copy">
+            <strong>${escapeHtml(category)}</strong>
+            <span>${formatMoney(data.spent)} / ${formatMoney(data.budget)}</span>
+          </div>
+          <span class="metric-amount">${Math.round(ratio * 100)}%</span>
         </div>
         <div class="budget-track"><span style="width: ${Math.round(ratio * 100)}%"></span></div>
       </div>
@@ -1452,9 +1679,13 @@ function renderCategoryStatRows(summary, limit = 8) {
   const total = Math.max(1, summary.monthExpense);
   return entries.map(([category, amount]) => `
     <div class="budget-row">
-      <div>
-        <strong>${escapeHtml(category)}</strong>
-        <span>${formatMoney(amount)}</span>
+      <div class="metric-row-head">
+        ${renderIconBadge(category, "category", "small")}
+        <div class="metric-copy">
+          <strong>${escapeHtml(category)}</strong>
+          <span>${formatMoney(amount)}</span>
+        </div>
+        <span class="metric-amount">${Math.round((amount / total) * 100)}%</span>
       </div>
       <div class="budget-track"><span style="width: ${Math.round((amount / total) * 100)}%"></span></div>
     </div>
@@ -1467,9 +1698,13 @@ function renderAccountRows(summary) {
   const total = Math.max(1, ...entries.map(([, amount]) => Math.abs(amount)));
   return entries.map(([account, amount]) => `
     <div class="budget-row">
-      <div>
-        <strong>${escapeHtml(account)}</strong>
-        <span class="${amount >= 0 ? "amount positive" : "amount negative"}">${amount >= 0 ? formatMoney(amount) : `-${formatMoney(Math.abs(amount))}`}</span>
+      <div class="metric-row-head">
+        ${renderIconBadge(account, "account", "small")}
+        <div class="metric-copy">
+          <strong>${escapeHtml(account)}</strong>
+          <span>${escapeHtml(t("assets.accountNetTitle"))}</span>
+        </div>
+        <span class="metric-amount amount ${amount >= 0 ? "positive" : "negative"}">${amount >= 0 ? formatMoney(amount) : `-${formatMoney(Math.abs(amount))}`}</span>
       </div>
       <div class="budget-track"><span style="width: ${Math.round((Math.abs(amount) / total) * 100)}%"></span></div>
     </div>
@@ -1482,9 +1717,13 @@ function renderBookRows(summary) {
   const total = Math.max(1, summary.monthExpense);
   return entries.map(([book, amount]) => `
     <div class="budget-row">
-      <div>
-        <strong>${escapeHtml(book)}</strong>
-        <span>${formatMoney(amount)}</span>
+      <div class="metric-row-head">
+        ${renderIconBadge(book, "book", "small")}
+        <div class="metric-copy">
+          <strong>${escapeHtml(book)}</strong>
+          <span>${formatMoney(amount)}</span>
+        </div>
+        <span class="metric-amount">${Math.round((amount / total) * 100)}%</span>
       </div>
       <div class="budget-track"><span style="width: ${Math.round((amount / total) * 100)}%"></span></div>
     </div>
@@ -1505,18 +1744,29 @@ function renderFilters() {
 }
 
 function renderTransactionRow(txn) {
+  const accountMeta = `${formatWhen(txn.occurredAt)} · ${transactionTypeLabel(txn)} · ${txn.book}`;
   return `
     <article class="txn-row ${escapeHtml(transactionTone(txn))}">
       <div class="txn-main">
-        <div>
+        ${renderIconBadge(txn.category, "category")}
+        <div class="txn-copy">
           <strong>${escapeHtml(txn.title)}</strong>
-          <span>${escapeHtml(formatWhen(txn.occurredAt))} · ${escapeHtml(transactionTypeLabel(txn))} · ${escapeHtml(txn.book)} · ${escapeHtml(txn.category)} · ${escapeHtml(txn.account)}</span>
+          <span>${escapeHtml(accountMeta)}</span>
         </div>
-        <div class="amount ${transactionAmountClass(txn)}">${signedAmount(txn)}</div>
-      </div>
-      <div class="txn-actions">
-        <button class="btn ghost" data-action="edit" data-id="${escapeHtml(txn.id)}">${escapeHtml(t("txn.edit"))}</button>
-        <button class="btn ghost danger-text" data-action="delete" data-id="${escapeHtml(txn.id)}">${escapeHtml(t("txn.delete"))}</button>
+        <div class="txn-side">
+          <div class="amount ${transactionAmountClass(txn)}">${signedAmount(txn)}</div>
+          <span>${escapeHtml(txn.account)}</span>
+        </div>
+        <div class="txn-actions">
+          <button class="btn ghost txn-action-button" data-action="edit" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.edit"))}">
+            ${glyphSvg("edit")}
+            <span class="sr-only">${escapeHtml(t("txn.edit"))}</span>
+          </button>
+          <button class="btn ghost txn-action-button danger-text" data-action="delete" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.delete"))}">
+            ${glyphSvg("trash")}
+            <span class="sr-only">${escapeHtml(t("txn.delete"))}</span>
+          </button>
+        </div>
       </div>
     </article>
   `;
