@@ -96,6 +96,18 @@ button {
   cursor: pointer;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
 input,
 select,
 textarea {
@@ -410,12 +422,12 @@ label span {
 }
 
 .stats-panel,
-.asset-summary {
+.hero-grid.asset-summary {
   display: grid;
   gap: 10px;
 }
 
-.asset-summary {
+.hero-grid.asset-summary {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -460,12 +472,13 @@ label span {
 
 .calendar-cell {
   position: relative;
-  min-height: 48px;
-  padding: 4px;
+  min-height: 54px;
+  padding: 6px 4px 4px;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
   background: oklch(0.145 0.010 85 / 0.58);
   color: var(--ink-2);
 }
@@ -476,8 +489,17 @@ label span {
 }
 
 .calendar-cell.today {
-  border-color: var(--accent-strong);
-  box-shadow: 0 0 0 1px oklch(0.70 0.060 84 / 0.13) inset;
+  color: var(--ink);
+}
+
+.calendar-cell.today::before {
+  position: absolute;
+  inset: 2px;
+  border: 1px solid var(--accent-strong);
+  border-radius: calc(var(--r-sm) - 4px);
+  box-shadow: 0 0 0 1px oklch(0.70 0.060 84 / 0.12);
+  content: "";
+  pointer-events: none;
 }
 
 .calendar-cell.has-data {
@@ -497,6 +519,8 @@ label span {
 }
 
 .calendar-cell span {
+  position: relative;
+  z-index: 1;
   font-size: 11px;
   font-weight: 720;
 }
@@ -509,6 +533,58 @@ label span {
 
 .budget-workspace {
   grid-template-columns: minmax(0, 1fr) minmax(280px, 0.58fr);
+}
+
+.account-panel {
+  grid-column: 1 / -1;
+}
+
+.account-form,
+.account-balances-form {
+  display: grid;
+  gap: 8px;
+}
+
+.account-form {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr) auto;
+  align-items: end;
+  margin-bottom: 10px;
+}
+
+.account-form .btn {
+  min-height: var(--tap);
+}
+
+.account-editor-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.account-edit-row {
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: oklch(0.145 0.010 85 / 0.62);
+}
+
+.account-edit-row input {
+  min-height: 36px;
+  padding: 7px 8px;
+  font-size: 13px;
+}
+
+.account-net-block {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.account-net-block h3 {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.2;
 }
 
 .panel {
@@ -664,12 +740,10 @@ input[type="datetime-local"] {
   gap: 0;
 }
 
-.quick-filters,
-.template-row {
-  display: flex;
+.quick-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
 .quick-filters {
@@ -678,7 +752,11 @@ input[type="datetime-local"] {
 }
 
 .template-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
   padding-bottom: 1px;
+  scrollbar-width: none;
 }
 
 .quick-filters::-webkit-scrollbar,
@@ -686,9 +764,13 @@ input[type="datetime-local"] {
   display: none;
 }
 
-.quick-chip,
 .template-chip {
   flex: 0 0 auto;
+}
+
+.quick-chip {
+  width: 100%;
+  text-align: center;
 }
 
 .template-chip {
@@ -1195,64 +1277,79 @@ input[type="datetime-local"] {
   z-index: 30;
   width: 100%;
   padding:
-    7px
-    max(10px, env(safe-area-inset-right))
-    calc(7px + env(safe-area-inset-bottom))
-    max(10px, env(safe-area-inset-left));
+    0
+    max(8px, env(safe-area-inset-right))
+    env(safe-area-inset-bottom)
+    max(8px, env(safe-area-inset-left));
   border-top: 1px solid var(--line);
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 4px;
-  background: var(--bg);
-  box-shadow: 0 -10px 32px oklch(0 0 0 / 0.24), 0 1px 0 oklch(1 0 0 / 0.04) inset;
+  gap: 0;
+  background: linear-gradient(180deg, oklch(0.18 0.014 85 / 0.90), oklch(0.125 0.012 85 / 0.96));
+  box-shadow: 0 -14px 38px oklch(0 0 0 / 0.32), 0 -1px 22px oklch(0.40 0.055 84 / 0.10);
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  touch-action: manipulation;
 }
 
 .tab-button {
-  min-height: 54px;
-  border-radius: 13px;
-  display: grid;
-  place-items: center;
-  gap: 2px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 8px 4px 10px;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   background: transparent;
   color: var(--ink-3);
-  font-size: 11px;
-  font-weight: 760;
+  font-size: 12px;
+  font-weight: 560;
   transition: background 180ms var(--ease-out), color 180ms var(--ease-out), transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .tab-button:hover {
   color: var(--ink);
-  background: oklch(0.18 0.014 85 / 0.72);
+  background: oklch(0.18 0.014 85 / 0.46);
 }
 
 .tab-button.active {
   color: var(--ink);
-  background:
-    linear-gradient(180deg, var(--accent-soft), oklch(0.16 0.012 85 / 0.88));
-  box-shadow: 0 0 0 1px oklch(0.70 0.060 84 / 0.16) inset;
+  background: transparent;
+  font-weight: 680;
+  box-shadow: none;
 }
 
 .tab-button.primary-tab {
-  min-height: 58px;
-  border: 1px solid oklch(0.70 0.060 84 / 0.24);
-  background: linear-gradient(180deg, var(--accent-strong), var(--accent));
   color: oklch(0.13 0.018 85);
-  box-shadow: 0 10px 24px oklch(0 0 0 / 0.22);
-  transform: translateY(-7px);
 }
 
 .tab-button.primary-tab.active {
-  background: linear-gradient(180deg, var(--accent-strong), var(--accent));
-  box-shadow: var(--glow), 0 10px 24px oklch(0 0 0 / 0.22);
+  background: transparent;
+  box-shadow: none;
 }
 
 .tab-button.primary-tab:active {
-  transform: translateY(-5px);
+  transform: translateY(1px);
 }
 
 .tab-button.primary-tab .tab-icon {
+  width: 48px;
+  height: 48px;
+  border: 1px solid oklch(0.70 0.060 84 / 0.25);
+  background: linear-gradient(180deg, var(--accent-strong), var(--accent));
   color: oklch(0.13 0.018 85);
-  font-size: 24px;
+  box-shadow: 0 10px 24px oklch(0 0 0 / 0.24), 0 0 0 1px oklch(0.70 0.060 84 / 0.10);
+  transform: translateY(-7px);
+}
+
+.tab-button.primary-tab .tab-svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.55;
 }
 
 .tab-button:active {
@@ -1260,12 +1357,45 @@ input[type="datetime-local"] {
 }
 
 .tab-icon {
-  height: 18px;
-  display: grid;
-  place-items: center;
+  position: relative;
+  width: 38px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-3);
+  transition: background 180ms var(--ease-out), border-color 180ms var(--ease-out), color 180ms var(--ease-out), transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+}
+
+.tab-button.active .tab-icon {
+  border-color: oklch(0.70 0.060 84 / 0.28);
+  background: linear-gradient(180deg, oklch(0.26 0.044 86 / 0.90), var(--accent-soft));
   color: var(--accent-strong);
-  font-size: 16px;
-  line-height: 1;
+  box-shadow: 0 0 0 1px oklch(0.70 0.060 84 / 0.10), 0 0 18px oklch(0.57 0.065 82 / 0.14);
+  transform: translateY(-1px);
+}
+
+.tab-button.primary-tab.active .tab-icon {
+  border-color: oklch(0.70 0.060 84 / 0.25);
+  background: linear-gradient(180deg, var(--accent-strong), var(--accent));
+  color: oklch(0.13 0.018 85);
+  box-shadow: var(--glow), 0 10px 24px oklch(0 0 0 / 0.24);
+  transform: translateY(-7px);
+}
+
+.tab-svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+.tab-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .toast {
@@ -1347,8 +1477,24 @@ input[type="datetime-local"] {
   }
 
   .calendar-cell {
-    min-height: 48px;
-    padding: 4px;
+    min-height: 54px;
+    padding: 6px 4px 4px;
+  }
+
+  .hero-grid.asset-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-form .btn {
+    grid-column: 1 / -1;
+  }
+
+  .account-editor-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .field-grid {
@@ -1379,7 +1525,7 @@ input[type="datetime-local"] {
   }
 
   .tab-button {
-    min-height: 52px;
+    min-height: 64px;
   }
 }
 

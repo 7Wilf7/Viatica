@@ -3,6 +3,7 @@ const STORAGE_KEY = "viatica:v1";
 export const EMPTY_STATE = {
   transactions: [],
   budgets: {},
+  accounts: [],
   preferences: {
     activeBook: "日常账本",
     locale: "zh",
@@ -20,6 +21,7 @@ export function loadState(storage = globalThis.localStorage) {
       ...parsed,
       transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
       budgets: parsed.budgets && typeof parsed.budgets === "object" ? parsed.budgets : {},
+      accounts: Array.isArray(parsed.accounts) ? parsed.accounts : [],
       preferences: parsed.preferences && typeof parsed.preferences === "object" ? {
         ...structuredClone(EMPTY_STATE.preferences),
         ...parsed.preferences,

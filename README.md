@@ -21,7 +21,8 @@ GitHub repository, not as a subfolder inside Aevum or Ultreia.
   spending against editable monthly targets in Settings.
 - Settings uses compact list rows; Manual, Changelog, and Category budgets open
   as second-level pages.
-- Books, accounts, categories, and editable category budgets.
+- Books, accounts, account opening balances, categories, and editable category
+  budgets.
 - Local browser persistence under `viatica:v1`.
 - CSV import/export for portability.
 - Aevum overview snapshot export for later read-only integration.
@@ -38,6 +39,10 @@ software.
 Viatica currently stores data only on the device in the browser's `localStorage`
 under `viatica:v1`. It does not upload transactions to Supabase or any other
 database.
+
+The local state includes transactions, category budgets, preferences, and
+account records. Account net is calculated as each account's opening balance
+plus income minus expenses from ledger entries.
 
 ## Commands
 

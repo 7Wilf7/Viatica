@@ -4,6 +4,8 @@ import { exportTransactionsCsv, importTransactionsCsv } from "./core/csv.js";
 import { formatCurrency, formatDateTime, monthKey, todayKey, toDateInputValue } from "./core/format.js";
 import {
   filterTransactions,
+  normalizeAccount,
+  normalizeAccounts,
   normalizeTransaction,
   summarizeLedger,
 } from "./core/ledger.js";
@@ -33,15 +35,16 @@ const state = {
 };
 
 state.budgets = { ...DEFAULT_BUDGETS, ...state.budgets };
+state.accounts = normalizeAccounts(state.accounts);
 state.preferences = { activeBook: "日常账本", locale: "zh", ...state.preferences };
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
 
 const TABS = [
-  { id: "ledger", labelKey: "tab.ledger", icon: "≡" },
-  { id: "calendar", labelKey: "tab.calendar", icon: "□" },
-  { id: "capture", labelKey: "tab.capture", icon: "+" },
-  { id: "assets", labelKey: "tab.assets", icon: "¥" },
-  { id: "settings", labelKey: "tab.settings", icon: "⚙" },
+  { id: "ledger", labelKey: "tab.ledger" },
+  { id: "calendar", labelKey: "tab.calendar" },
+  { id: "capture", labelKey: "tab.capture" },
+  { id: "assets", labelKey: "tab.assets" },
+  { id: "settings", labelKey: "tab.settings" },
 ];
 
 const QUICK_FILTERS = [
@@ -131,12 +134,12 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "“资产”先看账户净额、分类预算和账本分布，完整资产账户以后再扩展。",
+        "“资产”可以新增账户、设置初始资金，并查看初始资金加流水后的账户净额。",
         "“设置”里的 CSV 适合表格分析，JSON 是完整本地备份。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
-        "Assets starts with account net, category budgets, and book distribution; full asset accounts can come later.",
+        "Assets lets you add accounts, set opening balances, and review account net after ledger flow.",
         "CSV is for spreadsheet review. JSON is the full local backup.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
       ],
@@ -163,6 +166,25 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-06-25",
+    title: {
+      zh: "账户初始资金与底部导航打磨",
+      en: "Account opening balances and bottom nav polish",
+    },
+    items: {
+      zh: [
+        "资产页新增账户创建和初始资金编辑，账户净额按初始资金加流水收支计算。",
+        "底部导航改为 Ultreia 同风格线性图标，中间添加入口只保留大号加号。",
+        "收紧账本筛选、日历和资产概览排版，减少无必要的灰色说明文字。",
+      ],
+      en: [
+        "Added account creation and opening-balance editing in Assets; account net now combines opening balances with ledger flow.",
+        "Changed bottom navigation to Ultreia-style line icons, with the center Add action shown as a large plus only.",
+        "Tightened ledger filters, calendar cells, and Assets overview while removing unnecessary secondary copy.",
+      ],
+    },
+  },
   {
     date: "2026-06-25",
     title: {
@@ -389,7 +411,15 @@ const MESSAGES = {
     "assets.categoryHint": "实际支出对照每月目标。",
     "assets.bookTitle": "账本分布",
     "assets.bookHint": "用于判断钱花在哪个生活域。",
-    "assets.noAccount": "还没有账户流水。",
+    "assets.accountName": "账户名称",
+    "assets.openingBalance": "初始资金",
+    "assets.addAccount": "添加账户",
+    "assets.saveAccounts": "保存初始资金",
+    "assets.accountSaved": "账户已保存。",
+    "assets.accountBalanceSaved": "初始资金已保存。",
+    "assets.accountInvalid": "账户名称不能为空，初始资金必须是数字。",
+    "assets.accountNetTitle": "账户净额",
+    "assets.noAccount": "还没有账户净额。先添加账户或设置初始资金。",
     "assets.noBudget": "暂无预算数据。",
     "assets.noBookExpense": "还没有本月账本支出。",
     "settings.languageTitle": "界面语言",
@@ -499,7 +529,15 @@ const MESSAGES = {
     "assets.categoryHint": "Actual spending against monthly targets.",
     "assets.bookTitle": "Book distribution",
     "assets.bookHint": "Shows which life area the money went to.",
-    "assets.noAccount": "No account entries yet.",
+    "assets.accountName": "Account name",
+    "assets.openingBalance": "Opening balance",
+    "assets.addAccount": "Add account",
+    "assets.saveAccounts": "Save opening balances",
+    "assets.accountSaved": "Account saved.",
+    "assets.accountBalanceSaved": "Opening balances saved.",
+    "assets.accountInvalid": "Account name is required and opening balance must be a number.",
+    "assets.accountNetTitle": "Account net",
+    "assets.noAccount": "No account net yet. Add an account or set an opening balance.",
     "assets.noBudget": "No budget data yet.",
     "assets.noBookExpense": "No book spending this month yet.",
     "settings.languageTitle": "Interface language",
@@ -598,12 +636,34 @@ function persist() {
   saveState({
     transactions: state.transactions,
     budgets: state.budgets,
+    accounts: state.accounts,
     preferences: state.preferences,
   });
 }
 
 function itemOptions(items) {
   return items.map((item) => ({ value: item, label: item }));
+}
+
+function uniqueItems(items) {
+  return [...new Set(items.map((item) => String(item || "").trim()).filter(Boolean))];
+}
+
+function accountNames() {
+  return uniqueItems([
+    ...state.accounts.map((account) => account.name),
+    ...ACCOUNTS,
+    ...state.transactions.map((txn) => txn.account),
+  ]);
+}
+
+function accountOptions() {
+  return itemOptions(accountNames());
+}
+
+function defaultAccountName() {
+  const names = accountNames();
+  return names.includes("微信") ? "微信" : names[0] || "其他";
 }
 
 function typeOptions(includeAll = false) {
@@ -745,7 +805,7 @@ function toast(message) {
 
 function render() {
   document.documentElement.lang = state.preferences.locale === "en" ? "en" : "zh-CN";
-  const summary = summarizeLedger(state.transactions, state.budgets, new Date());
+  const summary = summarizeLedger(state.transactions, state.budgets, new Date(), state.accounts);
   const filteredTransactions = filterTransactions(state.transactions, state.filters)
     .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt));
   const editingTransaction = state.transactions.find((txn) => txn.id === state.editingTransactionId) || null;
@@ -772,13 +832,59 @@ function renderActiveTab(summary, filteredTransactions, editingTransaction) {
   return renderLedgerTab(filteredTransactions, summary);
 }
 
+function iconSvg(paths) {
+  return `
+    <svg class="tab-svg" width="20" height="20" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      ${paths}
+    </svg>
+  `;
+}
+
+function renderTabIcon(tabId) {
+  const icons = {
+    ledger: iconSvg(`
+      <path d="M2.5 2.5 H6 C6.6 2.5 7 2.9 7 3.5 V11.5 C7 10.8 6.5 10.4 5.8 10.4 H2.5 Z" />
+      <path d="M11.5 2.5 H8 C7.4 2.5 7 2.9 7 3.5 V11.5 C7 10.8 7.5 10.4 8.2 10.4 H11.5 Z" />
+    `),
+    calendar: iconSvg(`
+      <rect x="2.2" y="3" width="9.6" height="8.4" rx="1.2" />
+      <path d="M4.5 1.8 V4.2" />
+      <path d="M9.5 1.8 V4.2" />
+      <path d="M2.2 5.4 H11.8" />
+    `),
+    capture: iconSvg(`
+      <path d="M7 2.5 V11.5" />
+      <path d="M2.5 7 H11.5" />
+    `),
+    assets: iconSvg(`
+      <path d="M2.2 4.2 H11.8 V11.2 H2.2 Z" />
+      <path d="M3.2 4.2 V2.8 H9.8 C10.8 2.8 11.4 3.3 11.4 4.2" />
+      <path d="M9 7.4 H12.2 V9.4 H9 C8.4 9.4 8 9 8 8.4 C8 7.8 8.4 7.4 9 7.4 Z" />
+      <path d="M10 8.4 H10.1" />
+    `),
+    settings: iconSvg(`
+      <circle cx="7" cy="7" r="2" />
+      <path d="M7 1.8 V3" />
+      <path d="M7 11 V12.2" />
+      <path d="M1.8 7 H3" />
+      <path d="M11 7 H12.2" />
+      <path d="M3.3 3.3 L4.2 4.2" />
+      <path d="M9.8 9.8 L10.7 10.7" />
+      <path d="M10.7 3.3 L9.8 4.2" />
+      <path d="M4.2 9.8 L3.3 10.7" />
+    `),
+  };
+  return icons[tabId] || "";
+}
+
 function renderTabButton(tab) {
   const active = state.activeTab === tab.id;
   const primary = tab.id === "capture";
+  const label = t(tab.labelKey);
   return `
-    <button class="tab-button ${primary ? "primary-tab" : ""} ${active ? "active" : ""}" data-action="tab" data-tab="${escapeHtml(tab.id)}" aria-current="${active ? "page" : "false"}">
-      <span class="tab-icon">${escapeHtml(tab.icon)}</span>
-      <span>${escapeHtml(t(tab.labelKey))}</span>
+    <button class="tab-button ${primary ? "primary-tab" : ""} ${active ? "active" : ""}" data-action="tab" data-tab="${escapeHtml(tab.id)}" aria-current="${active ? "page" : "false"}" aria-label="${escapeHtml(label)}">
+      <span class="tab-icon" aria-hidden="true">${renderTabIcon(tab.id)}</span>
+      ${primary ? `<span class="sr-only">${escapeHtml(label)}</span>` : `<span class="tab-label">${escapeHtml(label)}</span>`}
     </button>
   `;
 }
@@ -879,7 +985,6 @@ function renderCalendarTab(summary) {
       <div class="section-title">
         <div>
           <h2>${escapeHtml(t("today.recentTitle"))}</h2>
-          <p>${escapeHtml(recent.length ? t("today.recentSorted") : t("today.recentEmptyHint"))}</p>
         </div>
       </div>
       <div class="list compact-list">
@@ -967,7 +1072,6 @@ function renderAssetsTab(summary) {
       <div class="section-title">
         <div>
           <h2>${escapeHtml(t("assets.title"))}</h2>
-          <p>${escapeHtml(t("assets.hint"))}</p>
         </div>
       </div>
       <div class="hero-grid asset-summary">
@@ -977,23 +1081,19 @@ function renderAssetsTab(summary) {
     </section>
 
     <div class="workspace budget-workspace">
-      <section class="panel">
+      <section class="panel account-panel">
         <div class="section-title">
           <div>
             <h2>${escapeHtml(t("assets.accountTitle"))}</h2>
-            <p>${escapeHtml(t("assets.accountHint"))}</p>
           </div>
         </div>
-        <div class="budget-list">
-          ${renderAccountRows(summary)}
-        </div>
+        ${renderAccountManager(summary)}
       </section>
 
       <section class="panel">
         <div class="section-title">
           <div>
             <h2>${escapeHtml(t("assets.categoryTitle"))}</h2>
-            <p>${escapeHtml(t("assets.categoryHint"))}</p>
           </div>
         </div>
         <div class="budget-list">
@@ -1005,7 +1105,6 @@ function renderAssetsTab(summary) {
         <div class="section-title">
           <div>
             <h2>${escapeHtml(t("assets.bookTitle"))}</h2>
-            <p>${escapeHtml(t("assets.bookHint"))}</p>
           </div>
         </div>
         <div class="budget-list">
@@ -1167,7 +1266,7 @@ function renderCaptureForm(editingTransaction) {
     amount: "",
     currency: "CNY",
     book: state.preferences.activeBook,
-    account: "微信",
+    account: defaultAccountName(),
     category: "餐饮",
     title: "",
     merchant: "",
@@ -1210,7 +1309,7 @@ function renderCaptureForm(editingTransaction) {
           <input name="merchant" value="${escapeHtml(txn.merchant || "")}">
         </label>
         ${renderChoiceField({ label: t("capture.book"), name: "book", value: txn.book, options: itemOptions(BOOKS) })}
-        ${renderChoiceField({ label: t("capture.account"), name: "account", value: txn.account, options: itemOptions(ACCOUNTS) })}
+        ${renderChoiceField({ label: t("capture.account"), name: "account", value: txn.account, options: accountOptions() })}
         ${renderChoiceField({ label: t("capture.category"), name: "category", value: txn.category, options: itemOptions(CATEGORIES) })}
         ${renderChoiceField({ label: t("capture.currency"), name: "currency", value: txn.currency, options: itemOptions(CURRENCIES) })}
         <label>
@@ -1237,6 +1336,42 @@ function renderCaptureForm(editingTransaction) {
 
 function renderTemplateButton(label, values) {
   return `<button class="template-chip" type="button" data-action="template" data-values='${escapeHtml(JSON.stringify(values))}'>${escapeHtml(label)}</button>`;
+}
+
+function renderAccountManager(summary) {
+  const accountRows = renderAccountRows(summary);
+  return `
+    <form id="account-form" class="account-form" autocomplete="off">
+      <label>
+        <span>${escapeHtml(t("assets.accountName"))}</span>
+        <input name="name" required>
+      </label>
+      <label>
+        <span>${escapeHtml(t("assets.openingBalance"))}</span>
+        <input name="openingBalance" inputmode="decimal" type="number" step="0.01" value="0">
+      </label>
+      <button class="btn secondary" type="submit">${escapeHtml(t("assets.addAccount"))}</button>
+    </form>
+
+    <form id="account-balances-form" class="account-balances-form">
+      <div class="account-editor-list">
+        ${state.accounts.map((account) => `
+          <label class="account-edit-row">
+            <span>${escapeHtml(account.name)}</span>
+            <input name="${escapeHtml(account.name)}" inputmode="decimal" type="number" step="0.01" value="${escapeHtml(account.openingBalance ?? 0)}">
+          </label>
+        `).join("")}
+      </div>
+      <button class="btn secondary" type="submit">${escapeHtml(t("assets.saveAccounts"))}</button>
+    </form>
+
+    ${accountRows ? `<div class="account-net-block">
+      <h3>${escapeHtml(t("assets.accountNetTitle"))}</h3>
+      <div class="budget-list">
+        ${accountRows}
+      </div>
+    </div>` : ""}
+  `;
 }
 
 function renderBudgetRows(summary, limit = 6) {
@@ -1277,7 +1412,7 @@ function renderCategoryStatRows(summary, limit = 8) {
 
 function renderAccountRows(summary) {
   const entries = Object.entries(summary.accountNet).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
-  if (!entries.length) return `<div class="empty">${escapeHtml(t("assets.noAccount"))}</div>`;
+  if (!entries.length) return "";
   const total = Math.max(1, ...entries.map(([, amount]) => Math.abs(amount)));
   return entries.map(([account, amount]) => `
     <div class="budget-row">
@@ -1312,7 +1447,7 @@ function renderFilters() {
       ${renderFilterChoice("type", state.filters.type, typeOptions(true))}
       ${renderFilterChoice("book", state.filters.book, [{ value: "all", label: t("filter.allBooks") }, ...itemOptions(BOOKS)])}
       ${renderFilterChoice("category", state.filters.category, [{ value: "all", label: t("filter.allCategories") }, ...itemOptions(CATEGORIES)])}
-      ${renderFilterChoice("account", state.filters.account, [{ value: "all", label: t("filter.allAccounts") }, ...itemOptions(ACCOUNTS)])}
+      ${renderFilterChoice("account", state.filters.account, [{ value: "all", label: t("filter.allAccounts") }, ...accountOptions()])}
       <input type="month" data-filter="month" value="${escapeHtml(state.filters.month)}">
     </div>
   `;
@@ -1467,6 +1602,46 @@ document.addEventListener("submit", (event) => {
       toast(t("settings.budgetSaved"));
     } catch (err) {
       toast(err.message || t("settings.budgetInvalid"));
+    }
+    return;
+  }
+  if (form.getAttribute("id") === "account-form") {
+    try {
+      const data = Object.fromEntries(new FormData(form).entries());
+      const account = normalizeAccount(data);
+      const existingIndex = state.accounts.findIndex((item) => item.name === account.name);
+      if (existingIndex >= 0) {
+        state.accounts = state.accounts.map((item, index) => (
+          index === existingIndex
+            ? { ...item, openingBalance: account.openingBalance, updatedAt: account.updatedAt }
+            : item
+        ));
+      } else {
+        state.accounts = [...state.accounts, account];
+      }
+      state.accounts = normalizeAccounts(state.accounts);
+      persist();
+      render();
+      toast(t("assets.accountSaved"));
+    } catch {
+      toast(t("assets.accountInvalid"));
+    }
+    return;
+  }
+  if (form.getAttribute("id") === "account-balances-form") {
+    try {
+      const formData = new FormData(form);
+      const nextAccounts = state.accounts.map((account) => {
+        const value = Number(formData.get(account.name) || 0);
+        if (!Number.isFinite(value)) throw new Error(t("assets.accountInvalid"));
+        return { ...account, openingBalance: Math.round(value * 100) / 100 };
+      });
+      state.accounts = normalizeAccounts(nextAccounts);
+      persist();
+      render();
+      toast(t("assets.accountBalanceSaved"));
+    } catch (err) {
+      toast(err.message || t("assets.accountInvalid"));
     }
     return;
   }
@@ -1628,6 +1803,7 @@ document.addEventListener("click", (event) => {
     download("viatica-backup.json", exportState({
       transactions: state.transactions,
       budgets: state.budgets,
+      accounts: state.accounts,
       preferences: state.preferences,
     }));
   }

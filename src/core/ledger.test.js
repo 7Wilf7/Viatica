@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   buildAevumOverview,
   filterTransactions,
+  normalizeAccount,
+  normalizeAccounts,
   normalizeTransaction,
   summarizeLedger,
 } from "./ledger.js";
@@ -20,7 +22,22 @@ test("normalizes an expense with book and legacy reimbursable fields", () => {
 
   assert.equal(txn.amount, 168);
   assert.equal(txn.book, "旅行账本");
+  assert.equal(normalizeTransaction({ amount: 50, account: "招商银行", title: "测试" }).account, "招商银行");
   assert.equal(txn.reimbursable, true);
+});
+
+test("normalizes accounts and includes opening balances in account net", () => {
+  const accounts = normalizeAccounts([
+    normalizeAccount({ name: "招商银行", openingBalance: 1200 }, new Date("2026-06-24T08:00:00+08:00")),
+  ], []);
+  const txns = [
+    normalizeTransaction({ amount: 200, category: "餐饮", account: "招商银行", title: "晚餐" }),
+    normalizeTransaction({ type: "income", amount: 500, category: "工作", account: "微信", title: "收入" }),
+  ];
+  const summary = summarizeLedger(txns, {}, new Date("2026-06-24T12:00"), accounts);
+
+  assert.equal(summary.accountNet["招商银行"], 1000);
+  assert.equal(summary.accountNet["微信"], 500);
 });
 
 test("summarizes current month and today totals", () => {

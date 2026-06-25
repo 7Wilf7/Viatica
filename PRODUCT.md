@@ -31,6 +31,9 @@ a gamified finance app.
 - Category statistics and category budgets are different concepts. Statistics
   summarize actual spending by category. Budgets compare actual spending against
   editable monthly category targets saved locally.
+- Assets owns local account setup: accounts can be created locally, opening
+  balances are editable, and account net equals opening balance plus ledger
+  income/expense flow.
 - Settings should stay compact on mobile. Manual, changelog, and budget editing
   open as second-level pages following Ultreia's settings pattern.
 - Requirement review first: before building new product requests, compare the
@@ -48,5 +51,5 @@ a gamified finance app.
 
 ## Current Milestone
 The active milestone is to make the PWA ready for real daily accounting by
-2026-07-01. The priority is not AI features yet; it is speed, clarity, backup,
-and confidence in the transaction workflow.
+2026-07-01. The priority is not AI features yet; it is speed, clarity, account
+setup, backup, and confidence in the transaction workflow.

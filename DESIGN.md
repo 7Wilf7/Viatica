@@ -45,16 +45,21 @@ data operations and product notes.
 
 ## Components
 - Add opens the capture form and is the primary action surface in the center of
-  the bottom tab bar.
+  the bottom tab bar. The center tab shows a large plus only; the other four
+  tabs use the same restrained monoline SVG icon style as Ultreia.
 - Ledger owns filtering, editing, deletion, and a top Flow / Charts switch.
   Charts means statistics.
 - Ledger must not show an All Books selector at the top; book filtering belongs
   inside the Flow filters.
-- Calendar owns the monthly spending calendar and recent entries.
+- Calendar owns the monthly spending calendar and recent entries. Calendar day
+  numbers sit at the top center of each cell so the body of the cell can later
+  hold daily income/expense details.
 - Charts under Ledger own actual statistics only. Category statistics are
   actual spending summaries and must not display budget targets.
-- Assets owns account net, category budgets, and book spending review. Category
-  budgets compare actual spending with monthly targets.
+- Assets owns account creation, opening balances, account net, category budgets,
+  and book spending review. Account net is opening balance plus ledger
+  income/expense flow. Category budgets compare actual spending with monthly
+  targets.
 - Settings uses the Ultreia-style compact mobile list. Long content such as the
   manual, changelog, and category budget editor opens as a second-level page,
   not inline on the Settings home.

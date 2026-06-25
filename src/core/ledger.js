@@ -25,6 +25,56 @@ function parseBoolean(input) {
   return ["true", "1", "yes", "y"].includes(String(input || "").trim().toLowerCase());
 }
 
+function moneyValue(input) {
+  const value = Number(input || 0);
+  if (!Number.isFinite(value)) {
+    throw new Error("金额必须是数字");
+  }
+  return Math.round(value * 100) / 100;
+}
+
+export function normalizeAccount(input = {}, now = new Date()) {
+  const name = String(input.name || "").trim();
+  if (!name) throw new Error("账户名称不能为空");
+  const openingBalance = moneyValue(input.openingBalance ?? input.initialBalance ?? 0);
+  const createdAt = input.createdAt || now.toISOString();
+
+  return {
+    id: input.id || uid("acct"),
+    name,
+    openingBalance,
+    isDefault: Boolean(input.isDefault),
+    createdAt,
+    updatedAt: now.toISOString(),
+  };
+}
+
+export function normalizeAccounts(accounts = [], defaultNames = ACCOUNTS, now = new Date()) {
+  const byName = new Map();
+  const addAccount = (input, isDefault = false, index = 0) => {
+    const candidate = typeof input === "string"
+      ? { id: `default:${index}:${input}`, name: input, openingBalance: 0, isDefault }
+      : { ...input, isDefault: Boolean(input?.isDefault || isDefault) };
+
+    try {
+      const account = normalizeAccount(candidate, now);
+      const existing = byName.get(account.name);
+      byName.set(account.name, existing ? {
+        ...existing,
+        ...account,
+        isDefault: existing.isDefault || account.isDefault,
+        createdAt: existing.createdAt || account.createdAt,
+      } : account);
+    } catch {
+      // Ignore malformed persisted account rows; valid rows and defaults survive.
+    }
+  };
+
+  defaultNames.forEach((name, index) => addAccount(name, true, index));
+  accounts.forEach((account, index) => addAccount(account, false, index));
+  return [...byName.values()];
+}
+
 export function normalizeTransaction(input = {}, now = new Date()) {
   const type = ["expense", "income", "transfer"].includes(input.type) ? input.type : "expense";
   const amount = Number(input.amount);
@@ -38,7 +88,7 @@ export function normalizeTransaction(input = {}, now = new Date()) {
   }
 
   const category = CATEGORIES.includes(input.category) ? input.category : "其他";
-  const account = ACCOUNTS.includes(input.account) ? input.account : "其他";
+  const account = String(input.account || "").trim() || "其他";
   const book = BOOKS.includes(input.book) ? input.book : "日常账本";
   const currency = CURRENCIES.includes(input.currency) ? input.currency : "CNY";
   const title = String(input.title || input.merchant || category).trim();
@@ -65,7 +115,7 @@ export function normalizeTransaction(input = {}, now = new Date()) {
   };
 }
 
-export function summarizeLedger(transactions = [], budgets = DEFAULT_BUDGETS, now = new Date()) {
+export function summarizeLedger(transactions = [], budgets = DEFAULT_BUDGETS, now = new Date(), accounts = []) {
   const currentMonth = monthKey(now);
   const currentDay = todayKey(now);
   const summary = {
@@ -82,6 +132,11 @@ export function summarizeLedger(transactions = [], budgets = DEFAULT_BUDGETS, no
     reimbursableExpense: 0,
     transactionCount: transactions.length,
   };
+
+  for (const account of normalizeAccounts(accounts, [], now)) {
+    if (!account.openingBalance) continue;
+    summary.accountNet[account.name] = account.openingBalance;
+  }
 
   for (const txn of transactions) {
     const d = new Date(txn.occurredAt);

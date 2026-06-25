@@ -51,6 +51,9 @@ restrained dark product UI.
   the target.
 - Data is local-first under `localStorage` key `viatica:v1` until sync rules are
   explicitly designed.
+- Local account records and opening balances are part of the `viatica:v1` model.
+  Account net should be calculated as opening balance plus ledger income/expense
+  flow, without requiring a backend.
 - Transaction details stay private to Viatica unless an explicit reviewed event
   shares them with Aevum.
 - Aevum integration is overview-first and event-based. Do not let Aevum read or
@@ -75,6 +78,8 @@ restrained dark product UI.
 - Settings should follow Ultreia's compact mobile pattern: a short settings
   list first, with manual, changelog, budget editing, or long explanatory
   content opening as second-level pages.
+- Assets owns account creation, opening-balance editing, account net, category
+  budgets, and book spending review.
 - Avoid decorative copy, oversized hero blocks, nested cards, and UI text that
   explains obvious controls.
 
