@@ -55,6 +55,16 @@ Production PWA:
 
 - `https://viatica-tan.vercel.app`
 
+After any verified project change, commit and push to `main`, then deploy the
+latest `main` branch to Vercel production immediately. Use:
+
+```bash
+npx vercel --prod
+```
+
+If Vercel CLI auth or project linking is missing, stop and report that blocker
+instead of changing credentials or production settings.
+
 GitHub:
 
 - `https://github.com/7Wilf7/Viatica`

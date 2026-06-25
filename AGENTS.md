@@ -88,3 +88,12 @@ restrained dark product UI.
 ## Git
 - After verified project changes, commit and push directly so work stays
   available across devices.
+
+## Deployment
+- After any verified project change is committed and pushed, deploy the current
+  `main` branch to Vercel production immediately so the PWA reflects the latest
+  work.
+- Use `npx vercel --prod` from the project root when the Vercel CLI is already
+  linked and authenticated. If the CLI is missing, not authenticated, or the
+  project is not linked, report the blocker and current Git state instead of
+  guessing credentials or changing production settings.
