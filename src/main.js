@@ -1246,7 +1246,9 @@ async function clearPwaCacheAndReload() {
   } catch (err) {
     console.warn("[clear-cache] failed:", err);
   }
-  window.location.reload();
+  const url = new URL(window.location.href);
+  url.searchParams.set("viatica_refresh", String(Date.now()));
+  window.location.replace(url.toString());
 }
 
 function closeChoiceMenus(except = null) {
