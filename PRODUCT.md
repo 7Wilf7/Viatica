@@ -28,6 +28,11 @@ a gamified finance app.
 - Ledger first, not dashboard first: Ledger owns the top Flow / Charts switch.
   Charts means statistics. Do not place an All Books selector at the top of
   Ledger.
+- Category statistics and category budgets are different concepts. Statistics
+  summarize actual spending by category. Budgets compare actual spending against
+  editable monthly category targets saved locally.
+- Settings should stay compact on mobile. Manual, changelog, and budget editing
+  open as second-level pages following Ultreia's settings pattern.
 - Requirement review first: before building new product requests, compare the
   idea with strong mobile accounting apps such as iCost, then adapt it to
   Wilf's personal needs instead of copying generic finance-app complexity.

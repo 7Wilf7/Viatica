@@ -32,7 +32,7 @@ const state = {
   pwaRefreshInProgress: false,
   dashboardRange: "month",
   ledgerView: "flow",
-  settingsContent: "manual",
+  settingsContent: "home",
 };
 
 state.budgets = { ...DEFAULT_BUDGETS, ...state.budgets };
@@ -75,11 +75,6 @@ const CAPTURE_TEMPLATES = [
   { labelKey: "template.gear", values: { amount: "899", title: "跑步装备", category: "运动装备", book: "训练账本", tags: "gear ultreia" } },
 ];
 
-const SETTINGS_CONTENT_TABS = [
-  { id: "manual", labelKey: "settings.manualTab" },
-  { id: "changelog", labelKey: "settings.changelogTab" },
-];
-
 const MANUAL_SECTIONS = [
   {
     title: {
@@ -114,6 +109,24 @@ const MANUAL_SECTIONS = [
         "Ledger keeps only Flow and Charts at the top: Flow reviews individual entries, and Charts means statistics.",
         "Calendar marks spending days in the current month, and recent entries are sorted by occurrence time.",
         "Flow filters by type, book, category, account, and month; each entry can be edited or deleted.",
+      ],
+    },
+  },
+  {
+    title: {
+      zh: "分类统计和分类预算",
+      en: "Category statistics and budgets",
+    },
+    items: {
+      zh: [
+        "分类统计只看真实流水：本月每个分类实际花了多少钱，用来回答“钱花到哪里了”。",
+        "分类预算是目标对照：实际支出 / 你设置的每月预算，用来回答“这个分类有没有接近上限”。",
+        "预算在“设置 → 分类预算”里改，初始值来自 Viatica 默认预算，保存后只写入本机 `viatica:v1`。",
+      ],
+      en: [
+        "Category statistics only read real entries: how much each category spent this month.",
+        "Category budgets compare actual spending against the monthly target you set.",
+        "Edit budgets in Settings → Category budgets. Defaults come from Viatica and saved values stay local in `viatica:v1`.",
       ],
     },
   },
@@ -156,6 +169,25 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-06-25",
+    title: {
+      zh: "设置页收敛与分类预算编辑",
+      en: "Compact settings and editable category budgets",
+    },
+    items: {
+      zh: [
+        "参考 Ultreia 的移动端设置，把设置页改为紧凑列表，使用手册、更新日志和分类预算进入独立页面。",
+        "补充分清“分类统计”和“分类预算”：统计只看实际流水，预算是实际支出对照每月目标。",
+        "新增分类预算编辑入口，预算保存到本机 `viatica:v1`，资产页用它计算预算执行。",
+      ],
+      en: [
+        "Reworked Settings into a compact list, following Ultreia's mobile settings pattern; Manual, Changelog, and Category budgets now open as separate pages.",
+        "Clarified Category statistics versus Category budgets: statistics read actual entries, while budgets compare spending against monthly targets.",
+        "Added editable category budgets saved locally in `viatica:v1`, used by Assets for budget progress.",
+      ],
+    },
+  },
   {
     date: "2026-06-25",
     title: {
@@ -340,13 +372,14 @@ const MESSAGES = {
     "stats.title": "统计",
     "stats.hint": "图表先覆盖支出、收入、报销和记录数。",
     "stats.categoryTitle": "分类统计",
-    "stats.categoryHint": "按本月已花金额排序。",
+    "stats.categoryHint": "只按真实流水汇总，不看预算目标。",
+    "stats.noCategory": "本月还没有分类支出。",
     "assets.title": "资产概览",
     "assets.hint": "先基于流水汇总账户净额。",
     "assets.accountTitle": "账户净额",
     "assets.accountHint": "收入记正数，支出记负数，转账不计入净额。",
     "assets.categoryTitle": "分类预算",
-    "assets.categoryHint": "按本月已花金额排序。",
+    "assets.categoryHint": "实际支出对照每月目标。",
     "assets.bookTitle": "账本分布",
     "assets.bookHint": "用于判断钱花在哪个生活域。",
     "assets.noAccount": "还没有账户流水。",
@@ -354,19 +387,33 @@ const MESSAGES = {
     "assets.noBookExpense": "还没有本月账本支出。",
     "settings.languageTitle": "界面语言",
     "settings.languageHint": "只切换界面文案，不改已有流水、账本、分类和导出数据。",
+    "settings.dataSection": "数据",
+    "settings.productSection": "产品",
+    "settings.localSection": "本机",
     "settings.importExportTitle": "备份与迁移",
     "settings.importExportHint": "云同步上线前，用于换设备、恢复数据或保留本地备份。",
     "settings.exportCsv": "导出 CSV",
     "settings.importCsv": "导入 CSV",
     "settings.exportJson": "导出完整备份",
+    "settings.budgetTitle": "分类预算",
+    "settings.budgetHint": "设置每月分类目标",
+    "settings.budgetPageHint": "预算是目标，不是流水；资产页会用这里的金额计算执行进度。",
+    "settings.budgetSave": "保存预算",
+    "settings.budgetReset": "恢复默认",
+    "settings.budgetSaved": "预算已保存。",
+    "settings.budgetResetDone": "预算已恢复默认。",
+    "settings.budgetInvalid": "预算必须是 0 或正数。",
     "settings.pwaTitle": "PWA 更新",
     "settings.pwaHint": "更新后仍看到旧界面时使用；不会清除 viatica:v1 账本数据。",
     "settings.clearing": "正在清理...",
     "settings.clearCache": "清缓存并重载",
     "settings.guideTitle": "使用手册与更新日志",
-    "settings.guideHint": "参考 Ultreia 的设置入口，把 Viatica 的使用方法和产品变化放在同一处。",
-    "settings.manualTab": "使用手册",
-    "settings.changelogTab": "更新日志",
+    "settings.guideHint": "使用说明和产品变化",
+    "settings.manualTitle": "使用手册",
+    "settings.manualHint": "单独阅读，不占设置首页",
+    "settings.changelogTitle": "更新日志",
+    "settings.changelogHint": "查看 Viatica 产品变化",
+    "settings.back": "返回",
     "filter.search": "搜索标题、商家、标签",
     "filter.allTypes": "全部类型",
     "filter.allBooks": "账本",
@@ -449,13 +496,14 @@ const MESSAGES = {
     "stats.title": "Statistics",
     "stats.hint": "Charts start with spending, income, reimbursable amount, and entry count.",
     "stats.categoryTitle": "Category statistics",
-    "stats.categoryHint": "Sorted by spending this month.",
+    "stats.categoryHint": "Based only on real entries, not budget targets.",
+    "stats.noCategory": "No category spending this month yet.",
     "assets.title": "Asset overview",
     "assets.hint": "Starts from account net based on ledger entries.",
     "assets.accountTitle": "Account net",
     "assets.accountHint": "Income is positive, expense is negative, and transfers are neutral.",
     "assets.categoryTitle": "Category budgets",
-    "assets.categoryHint": "Sorted by spending this month.",
+    "assets.categoryHint": "Actual spending against monthly targets.",
     "assets.bookTitle": "Book distribution",
     "assets.bookHint": "Shows which life area the money went to.",
     "assets.noAccount": "No account entries yet.",
@@ -463,19 +511,33 @@ const MESSAGES = {
     "assets.noBookExpense": "No book spending this month yet.",
     "settings.languageTitle": "Interface language",
     "settings.languageHint": "Switches interface copy only; existing entries, books, categories, and exports stay unchanged.",
+    "settings.dataSection": "Data",
+    "settings.productSection": "Product",
+    "settings.localSection": "Local",
     "settings.importExportTitle": "Backup and transfer",
     "settings.importExportHint": "Use this to move devices, restore data, or keep a local backup until cloud sync is available.",
     "settings.exportCsv": "Export CSV",
     "settings.importCsv": "Import CSV",
     "settings.exportJson": "Export full backup",
+    "settings.budgetTitle": "Category budgets",
+    "settings.budgetHint": "Set monthly category targets",
+    "settings.budgetPageHint": "Budgets are targets, not entries. Assets uses these values for budget progress.",
+    "settings.budgetSave": "Save budgets",
+    "settings.budgetReset": "Restore defaults",
+    "settings.budgetSaved": "Budgets saved.",
+    "settings.budgetResetDone": "Budgets restored to defaults.",
+    "settings.budgetInvalid": "Budgets must be 0 or positive.",
     "settings.pwaTitle": "PWA refresh",
     "settings.pwaHint": "Use this when the app still shows an old interface; viatica:v1 ledger data is kept.",
     "settings.clearing": "Clearing...",
     "settings.clearCache": "Clear cache and reload",
     "settings.guideTitle": "Manual and changelog",
-    "settings.guideHint": "Following Ultreia's Settings entry pattern, Viatica keeps usage notes and product changes in one place.",
-    "settings.manualTab": "Manual",
-    "settings.changelogTab": "Changelog",
+    "settings.guideHint": "Usage notes and product changes",
+    "settings.manualTitle": "Manual",
+    "settings.manualHint": "Read separately from Settings home",
+    "settings.changelogTitle": "Changelog",
+    "settings.changelogHint": "Review Viatica product changes",
+    "settings.back": "Back",
     "filter.search": "Search title, merchant, tags",
     "filter.allTypes": "All types",
     "filter.allBooks": "Book",
@@ -813,7 +875,7 @@ function renderLedgerStats(summary) {
         </div>
       </div>
       <div class="budget-list">
-        ${renderBudgetRows(summary, 8)}
+        ${renderCategoryStatRows(summary, 8)}
       </div>
     </section>
   `;
@@ -975,69 +1037,97 @@ function renderAssetsTab(summary) {
 }
 
 function renderSettingsTab() {
+  if (state.settingsContent === "manual") return renderSettingsPage(t("settings.manualTitle"), renderManual());
+  if (state.settingsContent === "changelog") return renderSettingsPage(t("settings.changelogTitle"), renderChangelog());
+  if (state.settingsContent === "budgets") return renderSettingsPage(t("settings.budgetTitle"), renderBudgetSettings());
+
   return `
-    <section class="panel">
-      <div class="section-title">
-        <div>
-          <h2>${escapeHtml(t("settings.languageTitle"))}</h2>
-          <p>${escapeHtml(t("settings.languageHint"))}</p>
-        </div>
-      </div>
-      <div class="language-switch">
-        ${LOCALES.map(renderLocaleButton).join("")}
-      </div>
-    </section>
+    <section class="settings-list">
+      ${renderSettingsSection(t("settings.productSection"), [
+        renderSettingsCell(t("settings.languageTitle"), t("settings.languageHint"), renderLanguageSwitch()),
+        renderSettingsCell(t("settings.manualTitle"), t("settings.manualHint"), "", "manual"),
+        renderSettingsCell(t("settings.changelogTitle"), t("settings.changelogHint"), "", "changelog"),
+      ])}
 
-    <section class="panel guide-panel">
-      <div class="section-title">
-        <div>
-          <h2>${escapeHtml(t("settings.guideTitle"))}</h2>
-          <p>${escapeHtml(t("settings.guideHint"))}</p>
-        </div>
-      </div>
-      ${renderSettingsContentSwitch()}
-      ${state.settingsContent === "changelog" ? renderChangelog() : renderManual()}
-    </section>
+      ${renderSettingsSection(t("settings.dataSection"), [
+        renderSettingsCell(t("settings.budgetTitle"), t("settings.budgetHint"), "", "budgets"),
+        renderSettingsCell(t("settings.exportCsv"), t("settings.importExportHint"), "", "export-csv"),
+        renderSettingsCell(t("settings.importCsv"), "", "", "import-csv"),
+        renderSettingsCell(t("settings.exportJson"), "", "", "export-json"),
+      ])}
 
-    <section class="panel">
-      <div class="section-title">
-        <div>
-          <h2>${escapeHtml(t("settings.importExportTitle"))}</h2>
-          <p>${escapeHtml(t("settings.importExportHint"))}</p>
-        </div>
-      </div>
-      <div class="action-grid">
-        <button class="btn secondary" data-action="export-csv">${escapeHtml(t("settings.exportCsv"))}</button>
-        <button class="btn secondary" data-action="import-csv">${escapeHtml(t("settings.importCsv"))}</button>
-        <button class="btn secondary" data-action="export-json">${escapeHtml(t("settings.exportJson"))}</button>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="section-title">
-        <div>
-          <h2>${escapeHtml(t("settings.pwaTitle"))}</h2>
-          <p>${escapeHtml(t("settings.pwaHint"))}</p>
-        </div>
-      </div>
-      <div class="action-grid">
-        <button class="btn secondary" data-action="clear-cache-reload" ${state.pwaRefreshInProgress ? "disabled aria-busy=\"true\"" : ""}>
-          ${escapeHtml(state.pwaRefreshInProgress ? t("settings.clearing") : t("settings.clearCache"))}
-        </button>
-      </div>
+      ${renderSettingsSection(t("settings.localSection"), [
+        renderSettingsCell(
+          state.pwaRefreshInProgress ? t("settings.clearing") : t("settings.clearCache"),
+          t("settings.pwaHint"),
+          "",
+          "clear-cache-reload",
+          state.pwaRefreshInProgress,
+        ),
+      ])}
     </section>
   `;
 }
 
-function renderSettingsContentSwitch() {
+function renderSettingsPage(title, body) {
   return `
-    <div class="settings-content-switch" aria-label="${escapeHtml(t("settings.guideTitle"))}">
-      ${SETTINGS_CONTENT_TABS.map((item) => `
-        <button class="${state.settingsContent === item.id ? "active" : ""}" data-action="settings-content" data-content="${escapeHtml(item.id)}" aria-pressed="${state.settingsContent === item.id ? "true" : "false"}">
-          ${escapeHtml(t(item.labelKey))}
-        </button>
-      `).join("")}
-    </div>
+    <section class="settings-page">
+      <div class="settings-page-head">
+        <button class="btn ghost settings-back" data-action="settings-content" data-content="home">${escapeHtml(t("settings.back"))}</button>
+        <h2>${escapeHtml(title)}</h2>
+      </div>
+      ${body}
+    </section>
+  `;
+}
+
+function renderSettingsSection(title, cells) {
+  return `
+    <section class="settings-group">
+      <h2>${escapeHtml(title)}</h2>
+      <div class="settings-cells">${cells.join("")}</div>
+    </section>
+  `;
+}
+
+function renderSettingsCell(primary, secondary = "", right = "", action = "", disabled = false) {
+  const isButton = Boolean(action);
+  const content = `
+    <span class="settings-cell-copy">
+      <strong>${escapeHtml(primary)}</strong>
+      ${secondary ? `<span>${escapeHtml(secondary)}</span>` : ""}
+    </span>
+    ${right ? `<span class="settings-cell-right">${right}</span>` : isButton ? `<span class="settings-chevron">›</span>` : ""}
+  `;
+  if (!isButton) return `<div class="settings-cell">${content}</div>`;
+  return `
+    <button class="settings-cell" data-action="${escapeHtml(action === "manual" || action === "changelog" || action === "budgets" ? "settings-content" : action)}" ${action === "manual" || action === "changelog" || action === "budgets" ? `data-content="${escapeHtml(action)}"` : ""} ${disabled ? "disabled aria-busy=\"true\"" : ""}>
+      ${content}
+    </button>
+  `;
+}
+
+function renderLanguageSwitch() {
+  return `<span class="language-switch compact-language">${LOCALES.map(renderLocaleButton).join("")}</span>`;
+}
+
+function renderBudgetSettings() {
+  return `
+    <form id="budget-form" class="budget-form">
+      <p class="settings-page-hint">${escapeHtml(t("settings.budgetPageHint"))}</p>
+      <div class="budget-editor-list">
+        ${CATEGORIES.map((category) => `
+          <label class="budget-edit-row">
+            <span>${escapeHtml(category)}</span>
+            <input name="${escapeHtml(category)}" inputmode="decimal" type="number" min="0" step="1" value="${escapeHtml(state.budgets[category] ?? 0)}">
+          </label>
+        `).join("")}
+      </div>
+      <div class="budget-actions">
+        <button class="btn secondary" type="button" data-action="reset-budgets">${escapeHtml(t("settings.budgetReset"))}</button>
+        <button class="btn primary" type="submit">${escapeHtml(t("settings.budgetSave"))}</button>
+      </div>
+    </form>
   `;
 }
 
@@ -1195,6 +1285,23 @@ function renderBudgetRows(summary, limit = 6) {
       </div>
     `;
   }).join("");
+}
+
+function renderCategoryStatRows(summary, limit = 8) {
+  const entries = Object.entries(summary.categoryExpense)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit);
+  if (!entries.length) return `<div class="empty">${escapeHtml(t("stats.noCategory"))}</div>`;
+  const total = Math.max(1, summary.monthExpense);
+  return entries.map(([category, amount]) => `
+    <div class="budget-row">
+      <div>
+        <strong>${escapeHtml(category)}</strong>
+        <span>${formatMoney(amount)}</span>
+      </div>
+      <div class="budget-track"><span style="width: ${Math.round((amount / total) * 100)}%"></span></div>
+    </div>
+  `).join("");
 }
 
 function renderAccountRows(summary) {
@@ -1375,8 +1482,26 @@ function chooseOption(optionNode) {
 
 document.addEventListener("submit", (event) => {
   const form = event.target;
-  if (!(form instanceof HTMLFormElement) || form.getAttribute("id") !== "transaction-form") return;
+  if (!(form instanceof HTMLFormElement)) return;
   event.preventDefault();
+  if (form.getAttribute("id") === "budget-form") {
+    try {
+      const nextBudgets = {};
+      for (const category of CATEGORIES) {
+        const value = Number(form.elements.namedItem(category)?.value || 0);
+        if (!Number.isFinite(value) || value < 0) throw new Error(t("settings.budgetInvalid"));
+        nextBudgets[category] = Math.round(value * 100) / 100;
+      }
+      state.budgets = nextBudgets;
+      persist();
+      render();
+      toast(t("settings.budgetSaved"));
+    } catch (err) {
+      toast(err.message || t("settings.budgetInvalid"));
+    }
+    return;
+  }
+  if (form.getAttribute("id") !== "transaction-form") return;
   try {
     const data = formToTransaction(form);
     const existing = data.id ? state.transactions.find((txn) => txn.id === data.id) : null;
@@ -1473,6 +1598,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "tab") {
     state.activeTab = node.dataset.tab || "ledger";
+    if (state.activeTab === "settings") state.settingsContent = "home";
     if (state.activeTab !== "capture") state.pendingReceiptDataUrl = "";
     render();
   }
@@ -1522,10 +1648,16 @@ document.addEventListener("click", (event) => {
     render();
   }
   if (action === "settings-content") {
-    const content = node.dataset.content;
-    if (!SETTINGS_CONTENT_TABS.some((item) => item.id === content)) return;
+    const content = node.dataset.content || "home";
+    if (!["home", "manual", "changelog", "budgets"].includes(content)) return;
     state.settingsContent = content;
     render();
+  }
+  if (action === "reset-budgets") {
+    state.budgets = { ...DEFAULT_BUDGETS };
+    persist();
+    render();
+    toast(t("settings.budgetResetDone"));
   }
   if (action === "attach-receipt") {
     document.querySelector("#receipt-input")?.click();

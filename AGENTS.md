@@ -68,6 +68,12 @@ restrained dark product UI.
   Add, Assets, Settings. The Add tab is the center plus action.
 - The Ledger tab top switch should keep only Flow and Charts. Charts means
   statistics. Do not put an All Books selector at the top of Ledger.
+- Keep category statistics and category budgets separate. Statistics summarize
+  actual spending from transactions. Budgets compare actual spending against
+  editable monthly targets saved under `viatica:v1`.
+- Settings should follow Ultreia's compact mobile pattern: a short settings
+  list first, with manual, changelog, budget editing, or long explanatory
+  content opening as second-level pages.
 - Avoid decorative copy, oversized hero blocks, nested cards, and UI text that
   explains obvious controls.
 

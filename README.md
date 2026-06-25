@@ -17,6 +17,10 @@ GitHub repository, not as a subfolder inside Aevum or Ultreia.
 - Fast mobile transaction capture.
 - Bottom-tab app shell for Ledger, Calendar, Add, Assets, and Settings.
 - Ledger uses a top Flow / Charts switch. Charts is the statistics view.
+- Category statistics summarize actual spending. Category budgets compare
+  spending against editable monthly targets in Settings.
+- Settings uses compact list rows; Manual, Changelog, and Category budgets open
+  as second-level pages.
 - Books, accounts, categories, budgets, reimbursable records, receipt attachment.
 - Local browser persistence under `viatica:v1`.
 - CSV import/export for portability.

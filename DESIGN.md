@@ -50,8 +50,15 @@ data operations and product notes.
 - Ledger must not show an All Books selector at the top; book filtering belongs
   inside the Flow filters.
 - Calendar owns the monthly spending calendar and recent entries.
-- Assets owns account net, category budgets, and book spending review.
-- Settings owns local data actions, exports, imports, and PWA/storage notes.
+- Charts under Ledger own actual statistics only. Category statistics are
+  actual spending summaries and must not display budget targets.
+- Assets owns account net, category budgets, and book spending review. Category
+  budgets compare actual spending with monthly targets.
+- Settings uses the Ultreia-style compact mobile list. Long content such as the
+  manual, changelog, and category budget editor opens as a second-level page,
+  not inline on the Settings home.
+- Settings owns local data actions, exports, imports, editable budgets, and
+  PWA/storage notes.
 - Budget rows and transaction rows use dense panels, not oversized cards.
 - Buttons and form controls follow one shape vocabulary with visible focus.
 - Empty states tell Wilf the next practical action.
