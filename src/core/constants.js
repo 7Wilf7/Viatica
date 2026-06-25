@@ -4,11 +4,9 @@ export const TRANSACTION_TYPES = [
 ];
 
 export const ACCOUNTS = [
-  "现金",
   "微信",
-  "支付宝",
   "银行卡",
-  "信用卡",
+  "支付宝",
   "其他",
 ];
 

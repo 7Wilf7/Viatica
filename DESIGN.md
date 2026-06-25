@@ -55,30 +55,29 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   the bottom tab bar. The center tab shows a large plus only; the other four
   tabs use the same restrained monoline SVG icon style as Ultreia.
 - Viatica owns a small custom monoline glyph set for bottom navigation,
-  categories, accounts, books, and row actions. Category icons may use subtle
+  categories, accounts, and row actions. Category icons may use subtle
   differentiated colors, but they should stay soft and tool-like, not childish
   or promotional.
 - Ledger owns filtering, editing, deletion, and a top Flow / Charts switch.
   Charts means statistics.
-- Ledger must not show an All Books selector at the top; book filtering belongs
-  inside the Flow filters.
-- Calendar owns the monthly spending calendar and recent entries. Calendar day
-  numbers sit at the top center of each cell so the body of the cell can later
-  hold daily income/expense details.
+- Ledger must not show an All Books selector or visible book filter unless the
+  product intentionally reintroduces multi-book workflow.
+- Calendar owns the monthly spending calendar and a compact month summary.
+  Calendar day numbers sit at the top center of each cell so the body of the
+  cell can later hold daily income/expense details.
 - Charts under Ledger own actual statistics only. Category statistics are
   actual spending summaries and must not display budget targets.
-- Assets owns account creation, opening balances, account net, category budgets,
-  and book spending review. Account net is opening balance plus ledger
-  income/expense flow. Category budgets compare actual spending with monthly
-  targets.
+- Assets owns account creation, opening balances, account net, and category
+  budgets. Account net is opening balance plus ledger income/expense flow.
+  Category budgets compare actual spending with monthly targets.
 - Settings uses the Ultreia-style compact mobile list. Long content such as the
   manual, changelog, and category budget editor opens as a second-level page,
   not inline on the Settings home.
 - Settings owns local data actions, exports, imports, editable budgets, and
   PWA/storage notes.
 - Budget rows and transaction rows use dense panels, not oversized cards.
-  Transaction rows prioritize category icon, title, time/book context, amount,
-  and account; edit/delete actions stay visually quiet.
+  Transaction rows prioritize category icon, title, time/type context, amount,
+  and account; edit/delete actions stay hidden until long press.
 - Buttons and form controls follow one shape vocabulary with visible focus.
 - Empty states tell Wilf the next practical action.
 

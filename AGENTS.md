@@ -3,7 +3,9 @@
 ## Project Purpose
 Viatica is Wilf's standalone personal ledger and resource-management app in the
 Aevum ecosystem. It owns transaction capture, editing, import/export, budgets,
-books, accounts, categories, and local financial records.
+accounts, categories, and local financial records. The legacy book field may
+remain in local data for compatibility, but multi-book workflow should not be
+foregrounded unless Wilf explicitly asks for it again.
 Aevum only keeps overview data, app entry points, and reviewed cross-product
 events.
 
@@ -75,20 +77,21 @@ restrained dark product UI.
   and category/icon hierarchy only. Do not copy iCost's light theme or assets;
   translate the useful patterns into Viatica's own dark tool language.
 - Use Viatica's own restrained monoline glyphs for bottom tabs, categories,
-  accounts, books, and row actions. Icons should clarify scanning, not become
+  accounts, and row actions. Icons should clarify scanning, not become
   decorative stickers.
 - Use bottom tabs for the mobile app shell, in this order: Ledger, Calendar,
   Add, Assets, Settings. The Add tab is the center plus action.
 - The Ledger tab top switch should keep only Flow and Charts. Charts means
-  statistics. Do not put an All Books selector at the top of Ledger.
+  statistics. Do not put an All Books selector or visible book filter in Ledger
+  unless the product intentionally reintroduces multi-book workflow.
 - Keep category statistics and category budgets separate. Statistics summarize
   actual spending from transactions. Budgets compare actual spending against
   editable monthly targets saved under `viatica:v1`.
 - Settings should follow Ultreia's compact mobile pattern: a short settings
   list first, with manual, changelog, budget editing, or long explanatory
   content opening as second-level pages.
-- Assets owns account creation, opening-balance editing, account net, category
-  budgets, and book spending review.
+- Assets owns account creation, opening-balance editing, account net, and
+  category budgets.
 - Avoid decorative copy, oversized hero blocks, nested cards, and UI text that
   explains obvious controls.
 

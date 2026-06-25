@@ -13,21 +13,23 @@ should help him restart bookkeeping without requiring a complex setup ritual.
 ## Product Purpose
 Viatica is the standalone personal ledger in Wilf's Aevum / Ultreia family of
 personal tools. It owns transaction capture, editing, import/export, budgets,
-books, accounts, and local ledger records. Aevum should only receive
-overview snapshots and reviewed events from Viatica.
+accounts, and local ledger records. The legacy book field may stay in local
+data for compatibility, but the current product should not expose multi-book
+workflow unless a real need appears. Aevum should only receive overview
+snapshots and reviewed events from Viatica.
 
 ## Brand Personality
 Precise, calm, practical. It should feel like a durable ledger tool rather than
 a gamified finance app.
 
 ## Design Principles
-- Fast capture first: amount, title, account, category, and book stay within one
-  short form.
+- Fast capture first: amount, title, account, category, and notes stay within
+  one short form. Book selection stays out of the primary UI for now.
 - App shell first: mobile navigation uses five bottom tabs in this order:
   Ledger, Calendar, Add, Assets, and Settings. Add is the centered plus action.
 - Ledger first, not dashboard first: Ledger owns the top Flow / Charts switch.
-  Charts means statistics. Do not place an All Books selector at the top of
-  Ledger.
+  Charts means statistics. Do not place an All Books selector or visible book
+  filter in Ledger until multi-book use is explicitly reintroduced.
 - Category statistics and category budgets are different concepts. Statistics
   summarize actual spending by category. Budgets compare actual spending against
   editable monthly category targets saved locally.

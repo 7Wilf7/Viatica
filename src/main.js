@@ -1,5 +1,5 @@
 import "./styles.css";
-import { ACCOUNTS, BOOKS, CATEGORIES, CURRENCIES, DEFAULT_BUDGETS, TRANSACTION_TYPES } from "./core/constants.js";
+import { ACCOUNTS, CATEGORIES, CURRENCIES, DEFAULT_BUDGETS, TRANSACTION_TYPES } from "./core/constants.js";
 import { exportTransactionsCsv, importTransactionsCsv } from "./core/csv.js";
 import {
   DEMO_ACCOUNTS,
@@ -23,6 +23,7 @@ const LOCALES = [
   { id: "zh", label: "中" },
   { id: "en", label: "EN" },
 ];
+const LEGACY_DEFAULT_ACCOUNTS = new Set(["现金", "信用卡"]);
 const storedState = loadState();
 const demoDataEnabled = VIATICA_DEMO_DATA_ENABLED && storedState.transactions.length === 0;
 const state = {
@@ -54,8 +55,14 @@ const state = {
 };
 
 state.budgets = { ...DEFAULT_BUDGETS, ...state.budgets };
-state.accounts = normalizeAccounts(state.accounts);
-state.preferences = { activeBook: "日常账本", locale: "zh", ...state.preferences };
+state.preferences = {
+  activeBook: "日常账本",
+  locale: "zh",
+  deletedAccounts: [],
+  ...state.preferences,
+};
+if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
+state.accounts = visibleAccounts(normalizeAccounts(pruneLegacyDefaultAccounts(state.accounts)));
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
 
 const TABS = [
@@ -245,17 +252,11 @@ const ACCOUNT_META = {
   "其他": { icon: "more", fg: "oklch(0.76 0.05 85)", bg: "oklch(0.76 0.05 85 / 0.13)" },
 };
 
-const BOOK_META = {
-  "日常账本": { icon: "ledger", fg: "oklch(0.76 0.08 84)", bg: "oklch(0.76 0.08 84 / 0.16)" },
-  "训练账本": { icon: "training", fg: "oklch(0.70 0.10 155)", bg: "oklch(0.70 0.10 155 / 0.15)" },
-  "旅行账本": { icon: "travel", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
-};
-
 const CAPTURE_TEMPLATES = [
   { labelKey: "template.lunch", values: { amount: "35", title: "午餐", category: "餐饮", account: "微信" } },
   { labelKey: "template.coffee", values: { amount: "22", title: "咖啡", category: "餐饮", account: "微信" } },
   { labelKey: "template.commute", values: { amount: "8", title: "通勤", category: "交通", account: "支付宝" } },
-  { labelKey: "template.gear", values: { amount: "899", title: "跑步装备", category: "运动装备", book: "训练账本", tags: "gear ultreia" } },
+  { labelKey: "template.gear", values: { amount: "899", title: "跑步装备", category: "运动装备", tags: "gear ultreia" } },
 ];
 
 const MANUAL_SECTIONS = [
@@ -268,12 +269,12 @@ const MANUAL_SECTIONS = [
       zh: [
         "从底部中间的“+”开始，先填金额和标题；分类和备注可以稍后补。",
         "午餐、咖啡、通勤、装备模板用于十秒内录入常见流水。",
-        "账本负责区分生活域，例如日常、训练、家庭、旅行；账户负责记录真实付款出口。",
+        "先把精力放在真实付款账户和分类上；账户负责记录真实付款出口。",
       ],
       en: [
         "Start from the centered + tab. Enter amount and title first; category and notes can come later.",
         "Lunch, Coffee, Commute, and Gear templates cover common entries in a few taps.",
-        "Books separate life areas such as Daily, Training, Family, and Travel; accounts track the real payment source.",
+        "Focus on real payment accounts and categories first.",
       ],
     },
   },
@@ -285,13 +286,13 @@ const MANUAL_SECTIONS = [
     items: {
       zh: [
         "“账本”顶部只保留“流水 / 图表”：流水用于查单笔记录，图表就是统计。",
-        "“日历”用于快速定位日期，最近流水按发生时间排序。",
-        "流水可以按类型、账本、分类、账户和月份筛选；单笔流水可编辑或删除。",
+        "“日历”用于快速定位日期，并查看本月支出、收入和有记录的天数。",
+        "流水可以按类型、分类、账户和月份筛选；长按单笔流水可以编辑或删除。",
       ],
       en: [
         "Ledger keeps only Flow and Charts at the top: Flow reviews individual entries, and Charts means statistics.",
-        "Calendar marks spending days in the current month, and recent entries are sorted by occurrence time.",
-        "Flow filters by type, book, category, account, and month; each entry can be edited or deleted.",
+        "Calendar locates dates quickly and shows monthly spending, income, and active ledger days.",
+        "Flow filters by type, category, account, and month; long-press an entry to edit or delete it.",
       ],
     },
   },
@@ -320,12 +321,12 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "“资产”可以新增账户、设置初始资金，并查看初始资金加流水后的账户净额。",
+        "“资产”可以新增账户、设置初始资金，并查看初始资金加流水后的账户净额；长按账户可以删除。",
         "“设置”里的 CSV 适合表格分析，JSON 是完整本地备份。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
-        "Assets lets you add accounts, set opening balances, and review account net after ledger flow.",
+        "Assets lets you add accounts, set opening balances, review account net after ledger flow, and long-press accounts to delete them.",
         "CSV is for spreadsheet review. JSON is the full local backup.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
       ],
@@ -352,6 +353,25 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-06-25",
+    title: {
+      zh: "账本、日历和账户操作简化",
+      en: "Simplified ledger, calendar, and account actions",
+    },
+    items: {
+      zh: [
+        "账本页顶部改为本月概览，不再强调日常账本/训练账本等分账本结构。",
+        "流水筛选移除账本筛选，单笔流水改为长按后显示编辑和删除动作，默认列表更干净。",
+        "日历去掉重复的最近流水，月历只渲染需要的周数；资产默认账户收敛为微信、银行卡、支付宝、其他，并支持长按删除账户。",
+      ],
+      en: [
+        "Changed Ledger top content to a monthly overview instead of emphasizing separate daily/training/travel books.",
+        "Removed the book filter from Flow and moved entry edit/delete actions behind long press for a cleaner default list.",
+        "Removed duplicate recent entries from Calendar, renders only needed calendar weeks, and keeps default accounts to WeChat, Bank Card, Alipay, and Other with long-press deletion.",
+      ],
+    },
+  },
   {
     date: "2026-06-25",
     title: {
@@ -636,6 +656,7 @@ const MESSAGES = {
     "capture.save": "保存流水",
     "ledger.title": "账本",
     "ledger.overview": "账本概览",
+    "ledger.overviewTitle": "本月概览",
     "ledger.monthBalance": "本月结余",
     "ledger.monthExpense": "支出",
     "ledger.monthIncome": "收入",
@@ -654,19 +675,18 @@ const MESSAGES = {
     "assets.accountHint": "收入记正数，支出记负数。",
     "assets.categoryTitle": "分类预算",
     "assets.categoryHint": "实际支出对照每月目标。",
-    "assets.bookTitle": "账本分布",
-    "assets.bookHint": "用于判断钱花在哪个生活域。",
     "assets.accountName": "账户名称",
     "assets.openingBalance": "初始资金",
     "assets.addAccount": "添加账户",
+    "assets.deleteAccount": "删除账户",
     "assets.saveAccounts": "保存初始资金",
     "assets.accountSaved": "账户已保存。",
+    "assets.accountDeleted": "账户已删除。",
     "assets.accountBalanceSaved": "初始资金已保存。",
     "assets.accountInvalid": "账户名称不能为空，初始资金必须是数字。",
     "assets.accountNetTitle": "账户净额",
     "assets.noAccount": "还没有账户净额。先添加账户或设置初始资金。",
     "assets.noBudget": "暂无预算数据。",
-    "assets.noBookExpense": "还没有本月账本支出。",
     "settings.languageTitle": "界面语言",
     "settings.languageHint": "只切换界面文案，不改已有流水、账本、分类和导出数据。",
     "settings.dataSection": "数据",
@@ -715,6 +735,9 @@ const MESSAGES = {
     "txn.edit": "编辑",
     "txn.delete": "删除",
     "confirm.delete": "删除这笔流水？",
+    "confirm.deleteAccount": "删除账户“{account}”？已有流水不会被删除。",
+    "calendar.summaryTitle": "本月小计",
+    "calendar.activeDays": "记账天数",
     "toast.updated": "流水已更新。",
     "toast.saved": "流水已保存。",
     "toast.saveFailed": "保存失败：{message}",
@@ -758,6 +781,7 @@ const MESSAGES = {
     "capture.save": "Save entry",
     "ledger.title": "Ledger",
     "ledger.overview": "Ledger overview",
+    "ledger.overviewTitle": "Monthly overview",
     "ledger.monthBalance": "Month balance",
     "ledger.monthExpense": "Spent",
     "ledger.monthIncome": "Income",
@@ -776,19 +800,18 @@ const MESSAGES = {
     "assets.accountHint": "Income is positive and expense is negative.",
     "assets.categoryTitle": "Category budgets",
     "assets.categoryHint": "Actual spending against monthly targets.",
-    "assets.bookTitle": "Book distribution",
-    "assets.bookHint": "Shows which life area the money went to.",
     "assets.accountName": "Account name",
     "assets.openingBalance": "Opening balance",
     "assets.addAccount": "Add account",
+    "assets.deleteAccount": "Delete account",
     "assets.saveAccounts": "Save opening balances",
     "assets.accountSaved": "Account saved.",
+    "assets.accountDeleted": "Account deleted.",
     "assets.accountBalanceSaved": "Opening balances saved.",
     "assets.accountInvalid": "Account name is required and opening balance must be a number.",
     "assets.accountNetTitle": "Account net",
     "assets.noAccount": "No account net yet. Add an account or set an opening balance.",
     "assets.noBudget": "No budget data yet.",
-    "assets.noBookExpense": "No book spending this month yet.",
     "settings.languageTitle": "Interface language",
     "settings.languageHint": "Switches interface copy only; existing entries, books, categories, and exports stay unchanged.",
     "settings.dataSection": "Data",
@@ -837,6 +860,9 @@ const MESSAGES = {
     "txn.edit": "Edit",
     "txn.delete": "Delete",
     "confirm.delete": "Delete this entry?",
+    "confirm.deleteAccount": "Delete account “{account}”? Existing entries will not be deleted.",
+    "calendar.summaryTitle": "Month summary",
+    "calendar.activeDays": "Active days",
     "toast.updated": "Entry updated.",
     "toast.saved": "Entry saved.",
     "toast.saveFailed": "Save failed: {message}",
@@ -895,7 +921,7 @@ function beginRealDataMode() {
   state.demoDataEnabled = false;
   state.transactions = [];
   state.budgets = { ...DEFAULT_BUDGETS };
-  state.accounts = normalizeAccounts([]);
+  state.accounts = visibleAccounts(normalizeAccounts([]));
   state.filters = {
     ...state.filters,
     type: "all",
@@ -913,11 +939,29 @@ function uniqueItems(items) {
   return [...new Set(items.map((item) => String(item || "").trim()).filter(Boolean))];
 }
 
+function deletedAccountSet() {
+  return new Set(Array.isArray(state.preferences.deletedAccounts) ? state.preferences.deletedAccounts : []);
+}
+
+function visibleAccounts(accounts) {
+  const deleted = deletedAccountSet();
+  return accounts.filter((account) => !deleted.has(account.name));
+}
+
+function pruneLegacyDefaultAccounts(accounts) {
+  const usedAccounts = new Set(state.transactions.map((txn) => txn.account));
+  return accounts.filter((account) => {
+    if (!LEGACY_DEFAULT_ACCOUNTS.has(account.name)) return true;
+    return usedAccounts.has(account.name) || Number(account.openingBalance || 0) !== 0;
+  });
+}
+
 function accountNames() {
+  const deleted = deletedAccountSet();
   return uniqueItems([
     ...state.accounts.map((account) => account.name),
-    ...ACCOUNTS,
-    ...state.transactions.map((txn) => txn.account),
+    ...ACCOUNTS.filter((account) => !deleted.has(account)),
+    ...state.transactions.map((txn) => txn.account).filter((account) => !deleted.has(account)),
   ]);
 }
 
@@ -1067,6 +1111,31 @@ function toast(message) {
   toast.timer = setTimeout(() => node.classList.remove("show"), 2400);
 }
 
+let longPressTimer = 0;
+let longPressTarget = null;
+let longPressPoint = null;
+
+function closeActionRows(except = null) {
+  document.querySelectorAll(".action-row.action-open").forEach((row) => {
+    if (row !== except) row.classList.remove("action-open");
+  });
+}
+
+function clearLongPress() {
+  if (longPressTimer) {
+    window.clearTimeout(longPressTimer);
+    longPressTimer = 0;
+  }
+  longPressTarget = null;
+  longPressPoint = null;
+}
+
+function openActionRow(row) {
+  if (!row) return;
+  closeActionRows(row);
+  row.classList.add("action-open");
+}
+
 function render() {
   document.documentElement.lang = state.preferences.locale === "en" ? "en" : "zh-CN";
   const summary = summarizeLedger(state.transactions, state.budgets, new Date(), state.accounts);
@@ -1111,7 +1180,6 @@ function renderTabIcon(tabId) {
 
 function iconMeta(label, kind = "category") {
   if (kind === "account") return ACCOUNT_META[label] || ACCOUNT_META["其他"];
-  if (kind === "book") return BOOK_META[label] || BOOK_META["日常账本"];
   return CATEGORY_META[label] || CATEGORY_META["其他"];
 }
 
@@ -1157,19 +1225,15 @@ function renderLedgerTab(filteredTransactions, summary) {
 }
 
 function renderLedgerOverview(summary, count) {
-  const activeBook = state.preferences.activeBook || "日常账本";
   return `
     <section class="ledger-overview" aria-label="${escapeHtml(t("ledger.overview"))}">
-      <div class="book-head">
-        ${renderIconBadge(activeBook, "book", "large")}
-        <div>
-          <span>${escapeHtml(summary.monthKey)}</span>
-          <h1>${escapeHtml(activeBook)}</h1>
-        </div>
+      <div class="ledger-summary-head">
+        <span>${escapeHtml(summary.monthKey)}</span>
+        <h1>${escapeHtml(t("ledger.overviewTitle"))}</h1>
       </div>
       <div class="overview-card">
         <div class="overview-main">
-          <span>${escapeHtml(t("ledger.monthBalance"))}</span>
+          <h2>${escapeHtml(t("ledger.monthBalance"))}</h2>
           <strong class="${summary.monthBalance >= 0 ? "amount positive" : "amount negative"}">
             ${escapeHtml(summary.monthBalance >= 0 ? formatMoney(summary.monthBalance) : `-${formatMoney(Math.abs(summary.monthBalance))}`)}
           </strong>
@@ -1241,10 +1305,6 @@ function renderLedgerStats(summary) {
 }
 
 function renderCalendarTab(summary) {
-  const recent = [...state.transactions]
-    .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt))
-    .slice(0, 7);
-
   return `
     <section class="panel">
       <div class="section-title">
@@ -1255,17 +1315,28 @@ function renderCalendarTab(summary) {
       ${renderMonthCalendar()}
     </section>
 
-    <section class="panel">
+    <section class="panel calendar-summary-panel">
       <div class="section-title">
         <div>
-          <h2>${escapeHtml(t("today.recentTitle"))}</h2>
+          <h2>${escapeHtml(t("calendar.summaryTitle"))}</h2>
         </div>
       </div>
-      <div class="list compact-list">
-        ${recent.length ? recent.map(renderTransactionRow).join("") : `<div class="empty">${escapeHtml(t("today.recentEmpty"))}</div>`}
+      <div class="hero-grid calendar-summary">
+        ${renderStat(t("today.expense", { range: t("range.month") }), compactMoney(summary.monthExpense))}
+        ${renderStat(t("today.income", { range: t("range.month") }), compactMoney(summary.monthIncome))}
+        ${renderStat(t("calendar.activeDays"), `${monthActiveDays()}`)}
       </div>
     </section>
   `;
+}
+
+function monthActiveDays() {
+  const currentMonth = monthKey(new Date());
+  return new Set(
+    state.transactions
+      .filter((txn) => monthKey(txn.occurredAt) === currentMonth)
+      .map((txn) => todayKey(txn.occurredAt)),
+  ).size;
 }
 
 function renderMonthCalendar() {
@@ -1308,7 +1379,7 @@ function renderMonthCalendar() {
       </span>
     `);
   }
-  while (cells.length < 42) {
+  while (cells.length % 7 !== 0) {
     cells.push(`<span class="calendar-cell blank"></span>`);
   }
 
@@ -1380,17 +1451,6 @@ function renderAssetsTab(summary) {
         </div>
         <div class="budget-list">
           ${renderBudgetRows(summary, 12)}
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="section-title">
-          <div>
-            <h2>${escapeHtml(t("assets.bookTitle"))}</h2>
-          </div>
-        </div>
-        <div class="budget-list">
-          ${renderBookRows(summary)}
         </div>
       </section>
     </div>
@@ -1550,7 +1610,7 @@ function renderCaptureForm(editingTransaction) {
     type: "expense",
     amount: "",
     currency: "CNY",
-    book: state.preferences.activeBook,
+    book: "日常账本",
     account: defaultAccountName(),
     category: "餐饮",
     title: "",
@@ -1593,7 +1653,7 @@ function renderCaptureForm(editingTransaction) {
           <span>${escapeHtml(t("capture.merchant"))}</span>
           <input name="merchant" value="${escapeHtml(txn.merchant || "")}">
         </label>
-        ${renderChoiceField({ label: t("capture.book"), name: "book", value: txn.book, options: itemOptions(BOOKS) })}
+        <input type="hidden" name="book" value="${escapeHtml(txn.book || "日常账本")}">
         ${renderChoiceField({ label: t("capture.account"), name: "account", value: txn.account, options: accountOptions() })}
         ${renderChoiceField({ label: t("capture.category"), name: "category", value: txn.category, options: itemOptions(CATEGORIES) })}
         ${renderChoiceField({ label: t("capture.currency"), name: "currency", value: txn.currency, options: itemOptions(CURRENCIES) })}
@@ -1646,13 +1706,19 @@ function renderAccountManager(summary) {
     <form id="account-balances-form" class="account-balances-form">
       <div class="account-editor-list">
         ${state.accounts.map((account) => `
-          <label class="account-edit-row">
+          <div class="account-edit-row action-row" data-long-press-actions>
             <span class="budget-edit-copy">
               ${renderIconBadge(account.name, "account", "small")}
               <span>${escapeHtml(account.name)}</span>
             </span>
             <input name="${escapeHtml(account.name)}" inputmode="decimal" type="number" step="0.01" value="${escapeHtml(account.openingBalance ?? 0)}">
-          </label>
+            <div class="row-actions">
+              <button class="btn ghost danger-text row-action-button" type="button" data-action="delete-account" data-account="${escapeHtml(account.name)}">
+                ${glyphSvg("trash")}
+                <span>${escapeHtml(t("assets.deleteAccount"))}</span>
+              </button>
+            </div>
+          </div>
         `).join("")}
       </div>
       <button class="btn secondary" type="submit">${escapeHtml(t("assets.saveAccounts"))}</button>
@@ -1712,7 +1778,13 @@ function renderCategoryStatRows(summary, limit = 8) {
 }
 
 function renderAccountRows(summary) {
-  const entries = Object.entries(summary.accountNet).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+  const order = accountNames();
+  const entries = Object.entries(summary.accountNet).sort((a, b) => {
+    const aIndex = order.indexOf(a[0]);
+    const bIndex = order.indexOf(b[0]);
+    if (aIndex !== bIndex) return (aIndex < 0 ? Number.POSITIVE_INFINITY : aIndex) - (bIndex < 0 ? Number.POSITIVE_INFINITY : bIndex);
+    return Math.abs(b[1]) - Math.abs(a[1]);
+  });
   if (!entries.length) return "";
   const total = Math.max(1, ...entries.map(([, amount]) => Math.abs(amount)));
   return entries.map(([account, amount]) => `
@@ -1730,31 +1802,11 @@ function renderAccountRows(summary) {
   `).join("");
 }
 
-function renderBookRows(summary) {
-  const entries = Object.entries(summary.bookExpense).sort((a, b) => b[1] - a[1]);
-  if (!entries.length) return `<div class="empty">${escapeHtml(t("assets.noBookExpense"))}</div>`;
-  const total = Math.max(1, summary.monthExpense);
-  return entries.map(([book, amount]) => `
-    <div class="budget-row">
-      <div class="metric-row-head">
-        ${renderIconBadge(book, "book", "small")}
-        <div class="metric-copy">
-          <strong>${escapeHtml(book)}</strong>
-          <span>${formatMoney(amount)}</span>
-        </div>
-        <span class="metric-amount">${Math.round((amount / total) * 100)}%</span>
-      </div>
-      <div class="budget-track"><span style="width: ${Math.round((amount / total) * 100)}%"></span></div>
-    </div>
-  `).join("");
-}
-
 function renderFilters() {
   return `
     <div class="filters">
       <input data-filter="query" placeholder="${escapeHtml(t("filter.search"))}" value="${escapeHtml(state.filters.query)}">
       ${renderFilterChoice("type", state.filters.type, typeOptions(true))}
-      ${renderFilterChoice("book", state.filters.book, [{ value: "all", label: t("filter.allBooks") }, ...itemOptions(BOOKS)])}
       ${renderFilterChoice("category", state.filters.category, [{ value: "all", label: t("filter.allCategories") }, ...itemOptions(CATEGORIES)])}
       ${renderFilterChoice("account", state.filters.account, [{ value: "all", label: t("filter.allAccounts") }, ...accountOptions()])}
       <input type="month" data-filter="month" value="${escapeHtml(state.filters.month)}">
@@ -1763,9 +1815,9 @@ function renderFilters() {
 }
 
 function renderTransactionRow(txn) {
-  const accountMeta = `${formatWhen(txn.occurredAt)} · ${transactionTypeLabel(txn)} · ${txn.book}`;
+  const accountMeta = `${formatWhen(txn.occurredAt)} · ${transactionTypeLabel(txn)}`;
   return `
-    <article class="txn-row ${escapeHtml(transactionTone(txn))}">
+    <article class="txn-row action-row ${escapeHtml(transactionTone(txn))}" data-long-press-actions>
       <div class="txn-main">
         ${renderIconBadge(txn.category, "category")}
         <div class="txn-copy">
@@ -1776,14 +1828,14 @@ function renderTransactionRow(txn) {
           <div class="amount ${transactionAmountClass(txn)}">${signedAmount(txn)}</div>
           <span>${escapeHtml(txn.account)}</span>
         </div>
-        <div class="txn-actions">
-          <button class="btn ghost txn-action-button" data-action="edit" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.edit"))}">
+        <div class="row-actions txn-actions">
+          <button class="btn ghost row-action-button txn-action-button" data-action="edit" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.edit"))}">
             ${glyphSvg("edit")}
-            <span class="sr-only">${escapeHtml(t("txn.edit"))}</span>
+            <span>${escapeHtml(t("txn.edit"))}</span>
           </button>
-          <button class="btn ghost txn-action-button danger-text" data-action="delete" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.delete"))}">
+          <button class="btn ghost row-action-button txn-action-button danger-text" data-action="delete" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.delete"))}">
             ${glyphSvg("trash")}
-            <span class="sr-only">${escapeHtml(t("txn.delete"))}</span>
+            <span>${escapeHtml(t("txn.delete"))}</span>
           </button>
         </div>
       </div>
@@ -1904,6 +1956,27 @@ function chooseOption(optionNode) {
   }
 }
 
+document.addEventListener("pointerdown", (event) => {
+  const row = event.target.closest("[data-long-press-actions]");
+  if (!row || event.target.closest("button, textarea, [data-choice]")) return;
+  clearLongPress();
+  longPressTarget = row;
+  longPressPoint = { x: event.clientX, y: event.clientY };
+  longPressTimer = window.setTimeout(() => {
+    openActionRow(longPressTarget);
+    clearLongPress();
+  }, 520);
+});
+
+document.addEventListener("pointerup", clearLongPress);
+document.addEventListener("pointercancel", clearLongPress);
+document.addEventListener("pointermove", (event) => {
+  if (!longPressPoint) return;
+  if (Math.abs(event.clientX - longPressPoint.x) > 10 || Math.abs(event.clientY - longPressPoint.y) > 10) {
+    clearLongPress();
+  }
+});
+
 document.addEventListener("submit", (event) => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
@@ -1941,7 +2014,9 @@ document.addEventListener("submit", (event) => {
       } else {
         state.accounts = [...state.accounts, account];
       }
-      state.accounts = normalizeAccounts(state.accounts);
+      state.preferences.deletedAccounts = (state.preferences.deletedAccounts || [])
+        .filter((name) => name !== account.name);
+      state.accounts = visibleAccounts(normalizeAccounts(state.accounts));
       persist();
       render();
       toast(t("assets.accountSaved"));
@@ -1959,7 +2034,7 @@ document.addEventListener("submit", (event) => {
         if (!Number.isFinite(value)) throw new Error(t("assets.accountInvalid"));
         return { ...account, openingBalance: Math.round(value * 100) / 100 };
       });
-      state.accounts = normalizeAccounts(nextAccounts);
+      state.accounts = visibleAccounts(normalizeAccounts(nextAccounts));
       persist();
       render();
       toast(t("assets.accountBalanceSaved"));
@@ -1982,7 +2057,6 @@ document.addEventListener("submit", (event) => {
       state.transactions.unshift(data);
       toast(t("toast.saved"));
     }
-    state.preferences.activeBook = data.book;
     state.activeTab = "ledger";
     state.ledgerView = "flow";
     persist();
@@ -2026,6 +2100,7 @@ document.addEventListener("click", (event) => {
   const node = event.target.closest("[data-action]");
   if (!node) {
     if (!event.target.closest("[data-choice]")) closeChoiceMenus();
+    if (!event.target.closest(".action-row.action-open")) closeActionRows();
     return;
   }
   const action = node.dataset.action;
@@ -2118,6 +2193,19 @@ document.addEventListener("click", (event) => {
     persist();
     render();
     toast(t("toast.deleted"));
+  }
+  if (action === "delete-account") {
+    const accountName = node.dataset.account || "";
+    if (!accountName || !confirm(t("confirm.deleteAccount", { account: accountName }))) return;
+    state.accounts = state.accounts.filter((account) => account.name !== accountName);
+    state.preferences.deletedAccounts = uniqueItems([
+      ...(state.preferences.deletedAccounts || []),
+      accountName,
+    ]);
+    if (state.filters.account === accountName) state.filters.account = "all";
+    persist();
+    render();
+    toast(t("assets.accountDeleted"));
   }
   if (action === "export-csv") {
     download("viatica-transactions.csv", exportTransactionsCsv(state.transactions), "text/csv;charset=utf-8");
