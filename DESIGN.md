@@ -54,6 +54,13 @@ transaction rows, and data-first cards that feel useful rather than decorative.
 - Add opens the capture form and is the primary action surface in the center of
   the bottom tab bar. The center tab shows a large plus only; the other four
   tabs use the same restrained monoline SVG icon style as Ultreia.
+- The official Viatica logo source lives at `resources/brand/viatica-logo.png`.
+  In-app brand surfaces use the resized display copy through
+  `src/assets/logo.js`; PWA launcher icons in `public/icons/` are generated
+  copies of the same mark.
+- Brand exposure should stay product-native: a short boot splash with logo +
+  script-style Viatica wordmark, and a compact Settings brand header. Do not
+  turn the app into a landing page.
 - Viatica owns a small custom monoline glyph set for bottom navigation,
   categories, accounts, and row actions. Category icons may use subtle
   differentiated colors, but they should stay soft and tool-like, not childish

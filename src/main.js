@@ -1,4 +1,5 @@
 import "./styles.css";
+import { productLogoUrl } from "./assets/logo.js";
 import { ACCOUNTS, CATEGORIES, CURRENCIES, DEFAULT_BUDGETS, TRANSACTION_TYPES } from "./core/constants.js";
 import { exportTransactionsCsv, importTransactionsCsv } from "./core/csv.js";
 import {
@@ -24,6 +25,9 @@ const LOCALES = [
   { id: "en", label: "EN" },
 ];
 const LEGACY_DEFAULT_ACCOUNTS = new Set(["现金", "信用卡"]);
+const PRODUCT_NAME = "Viatica";
+let bootSplashVisible = true;
+let bootSplashDismissTimer = 0;
 const storedState = loadState();
 const demoDataEnabled = VIATICA_DEMO_DATA_ENABLED && storedState.transactions.length === 0;
 const state = {
@@ -356,6 +360,25 @@ const CHANGELOG_ENTRIES = [
   {
     date: "2026-06-25",
     title: {
+      zh: "接入正式 Viatica 品牌标识",
+      en: "Added the official Viatica brand mark",
+    },
+    items: {
+      zh: [
+        "把桌面 logo 文件夹里的 Viatica 标识纳入项目资源，并生成 PWA 桌面图标。",
+        "新增启动开屏：logo 加 Viatica 手写感字标，和 Ultreia 的开屏语言保持同族但更克制。",
+        "设置页顶部新增品牌头，让产品身份更清楚。",
+      ],
+      en: [
+        "Added the Viatica logo from the desktop logo folder to project resources and generated PWA launcher icons.",
+        "Added a boot splash with the logo and a Viatica script-style wordmark, related to Ultreia's boot language but quieter.",
+        "Added a brand header at the top of Settings.",
+      ],
+    },
+  },
+  {
+    date: "2026-06-25",
+    title: {
       zh: "账本、日历和账户操作简化",
       en: "Simplified ledger, calendar, and account actions",
     },
@@ -622,6 +645,8 @@ const CHANGELOG_ENTRIES = [
 const MESSAGES = {
   zh: {
     "app.sections": "Viatica 页面",
+    "splash.label": "Viatica 正在启动",
+    "splash.tagline": "Personal ledger",
     "tab.capture": "添加",
     "tab.ledger": "账本",
     "tab.calendar": "日历",
@@ -688,6 +713,7 @@ const MESSAGES = {
     "assets.noAccount": "还没有账户净额。先添加账户或设置初始资金。",
     "assets.noBudget": "暂无预算数据。",
     "settings.languageTitle": "界面语言",
+    "settings.brandLine": "本机优先的个人账本",
     "settings.languageHint": "只切换界面文案，不改已有流水、账本、分类和导出数据。",
     "settings.dataSection": "数据",
     "settings.productSection": "产品",
@@ -747,6 +773,8 @@ const MESSAGES = {
   },
   en: {
     "app.sections": "Viatica sections",
+    "splash.label": "Viatica is starting",
+    "splash.tagline": "Personal ledger",
     "tab.capture": "Add",
     "tab.ledger": "Ledger",
     "tab.calendar": "Calendar",
@@ -813,6 +841,7 @@ const MESSAGES = {
     "assets.noAccount": "No account net yet. Add an account or set an opening balance.",
     "assets.noBudget": "No budget data yet.",
     "settings.languageTitle": "Interface language",
+    "settings.brandLine": "Local-first personal ledger",
     "settings.languageHint": "Switches interface copy only; existing entries, books, categories, and exports stay unchanged.",
     "settings.dataSection": "Data",
     "settings.productSection": "Product",
@@ -1136,6 +1165,15 @@ function openActionRow(row) {
   row.classList.add("action-open");
 }
 
+function scheduleBootSplashDismiss() {
+  if (!bootSplashVisible || bootSplashDismissTimer) return;
+  bootSplashDismissTimer = window.setTimeout(() => {
+    bootSplashVisible = false;
+    bootSplashDismissTimer = 0;
+    render();
+  }, 1300);
+}
+
 function render() {
   document.documentElement.lang = state.preferences.locale === "en" ? "en" : "zh-CN";
   const summary = summarizeLedger(state.transactions, state.budgets, new Date(), state.accounts);
@@ -1144,6 +1182,7 @@ function render() {
   const editingTransaction = state.transactions.find((txn) => txn.id === state.editingTransactionId) || null;
 
   app.innerHTML = `
+    ${bootSplashVisible ? renderBootSplash() : ""}
     <main class="app-shell">
       <section class="tab-stage">
         ${renderActiveTab(summary, filteredTransactions, editingTransaction)}
@@ -1154,6 +1193,17 @@ function render() {
       </nav>
     </main>
     <input id="csv-import" type="file" accept=".csv,text/csv" hidden>
+  `;
+  scheduleBootSplashDismiss();
+}
+
+function renderBootSplash() {
+  return `
+    <section class="boot-splash" aria-label="${escapeHtml(t("splash.label"))}">
+      <img class="brand-logo boot-splash-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
+      <div class="brand-wordmark boot-wordmark">${escapeHtml(PRODUCT_NAME)}</div>
+      <div class="boot-tagline">${escapeHtml(t("splash.tagline"))}</div>
+    </section>
   `;
 }
 
@@ -1464,6 +1514,8 @@ function renderSettingsTab() {
 
   return `
     <section class="settings-list">
+      ${renderSettingsBrand()}
+
       ${renderSettingsSection(t("settings.productSection"), [
         renderSettingsCell(t("settings.languageTitle"), "", renderLanguageSwitch()),
         renderSettingsCell(t("settings.manualTitle"), "", "", "manual"),
@@ -1486,6 +1538,18 @@ function renderSettingsTab() {
           state.pwaRefreshInProgress,
         ),
       ])}
+    </section>
+  `;
+}
+
+function renderSettingsBrand() {
+  return `
+    <section class="settings-brand" aria-label="${escapeHtml(PRODUCT_NAME)}">
+      <img class="brand-logo settings-brand-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
+      <span class="settings-brand-copy">
+        <strong class="brand-wordmark settings-brand-wordmark">${escapeHtml(PRODUCT_NAME)}</strong>
+        <span>${escapeHtml(t("settings.brandLine"))}</span>
+      </span>
     </section>
   `;
 }

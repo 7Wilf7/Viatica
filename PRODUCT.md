@@ -53,6 +53,8 @@ a gamified finance app.
   boundary independent.
 - Serious product UI: dense, scannable, and quiet, with a neutral dark graphite
   base and restrained muted ledger-brass accent.
+- Brand presence is functional and restrained: the official Viatica logo appears
+  in the PWA icon, a short boot splash, and the Settings brand header.
 
 ## Current Milestone
 The active milestone is to make the PWA ready for real daily accounting by
