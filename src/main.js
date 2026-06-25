@@ -248,16 +248,16 @@ const CHANGELOG_ENTRIES = [
   {
     date: "2026-06-25",
     title: {
-      zh: "钢蓝主题定稿",
-      en: "Steel-blue theme tuning",
+      zh: "账本黄主题定稿",
+      en: "Muted ledger-yellow theme tuning",
     },
     items: {
       zh: [
-        "将 Viatica 的主色收敛为低饱和钢蓝，和 Aevum / Ultreia 的暗色产品语言保持同族但不混淆。",
+        "将 Viatica 的主色调整为低饱和账本黄 / 蜂蜡金，和 Aevum / Ultreia 的暗色产品语言保持同族但不混淆。",
         "同步调整图标、背景、描边、焦点和按钮状态。",
       ],
       en: [
-        "Tuned Viatica's accent toward low-saturation steel blue so it feels related to Aevum / Ultreia without blending into them.",
+        "Tuned Viatica's accent toward muted ledger yellow / beeswax gold so it feels related to Aevum / Ultreia without blending into them.",
         "Updated icon, background, borders, focus states, and button states.",
       ],
     },

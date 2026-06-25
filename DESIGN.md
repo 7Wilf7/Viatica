@@ -4,8 +4,8 @@
 Viatica belongs to the same product family as Aevum and Ultreia. It shares the
 family's Linear-inspired product language: dark surfaces, precise thin lines,
 subtle ambient light, restrained blur, and short stateful motion. The accent
-shifts from Aevum's violet-blue glow to a low-saturation deep ledger blue /
-steel blue.
+shifts from Aevum's violet-blue glow to a restrained muted ledger yellow /
+beeswax gold / aged ledger yellow.
 
 When a design task asks to reference Ultreia, inspect
 `/Users/danxiao/Projects/ultreia` first and use the current Ultreia app as the
@@ -27,15 +27,16 @@ action, keep assets separate from statistics, and reserve settings for local
 data operations and product notes.
 
 ## Colors
-- Background: `oklch(0.115 0.014 258)`
-- Panel: translucent dark blue-neutral around `oklch(0.18 0.018 258 / 0.86)`
-- Ink: `oklch(0.965 0.006 258)`
-- Muted ink: `oklch(0.77 0.022 258)`
-- Line: fine translucent blue lines around `oklch(0.43 0.046 258 / 0.48)`
-- Accent: deep ledger blue / steel blue for primary actions, active focus,
-  budget fills, and the Viatica mark. Keep it cool, low-saturation, and used in
-  small areas only; avoid bright blue, technology-blue, or fintech-marketing
-  glow.
+- Background: `oklch(0.115 0.010 85)`
+- Panel: translucent warm black / dark olive-neutral around
+  `oklch(0.18 0.014 85 / 0.86)`
+- Ink: `oklch(0.965 0.006 85)`
+- Muted ink: `oklch(0.77 0.018 85)`
+- Line: fine translucent warm ledger lines around `oklch(0.43 0.040 85 / 0.46)`
+- Accent: restrained muted ledger yellow / beeswax gold for primary actions,
+  active focus, budget fills, progress, and the Viatica mark. Use it in small
+  areas only; avoid bright yellow, coin gold, delivery-app yellow, neon, or
+  gamified-finance styling.
 
 ## Typography
 - Font stack: `Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`.

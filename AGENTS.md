@@ -63,7 +63,8 @@ restrained dark product UI.
 - Product UI, not marketing UI.
 - Keep the interface quiet, dense, precise, and fast to scan.
 - Use the Aevum/Ultreia family language: Linear-inspired dark product UI, quiet
-  density, precise controls, and deep blue as Viatica's accent.
+  density, precise controls, and restrained muted ledger yellow / beeswax gold
+  as Viatica's accent.
 - Use bottom tabs for the mobile app shell, in this order: Ledger, Calendar,
   Add, Assets, Settings. The Add tab is the center plus action.
 - The Ledger tab top switch should keep only Flow and Charts. Charts means
