@@ -108,6 +108,8 @@ restrained dark product UI.
 ## Git
 - After verified project changes, commit and push directly so work stays
   available across devices.
+- After every `git pull`, list the updates pulled from remote before continuing,
+  including commit subjects and changed files when available.
 
 ## Deployment
 - After any verified project change is committed and pushed, deploy the current
