@@ -142,8 +142,8 @@ button {
 
 .brand-logo {
   display: block;
-  object-fit: cover;
-  background: oklch(0.090 0.006 95);
+  object-fit: contain;
+  background: transparent;
 }
 
 .brand-wordmark {
@@ -256,16 +256,6 @@ label span {
   line-height: 1;
   text-rendering: geometricPrecision;
   animation: boot-splash-mark 420ms 80ms var(--ease-out) both;
-}
-
-.boot-tagline {
-  color: var(--ink-3);
-  font-size: 12px;
-  font-weight: 680;
-  letter-spacing: 0.08em;
-  line-height: 1;
-  text-transform: uppercase;
-  animation: boot-splash-mark 420ms 140ms var(--ease-out) both;
 }
 
 .tab-stage {

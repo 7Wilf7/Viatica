@@ -646,7 +646,6 @@ const MESSAGES = {
   zh: {
     "app.sections": "Viatica 页面",
     "splash.label": "Viatica 正在启动",
-    "splash.tagline": "Personal ledger",
     "tab.capture": "添加",
     "tab.ledger": "账本",
     "tab.calendar": "日历",
@@ -774,7 +773,6 @@ const MESSAGES = {
   en: {
     "app.sections": "Viatica sections",
     "splash.label": "Viatica is starting",
-    "splash.tagline": "Personal ledger",
     "tab.capture": "Add",
     "tab.ledger": "Ledger",
     "tab.calendar": "Calendar",
@@ -1202,7 +1200,6 @@ function renderBootSplash() {
     <section class="boot-splash" aria-label="${escapeHtml(t("splash.label"))}">
       <img class="brand-logo boot-splash-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
       <div class="brand-wordmark boot-wordmark">${escapeHtml(PRODUCT_NAME)}</div>
-      <div class="boot-tagline">${escapeHtml(t("splash.tagline"))}</div>
     </section>
   `;
 }
