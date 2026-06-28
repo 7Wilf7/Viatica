@@ -25,9 +25,11 @@ a gamified finance app.
 ## Design Principles
 - Fast capture first: new entries should be mostly tap-driven. Pick expense /
   income, then use type-specific category/detail buttons and the built-in
-  amount keypad. Account stays on the default payment account in the primary
-  path; title falls back to the chosen detail/category and notes stay optional.
-  Book selection stays out of the primary UI for now.
+  amount keypad. On mobile, only the upper category/detail area should scroll;
+  the amount and keypad area stays anchored so capture remains predictable.
+  Account stays on the default payment account in the primary path; title falls
+  back to the chosen detail/category and notes stay optional. Book selection
+  stays out of the primary UI for now.
 - App shell first: mobile navigation uses five bottom tabs in this order:
   Ledger, Calendar, Add, Assets, and Settings. Add is the centered plus action.
 - Ledger first, not dashboard first: Ledger owns the top type filter and Flow /

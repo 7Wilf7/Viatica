@@ -61,8 +61,10 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   clarity, not its light visual skin: expense / income fills the full switch,
   expense and income use different category sets, category buttons reveal detail
   chips, and a built-in amount keypad keeps the system keyboard out of the main
-  path. Do not show account chips in the primary Add flow unless account
-  switching becomes a real high-frequency need.
+  path. On mobile, the amount readout and keypad stay pinned at the bottom of
+  the Add surface while the category/detail area scrolls independently, so long
+  detail rows do not push the keypad away. Do not show account chips in the
+  primary Add flow unless account switching becomes a real high-frequency need.
 - The official Viatica logo source lives at `resources/brand/viatica-logo.png`.
   In-app brand surfaces use the resized display copy through
   `src/assets/logo.js`; PWA launcher icons in `public/icons/` are generated

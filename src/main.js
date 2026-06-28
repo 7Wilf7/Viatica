@@ -434,12 +434,14 @@ const CHANGELOG_ENTRIES = [
       zh: [
         "新增流水改为支出 / 收入双栏切换，按钮各占一半宽度。",
         "Capture 加入支出 / 收入专用分类、子项和内置金额键盘，减少系统键盘输入。",
+        "Add 页改为金额和键盘固定在底部，只让上方分类和子项区域滚动。",
         "收入分类改为薪酬、红包、转入、退款和其他收入，并补齐对应 monoline 图标。",
         "资产页默认只保留我的总资产和分类预算，账户新增收进资产概览的小加号。",
       ],
       en: [
         "Changed the new-entry type switch to a balanced Expense / Income two-segment control.",
         "Added type-specific category, detail, and built-in amount keypad controls to reduce system-keyboard input.",
+        "Pinned the amount and keypad area at the bottom of Add while only the category/detail area scrolls.",
         "Changed income capture to Salary, Gift, Transfer in, Refund, and Other income with matching monoline icons.",
         "Kept Assets focused on Total assets and category budgets, with account setup tucked behind the overview plus button.",
       ],
@@ -1201,7 +1203,7 @@ function renderChoiceControl({ name = "", filterKey = "", value, options }) {
       ${name ? `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(selected.value)}">` : ""}
       <button class="choice-trigger" type="button" data-action="toggle-choice" aria-expanded="false">
         <span>${escapeHtml(selected.label)}</span>
-        <span class="choice-chevron">⌄</span>
+        <span class="choice-chevron" aria-hidden="true">▼</span>
       </button>
       <div class="choice-menu">
         ${options.map((option) => `
@@ -1411,7 +1413,7 @@ function render() {
 
   app.innerHTML = `
     ${bootSplashVisible ? renderBootSplash() : ""}
-    <main class="app-shell">
+    <main class="app-shell tab-${escapeHtml(state.activeTab)}">
       <section class="tab-stage">
         ${renderActiveTab(summary, ledgerSummary, filteredTransactions, editingTransaction)}
       </section>
