@@ -95,16 +95,20 @@ of copying training-specific behavior.
 - Use bottom tabs for the mobile app shell, in this order: Ledger, Calendar,
   Add, Assets, Settings. The Add tab is the center plus action.
 - The Ledger tab top switch should keep only Flow and Charts. Charts means
-  statistics. Do not put an All Books selector or visible book filter in Ledger
-  unless the product intentionally reintroduces multi-book workflow.
+  statistics. Flow should stay compact: month selection belongs in the monthly
+  overview row, search stays collapsed behind a magnifier, and visible filters
+  should prioritize quick type chips plus category. Do not put an All Books
+  selector or visible book/account filter in Ledger unless the product
+  intentionally reintroduces that workflow.
 - Keep category statistics and category budgets separate. Statistics summarize
   actual spending from transactions. Budgets compare actual spending against
   editable monthly targets saved under `viatica:v1`.
 - Settings should follow Ultreia's compact mobile pattern: a short settings
   list first, with manual, changelog, budget editing, or long explanatory
   content opening as second-level pages.
-- Assets owns account creation, opening-balance editing, account net, and
-  category budgets.
+- Assets owns total assets, account creation, opening-balance editing, account
+  net, and category budgets. Account creation and opening-balance entry should
+  stay behind the small plus action instead of occupying the default view.
 - Avoid decorative copy, oversized hero blocks, nested cards, and UI text that
   explains obvious controls.
 

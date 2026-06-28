@@ -50,6 +50,8 @@ const state = {
     account: "all",
     month: monthKey(new Date()),
   },
+  searchOpen: false,
+  accountFormOpen: false,
   editingTransactionId: null,
   pwaRefreshInProgress: false,
   dashboardRange: "month",
@@ -68,6 +70,8 @@ state.preferences = {
 if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
 state.accounts = visibleAccounts(normalizeAccounts(pruneLegacyDefaultAccounts(state.accounts)));
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
+state.filters.book = "all";
+state.filters.account = "all";
 
 const TABS = [
   { id: "ledger", labelKey: "tab.ledger" },
@@ -114,6 +118,10 @@ const GLYPHS = {
   plus: `
     <path d="M7 2.5 V11.5" />
     <path d="M2.5 7 H11.5" />
+  `,
+  search: `
+    <circle cx="6.2" cy="6.2" r="3.5" />
+    <path d="M8.8 8.8 L11.6 11.6" />
   `,
   assets: `
     <path d="M2.2 4.2 H11.8 V11.2 H2.2 Z" />
@@ -291,12 +299,12 @@ const MANUAL_SECTIONS = [
       zh: [
         "“账本”顶部只保留“流水 / 图表”：流水用于查单笔记录，图表就是统计。",
         "“日历”用于快速定位日期，并查看本月支出、收入和有记录的天数。",
-        "流水可以按类型、分类、账户和月份筛选；长按单笔流水可以编辑或删除。",
+        "流水用顶部月份切换月份，用快捷按钮切换全部/支出/收入；需要时点放大镜搜索，或用分类筛选。长按单笔流水可以编辑或删除。",
       ],
       en: [
         "Ledger keeps only Flow and Charts at the top: Flow reviews individual entries, and Charts means statistics.",
         "Calendar locates dates quickly and shows monthly spending, income, and active ledger days.",
-        "Flow filters by type, category, account, and month; long-press an entry to edit or delete it.",
+        "Use the overview month to change months, quick chips for All/Expense/Income, the magnifier for search, and Category when needed. Long-press an entry to edit or delete it.",
       ],
     },
   },
@@ -325,12 +333,12 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "“资产”可以新增账户、设置初始资金，并查看初始资金加流水后的账户净额；长按账户可以删除。",
+        "“资产”先看我的总资产；点账户金额右上角“+”新增账户和初始资金，账户金额按初始资金加流水收支计算，长按账户可以删除。",
         "“设置”里的 CSV 适合表格分析，JSON 是完整本地备份。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
-        "Assets lets you add accounts, set opening balances, review account net after ledger flow, and long-press accounts to delete them.",
+        "Assets leads with total assets. Tap the plus in Account balances to add an account and opening balance; balances combine opening balance with ledger flow, and accounts can be deleted by long press.",
         "CSV is for spreadsheet review. JSON is the full local backup.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
       ],
@@ -357,6 +365,25 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-06-28",
+    title: {
+      zh: "账本与资产页继续压缩",
+      en: "Tighter Ledger and Assets layout",
+    },
+    items: {
+      zh: [
+        "账本顶部把月份、月度概览和净结余收进同一行，月份直接承担月度筛选入口。",
+        "流水区去掉重复标题，搜索默认收成放大镜，只保留快捷类型和分类筛选。",
+        "资产页改为先看我的总资产，账户新增和初始资金设置收进小加号展开入口。",
+      ],
+      en: [
+        "Moved month, monthly overview, and net balance into one Ledger overview row, with the month acting as the month filter.",
+        "Removed the duplicate Flow title, collapsed search into a magnifier, and kept only quick type chips plus category filtering.",
+        "Changed Assets to lead with total assets and moved account creation/opening balance setup behind a small plus action.",
+      ],
+    },
+  },
   {
     date: "2026-06-25",
     title: {
@@ -694,8 +721,9 @@ const MESSAGES = {
     "stats.categoryHint": "只按真实流水汇总，不看预算目标。",
     "stats.noCategory": "本月还没有分类支出。",
     "assets.title": "资产概览",
+    "assets.totalAssets": "我的总资产",
     "assets.hint": "先基于流水汇总账户净额。",
-    "assets.accountTitle": "账户净额",
+    "assets.accountTitle": "账户金额",
     "assets.accountHint": "收入记正数，支出记负数。",
     "assets.categoryTitle": "分类预算",
     "assets.categoryHint": "实际支出对照每月目标。",
@@ -709,7 +737,7 @@ const MESSAGES = {
     "assets.accountBalanceSaved": "初始资金已保存。",
     "assets.accountInvalid": "账户名称不能为空，初始资金必须是数字。",
     "assets.accountNetTitle": "账户净额",
-    "assets.noAccount": "还没有账户净额。先添加账户或设置初始资金。",
+    "assets.noAccount": "还没有账户。点击右上角加号添加。",
     "assets.noBudget": "暂无预算数据。",
     "settings.languageTitle": "界面语言",
     "settings.brandLine": "本机优先的个人账本",
@@ -821,8 +849,9 @@ const MESSAGES = {
     "stats.categoryHint": "Based only on real entries, not budget targets.",
     "stats.noCategory": "No category spending this month yet.",
     "assets.title": "Asset overview",
+    "assets.totalAssets": "Total assets",
     "assets.hint": "Starts from account net based on ledger entries.",
-    "assets.accountTitle": "Account net",
+    "assets.accountTitle": "Account balances",
     "assets.accountHint": "Income is positive and expense is negative.",
     "assets.categoryTitle": "Category budgets",
     "assets.categoryHint": "Actual spending against monthly targets.",
@@ -836,7 +865,7 @@ const MESSAGES = {
     "assets.accountBalanceSaved": "Opening balances saved.",
     "assets.accountInvalid": "Account name is required and opening balance must be a number.",
     "assets.accountNetTitle": "Account net",
-    "assets.noAccount": "No account net yet. Add an account or set an opening balance.",
+    "assets.noAccount": "No accounts yet. Tap the plus button to add one.",
     "assets.noBudget": "No budget data yet.",
     "settings.languageTitle": "Interface language",
     "settings.brandLine": "Local-first personal ledger",
@@ -910,6 +939,12 @@ function t(key, replacements = {}) {
 
 function displayLocale() {
   return state.preferences.locale === "en" ? "en-US" : "zh-CN";
+}
+
+function dateForMonthFilter(value) {
+  const match = /^(\d{4})-(\d{2})$/.exec(String(value || ""));
+  if (!match) return new Date();
+  return new Date(Number(match[1]), Number(match[2]) - 1, 1, 12);
 }
 
 function formatMoney(amount, currency) {
@@ -1104,6 +1139,16 @@ function signedAmount(txn) {
   return `${prefix}${formatMoney(txn.amount, txn.currency)}`;
 }
 
+function signedMoney(amount) {
+  const value = Number(amount || 0);
+  if (value < 0) return `-${formatMoney(Math.abs(value))}`;
+  return formatMoney(value);
+}
+
+function totalAccountNet(summary) {
+  return accountNames().reduce((total, account) => total + Number(summary.accountNet[account] || 0), 0);
+}
+
 function transactionAmountClass(txn) {
   if (txn.type === "income") return "positive";
   return "negative";
@@ -1175,6 +1220,12 @@ function scheduleBootSplashDismiss() {
 function render() {
   document.documentElement.lang = state.preferences.locale === "en" ? "en" : "zh-CN";
   const summary = summarizeLedger(state.transactions, state.budgets, new Date(), state.accounts);
+  const ledgerSummary = summarizeLedger(
+    state.transactions,
+    state.budgets,
+    dateForMonthFilter(state.filters.month),
+    state.accounts,
+  );
   const filteredTransactions = filterTransactions(state.transactions, state.filters)
     .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt));
   const editingTransaction = state.transactions.find((txn) => txn.id === state.editingTransactionId) || null;
@@ -1183,7 +1234,7 @@ function render() {
     ${bootSplashVisible ? renderBootSplash() : ""}
     <main class="app-shell">
       <section class="tab-stage">
-        ${renderActiveTab(summary, filteredTransactions, editingTransaction)}
+        ${renderActiveTab(summary, ledgerSummary, filteredTransactions, editingTransaction)}
       </section>
 
       <nav class="bottom-tabs" aria-label="${escapeHtml(t("app.sections"))}">
@@ -1204,12 +1255,12 @@ function renderBootSplash() {
   `;
 }
 
-function renderActiveTab(summary, filteredTransactions, editingTransaction) {
+function renderActiveTab(summary, ledgerSummary, filteredTransactions, editingTransaction) {
   if (state.activeTab === "capture") return renderCaptureTab(editingTransaction);
   if (state.activeTab === "calendar") return renderCalendarTab(summary);
   if (state.activeTab === "assets") return renderAssetsTab(summary);
   if (state.activeTab === "settings") return renderSettingsTab();
-  return renderLedgerTab(filteredTransactions, summary);
+  return renderLedgerTab(filteredTransactions, ledgerSummary);
 }
 
 function glyphSvg(name, className = "glyph") {
@@ -1274,15 +1325,15 @@ function renderLedgerTab(filteredTransactions, summary) {
 function renderLedgerOverview(summary, count) {
   return `
     <section class="ledger-overview" aria-label="${escapeHtml(t("ledger.overview"))}">
-      <div class="ledger-summary-head">
-        <span>${escapeHtml(summary.monthKey)}</span>
-        <h1>${escapeHtml(t("ledger.overviewTitle"))}</h1>
-      </div>
       <div class="overview-card">
         <div class="overview-main">
-          <h2>${escapeHtml(t("ledger.monthBalance"))}</h2>
+          <h2>${escapeHtml(t("ledger.overviewTitle"))}</h2>
+          <label class="overview-month-control">
+            <span>${escapeHtml(summary.monthKey)}</span>
+            <input class="overview-month-input" type="month" data-filter="month" value="${escapeHtml(summary.monthKey)}" aria-label="${escapeHtml(t("ledger.overviewTitle"))}">
+          </label>
           <strong class="${summary.monthBalance >= 0 ? "amount positive" : "amount negative"}">
-            ${escapeHtml(summary.monthBalance >= 0 ? formatMoney(summary.monthBalance) : `-${formatMoney(Math.abs(summary.monthBalance))}`)}
+            ${escapeHtml(signedMoney(summary.monthBalance))}
           </strong>
         </div>
         <div class="overview-mini">
@@ -1298,12 +1349,7 @@ function renderLedgerOverview(summary, count) {
 function renderLedgerFlow(filteredTransactions, summary) {
   return `
     ${renderLedgerOverview(summary, filteredTransactions.length)}
-    <section class="panel">
-      <div class="section-title">
-        <div>
-          <h2>${escapeHtml(t("ledger.flow"))}</h2>
-        </div>
-      </div>
+    <section class="panel ledger-flow-panel">
       ${renderQuickFilters()}
       ${renderFilters()}
       <div class="list">
@@ -1467,6 +1513,7 @@ function renderQuickFilters() {
 }
 
 function renderAssetsTab(summary) {
+  const assetTotal = totalAccountNet(summary);
   return `
     <section class="panel">
       <div class="section-title">
@@ -1474,18 +1521,21 @@ function renderAssetsTab(summary) {
           <h2>${escapeHtml(t("assets.title"))}</h2>
         </div>
       </div>
-      <div class="hero-grid asset-summary">
-        ${renderStat(t("today.expense", { range: t("range.month") }), compactMoney(summary.monthExpense))}
-        ${renderStat(t("today.income", { range: t("range.month") }), compactMoney(summary.monthIncome))}
+      <div class="asset-total-card">
+        <span>${escapeHtml(t("assets.totalAssets"))}</span>
+        <strong class="amount ${assetTotal >= 0 ? "positive" : "negative"}">${escapeHtml(signedMoney(assetTotal))}</strong>
       </div>
     </section>
 
     <div class="workspace budget-workspace">
       <section class="panel account-panel">
-        <div class="section-title">
+        <div class="section-title compact-section-title">
           <div>
             <h2>${escapeHtml(t("assets.accountTitle"))}</h2>
           </div>
+          <button class="icon-button account-add-button ${state.accountFormOpen ? "active" : ""}" type="button" data-action="toggle-account-form" aria-label="${escapeHtml(t("assets.addAccount"))}" aria-pressed="${state.accountFormOpen ? "true" : "false"}">
+            ${glyphSvg("plus")}
+          </button>
         </div>
         ${renderAccountManager(summary)}
       </section>
@@ -1545,7 +1595,6 @@ function renderSettingsBrand() {
       <img class="brand-logo settings-brand-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
       <span class="settings-brand-copy">
         <strong class="brand-wordmark settings-brand-wordmark">${escapeHtml(PRODUCT_NAME)}</strong>
-        <span>${escapeHtml(t("settings.brandLine"))}</span>
       </span>
     </section>
   `;
@@ -1589,7 +1638,11 @@ function renderSettingsCell(primary, secondary = "", right = "", action = "", di
 }
 
 function renderLanguageSwitch() {
-  return `<span class="language-switch compact-language">${LOCALES.map(renderLocaleButton).join("")}</span>`;
+  return `
+    <button class="language-switch compact-language" type="button" data-action="toggle-locale" data-locale="${escapeHtml(state.preferences.locale)}" aria-label="${escapeHtml(t("settings.languageTitle"))}">
+      ${LOCALES.map(renderLocaleSegment).join("")}
+    </button>
+  `;
 }
 
 function renderBudgetSettings() {
@@ -1648,12 +1701,12 @@ function renderChangelog() {
   `;
 }
 
-function renderLocaleButton(locale) {
+function renderLocaleSegment(locale) {
   const active = state.preferences.locale === locale.id;
   return `
-    <button class="locale-button ${active ? "active" : ""}" data-action="set-locale" data-locale="${escapeHtml(locale.id)}" aria-pressed="${active ? "true" : "false"}">
+    <span class="locale-segment ${active ? "active" : ""}">
       ${escapeHtml(locale.label)}
-    </button>
+    </span>
   `;
 }
 
@@ -1752,7 +1805,7 @@ function renderTemplateButton(label, values) {
 function renderAccountManager(summary) {
   const accountRows = renderAccountRows(summary);
   return `
-    <form id="account-form" class="account-form" autocomplete="off">
+    ${state.accountFormOpen ? `<form id="account-form" class="account-form" autocomplete="off">
       <label>
         <span>${escapeHtml(t("assets.accountName"))}</span>
         <input name="name" required>
@@ -1762,35 +1815,13 @@ function renderAccountManager(summary) {
         <input name="openingBalance" inputmode="decimal" type="number" step="0.01" value="0">
       </label>
       <button class="btn secondary" type="submit">${escapeHtml(t("assets.addAccount"))}</button>
-    </form>
+    </form>` : ""}
 
-    <form id="account-balances-form" class="account-balances-form">
-      <div class="account-editor-list">
-        ${state.accounts.map((account) => `
-          <div class="account-edit-row action-row" data-long-press-actions>
-            <span class="budget-edit-copy">
-              ${renderIconBadge(account.name, "account", "small")}
-              <span>${escapeHtml(account.name)}</span>
-            </span>
-            <input name="${escapeHtml(account.name)}" inputmode="decimal" type="number" step="0.01" value="${escapeHtml(account.openingBalance ?? 0)}">
-            <div class="row-actions">
-              <button class="btn ghost danger-text row-action-button" type="button" data-action="delete-account" data-account="${escapeHtml(account.name)}">
-                ${glyphSvg("trash")}
-                <span>${escapeHtml(t("assets.deleteAccount"))}</span>
-              </button>
-            </div>
-          </div>
-        `).join("")}
-      </div>
-      <button class="btn secondary" type="submit">${escapeHtml(t("assets.saveAccounts"))}</button>
-    </form>
-
-    ${accountRows ? `<div class="account-net-block">
-      <h3>${escapeHtml(t("assets.accountNetTitle"))}</h3>
+    <div class="account-net-block">
       <div class="budget-list">
-        ${accountRows}
+        ${accountRows || `<div class="empty">${escapeHtml(t("assets.noAccount"))}</div>`}
       </div>
-    </div>` : ""}
+    </div>
   `;
 }
 
@@ -1840,37 +1871,37 @@ function renderCategoryStatRows(summary, limit = 8) {
 
 function renderAccountRows(summary) {
   const order = accountNames();
-  const entries = Object.entries(summary.accountNet).sort((a, b) => {
-    const aIndex = order.indexOf(a[0]);
-    const bIndex = order.indexOf(b[0]);
-    if (aIndex !== bIndex) return (aIndex < 0 ? Number.POSITIVE_INFINITY : aIndex) - (bIndex < 0 ? Number.POSITIVE_INFINITY : bIndex);
-    return Math.abs(b[1]) - Math.abs(a[1]);
-  });
+  const entries = order.map((account) => [account, Number(summary.accountNet[account] || 0)]);
   if (!entries.length) return "";
   const total = Math.max(1, ...entries.map(([, amount]) => Math.abs(amount)));
   return entries.map(([account, amount]) => `
-    <div class="budget-row">
+    <div class="budget-row account-row action-row" data-long-press-actions>
       <div class="metric-row-head">
         ${renderIconBadge(account, "account", "small")}
         <div class="metric-copy">
           <strong>${escapeHtml(account)}</strong>
-          <span>${escapeHtml(t("assets.accountNetTitle"))}</span>
         </div>
         <span class="metric-amount amount ${amount >= 0 ? "positive" : "negative"}">${amount >= 0 ? formatMoney(amount) : `-${formatMoney(Math.abs(amount))}`}</span>
       </div>
       <div class="budget-track"><span style="width: ${Math.round((Math.abs(amount) / total) * 100)}%"></span></div>
+      <div class="row-actions account-row-actions">
+        <button class="btn ghost danger-text row-action-button" type="button" data-action="delete-account" data-account="${escapeHtml(account)}">
+          ${glyphSvg("trash")}
+          <span>${escapeHtml(t("assets.deleteAccount"))}</span>
+        </button>
+      </div>
     </div>
   `).join("");
 }
 
 function renderFilters() {
   return `
-    <div class="filters">
-      <input data-filter="query" placeholder="${escapeHtml(t("filter.search"))}" value="${escapeHtml(state.filters.query)}">
-      ${renderFilterChoice("type", state.filters.type, typeOptions(true))}
+    <div class="filters ${state.searchOpen ? "search-open" : ""}">
+      <button class="icon-button search-toggle-button ${state.searchOpen ? "active" : ""}" type="button" data-action="toggle-ledger-search" aria-label="${escapeHtml(t("filter.search"))}" aria-pressed="${state.searchOpen ? "true" : "false"}">
+        ${glyphSvg("search")}
+      </button>
+      ${state.searchOpen ? `<input class="search-filter-input" data-filter="query" placeholder="${escapeHtml(t("filter.search"))}" value="${escapeHtml(state.filters.query)}">` : ""}
       ${renderFilterChoice("category", state.filters.category, [{ value: "all", label: t("filter.allCategories") }, ...itemOptions(CATEGORIES)])}
-      ${renderFilterChoice("account", state.filters.account, [{ value: "all", label: t("filter.allAccounts") }, ...accountOptions()])}
-      <input type="month" data-filter="month" value="${escapeHtml(state.filters.month)}">
     </div>
   `;
 }
@@ -2078,6 +2109,7 @@ document.addEventListener("submit", (event) => {
       state.preferences.deletedAccounts = (state.preferences.deletedAccounts || [])
         .filter((name) => name !== account.name);
       state.accounts = visibleAccounts(normalizeAccounts(state.accounts));
+      state.accountFormOpen = false;
       persist();
       render();
       toast(t("assets.accountSaved"));
@@ -2200,8 +2232,16 @@ document.addEventListener("click", (event) => {
   if (action === "open-ledger-search") {
     state.activeTab = "ledger";
     state.ledgerView = "flow";
+    state.searchOpen = true;
     render();
     requestAnimationFrame(() => document.querySelector("[data-filter=\"query\"]")?.focus());
+  }
+  if (action === "toggle-ledger-search") {
+    const nextOpen = !state.searchOpen;
+    state.searchOpen = nextOpen;
+    if (!nextOpen) state.filters.query = "";
+    render();
+    if (nextOpen) requestAnimationFrame(() => document.querySelector("[data-filter=\"query\"]")?.focus());
   }
   if (action === "open-budgets") {
     state.activeTab = "assets";
@@ -2237,6 +2277,11 @@ document.addEventListener("click", (event) => {
     persist();
     render();
     toast(t("settings.budgetResetDone"));
+  }
+  if (action === "toggle-account-form") {
+    state.accountFormOpen = !state.accountFormOpen;
+    render();
+    if (state.accountFormOpen) requestAnimationFrame(() => document.querySelector("#account-form input[name=\"name\"]")?.focus());
   }
   if (action === "cancel-edit") {
     state.editingTransactionId = null;
@@ -2284,6 +2329,11 @@ document.addEventListener("click", (event) => {
   }
   if (action === "clear-cache-reload") {
     clearPwaCacheAndReload();
+  }
+  if (action === "toggle-locale") {
+    state.preferences.locale = state.preferences.locale === "en" ? "zh" : "en";
+    persist();
+    render();
   }
   if (action === "set-locale") {
     const locale = node.dataset.locale;

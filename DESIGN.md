@@ -69,7 +69,10 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   differentiated colors, but they should stay soft and tool-like, not childish
   or promotional.
 - Ledger owns filtering, editing, deletion, and a top Flow / Charts switch.
-  Charts means statistics.
+  Charts means statistics. In Flow, keep the control stack shallow: month
+  selection sits beside the monthly overview title, search is a collapsed
+  magnifier, and the visible filter row keeps quick type chips plus category
+  only unless Wilf asks for more.
 - Ledger must not show an All Books selector or visible book filter unless the
   product intentionally reintroduces multi-book workflow.
 - Calendar owns the monthly spending calendar and a compact month summary.
@@ -77,8 +80,10 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   cell can later hold daily income/expense details.
 - Charts under Ledger own actual statistics only. Category statistics are
   actual spending summaries and must not display budget targets.
-- Assets owns account creation, opening balances, account net, and category
-  budgets. Account net is opening balance plus ledger income/expense flow.
+- Assets owns total assets, account creation, opening balances, account net,
+  and category budgets. Account net is opening balance plus ledger
+  income/expense flow. Account creation and opening-balance entry should stay
+  behind the small plus action because they are low-frequency controls.
   Category budgets compare actual spending with monthly targets.
 - Settings uses the Ultreia-style compact mobile list. Long content such as the
   manual, changelog, and category budget editor opens as a second-level page,

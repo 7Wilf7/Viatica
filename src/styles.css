@@ -393,7 +393,7 @@ label span {
 
 .overview-card {
   display: grid;
-  gap: 10px;
+  gap: 9px;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
@@ -404,23 +404,56 @@ label span {
 }
 
 .overview-main {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
   align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 
 .overview-main h2 {
   margin: 0;
-  color: var(--ink-2);
+  color: var(--ink);
   font-size: 15px;
   line-height: 1.2;
   font-weight: 760;
+  white-space: nowrap;
+}
+
+.overview-month-control {
+  position: relative;
+  width: 112px;
+  min-height: 30px;
+  border-color: transparent;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: oklch(0.120 0.006 95 / 0.56);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 720;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.overview-month-control span {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.overview-month-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 100%;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .overview-main strong {
   min-width: 0;
-  font-size: clamp(26px, 8vw, 38px);
+  justify-self: end;
+  font-size: 34px;
   line-height: 1;
   letter-spacing: -0.04em;
   text-align: right;
@@ -643,14 +676,34 @@ label span {
   font-size: 18px;
 }
 
-.stats-panel,
-.hero-grid.asset-summary {
+.stats-panel {
   display: grid;
   gap: 10px;
 }
 
-.hero-grid.asset-summary {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.asset-total-card {
+  min-height: 66px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface-raised);
+}
+
+.asset-total-card span {
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.asset-total-card strong {
+  color: var(--ink);
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .inline-section-title {
@@ -785,6 +838,18 @@ label span {
   grid-column: 1 / -1;
 }
 
+.compact-section-title {
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.account-add-button {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  border-radius: 11px;
+}
+
 .account-form,
 .account-balances-form {
   display: grid;
@@ -794,6 +859,10 @@ label span {
 .account-form {
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr) auto;
   align-items: end;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: oklch(0.130 0.006 95 / 0.48);
   margin-bottom: 10px;
 }
 
@@ -827,13 +896,18 @@ label span {
 .account-net-block {
   display: grid;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 .account-net-block h3 {
   margin: 0;
   font-size: 13px;
   line-height: 1.2;
+}
+
+.account-row .row-actions {
+  justify-content: flex-end;
+  margin-top: -2px;
 }
 
 .panel {
@@ -1042,11 +1116,55 @@ input[type="datetime-local"] {
   background: var(--panel-2);
 }
 
+.ledger-flow-panel {
+  padding-top: 10px;
+}
+
+.icon-button {
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(0.145 0.006 95 / 0.74);
+  color: var(--ink-2);
+  transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out), color 180ms var(--ease-out), box-shadow 180ms var(--ease-out), transform 180ms var(--ease-out);
+}
+
+.icon-button:hover,
+.icon-button.active {
+  border-color: var(--line-strong);
+  background: var(--panel-2);
+  color: var(--ink);
+}
+
+.icon-button.active {
+  box-shadow: 0 0 0 1px oklch(0.700 0.052 86 / 0.08) inset;
+}
+
 .filters {
   position: relative;
   z-index: 20;
-  grid-template-columns: minmax(180px, 1.35fr) repeat(4, minmax(120px, 1fr));
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 10px;
+}
+
+.search-toggle-button {
+  flex: 0 0 auto;
+}
+
+.search-filter-input {
+  flex: 1 1 150px;
+}
+
+.filters .filter-choice {
+  flex: 0 1 188px;
+  min-width: 112px;
 }
 
 .capture-footer,
@@ -1078,6 +1196,7 @@ input[type="datetime-local"] {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: oklch(0.102 0.006 95 / 0.9);
+  cursor: pointer;
 }
 
 .language-switch::before {
@@ -1092,14 +1211,16 @@ input[type="datetime-local"] {
   transition: transform 180ms var(--ease-out);
 }
 
-.language-switch:has(.locale-button:last-child.active)::before {
+.language-switch[data-locale="en"]::before {
   transform: translateX(35px);
 }
 
-.locale-button {
+.locale-segment {
   position: relative;
   z-index: 1;
   min-height: 24px;
+  display: grid;
+  place-items: center;
   border-radius: 999px;
   background: transparent;
   color: var(--ink-2);
@@ -1108,11 +1229,11 @@ input[type="datetime-local"] {
   transition: color 180ms var(--ease-out);
 }
 
-.locale-button.active {
+.locale-segment.active {
   color: oklch(0.120 0.010 95);
 }
 
-.locale-button:hover {
+.language-switch:hover .locale-segment:not(.active) {
   color: var(--ink);
 }
 
@@ -1595,6 +1716,10 @@ input[type="datetime-local"] {
   color: var(--warning);
 }
 
+.asset-total-card .amount {
+  color: var(--ink);
+}
+
 .row-actions,
 .txn-actions {
   display: flex;
@@ -1825,10 +1950,6 @@ input[type="datetime-local"] {
     grid-template-columns: 1fr;
   }
 
-  .filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .dashboard-hero .hero-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1857,16 +1978,29 @@ input[type="datetime-local"] {
     width: min(100% - 16px, 480px);
   }
 
+  .overview-main {
+    gap: 7px;
+  }
+
+  .overview-main strong {
+    font-size: 30px;
+  }
+
+  .overview-month-control {
+    width: 104px;
+  }
+
   .filters {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    flex-wrap: nowrap;
   }
 
-  .filters > input[data-filter="query"] {
-    grid-column: 1 / -1;
+  .search-filter-input {
+    min-width: 0;
   }
 
-  .filters > input[type="month"] {
-    grid-column: span 2;
+  .filters .filter-choice {
+    flex: 1 1 126px;
+    min-width: 98px;
   }
 
   .hero-grid {
@@ -1902,10 +2036,6 @@ input[type="datetime-local"] {
   .calendar-cell {
     min-height: 58px;
     padding: 6px 3px 4px;
-  }
-
-  .hero-grid.asset-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .account-form {

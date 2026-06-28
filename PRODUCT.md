@@ -28,14 +28,18 @@ a gamified finance app.
 - App shell first: mobile navigation uses five bottom tabs in this order:
   Ledger, Calendar, Add, Assets, and Settings. Add is the centered plus action.
 - Ledger first, not dashboard first: Ledger owns the top Flow / Charts switch.
-  Charts means statistics. Do not place an All Books selector or visible book
-  filter in Ledger until multi-book use is explicitly reintroduced.
+  Charts means statistics. The Flow view should stay compact: month selection
+  lives in the monthly overview row, search is collapsed behind a magnifier,
+  and visible filtering should prioritize quick type chips plus category.
+  Do not place an All Books selector or visible book/account filter in Ledger
+  until a real need appears.
 - Category statistics and category budgets are different concepts. Statistics
   summarize actual spending by category. Budgets compare actual spending against
   editable monthly category targets saved locally.
-- Assets owns local account setup: accounts can be created locally, opening
-  balances are editable, and account net equals opening balance plus ledger
-  income/expense flow.
+- Assets owns local account setup: accounts can be created locally from the
+  small plus action, opening balances are set there, and account net equals
+  opening balance plus ledger income/expense flow. The top Assets overview
+  should lead with total assets rather than duplicating monthly income/expense.
 - Settings should stay compact on mobile. Manual, changelog, and budget editing
   open as second-level pages following Ultreia's settings pattern.
 - Requirement review first: before building new product requests, compare the
