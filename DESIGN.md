@@ -7,10 +7,13 @@ subtle ambient light, restrained blur, and short stateful motion. The accent
 shifts from Aevum's violet-blue glow to a restrained muted ledger-brass accent
 on a neutral dark graphite base.
 
-When a design task asks to reference Ultreia, inspect
-`/Users/danxiao/Projects/ultreia` first and use the current Ultreia app as the
-source of truth for family-level mobile patterns. Adapt those patterns to
-Viatica's ledger workflow instead of copying unrelated training features.
+When a design task asks to reference Ultreia, first resolve the current local
+repo paths through Aevum's ecosystem docs:
+`C:\Users\wilf7\dev\Aevum\docs\ecosystem\REPO_PATHS.md` on Windows or
+`/Users/danxiao/Projects/Aevum/docs/ecosystem/REPO_PATHS.md` on macOS. Use the
+current Ultreia app as the source of truth for family-level mobile patterns.
+Adapt those patterns to Viatica's ledger workflow instead of copying unrelated
+training features.
 
 The current UI target is a mobile app shell, not a one-page dashboard. Primary
 navigation is a persistent bottom tab bar:

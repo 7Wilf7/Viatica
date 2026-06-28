@@ -15,12 +15,22 @@ ecosystem. Viatica keeps its own ledger and privacy boundary, but its mobile
 shell, settings structure, and visual language should stay compatible with the
 family.
 
-When Wilf asks to reference Ultreia, align with Ultreia, or keep the family
-design language unified, inspect the current Ultreia code and docs under
-`/Users/danxiao/Projects/ultreia` before designing or implementing. Treat the
-live Ultreia repository as the source of truth for reusable interaction
-patterns, especially mobile navigation, settings, guide, changelog, and
-restrained dark product UI.
+Before cross-product, family-design, Aevum integration, shared-event, memory, or
+permission work, read the ecosystem source of truth from the Aevum repo:
+
+- Windows: `C:\Users\wilf7\dev\Aevum\docs\ecosystem\README.md`
+- macOS: `/Users/danxiao/Projects/Aevum/docs/ecosystem/README.md`
+
+Wilf works on both machines. Resolve repo paths through the ecosystem
+`REPO_PATHS.md`; if one path is missing, try the other listed candidates before
+assuming a checkout is unavailable.
+
+When Wilf asks to reference Ultreia, align with Ultreia, or keep family design
+language unified, inspect the current Ultreia repo after resolving its local
+path. Treat Ultreia as the source of truth for reusable mobile interaction
+patterns, especially navigation, settings, guide/changelog structure, and
+restrained dark product UI. Adapt patterns to Viatica's ledger workflow instead
+of copying training-specific behavior.
 
 ## Stack
 - Vanilla HTML, CSS, and JavaScript.
