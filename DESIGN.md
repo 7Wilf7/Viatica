@@ -59,9 +59,10 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   tabs use the same restrained monoline SVG icon style as Ultreia.
 - Capture uses a tap-first accounting flow inspired by iCost's interaction
   clarity, not its light visual skin: expense / income fills the full switch,
-  category buttons reveal detail chips, account chips replace low-frequency
-  dropdown use, and a built-in amount keypad keeps the system keyboard out of
-  the main path.
+  expense and income use different category sets, category buttons reveal detail
+  chips, and a built-in amount keypad keeps the system keyboard out of the main
+  path. Do not show account chips in the primary Add flow unless account
+  switching becomes a real high-frequency need.
 - The official Viatica logo source lives at `resources/brand/viatica-logo.png`.
   In-app brand surfaces use the resized display copy through
   `src/assets/logo.js`; PWA launcher icons in `public/icons/` are generated

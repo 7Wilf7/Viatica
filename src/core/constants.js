@@ -24,7 +24,7 @@ export const CURRENCIES = [
   "JPY",
 ];
 
-export const CATEGORIES = [
+export const EXPENSE_CATEGORIES = [
   "餐饮",
   "交通",
   "购物",
@@ -36,9 +36,18 @@ export const CATEGORIES = [
   "学习",
   "娱乐",
   "旅行",
-  "工作",
   "其他",
 ];
+
+export const INCOME_CATEGORIES = [
+  "薪酬",
+  "红包",
+  "转入",
+  "退款",
+  "其他收入",
+];
+
+export const CATEGORIES = EXPENSE_CATEGORIES;
 
 export const DEFAULT_BUDGETS = {
   "餐饮": 2500,
@@ -52,6 +61,5 @@ export const DEFAULT_BUDGETS = {
   "学习": 600,
   "娱乐": 500,
   "旅行": 1500,
-  "工作": 300,
   "其他": 500,
 };

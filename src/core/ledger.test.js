@@ -32,7 +32,7 @@ test("normalizes accounts and includes opening balances in account net", () => {
   ], []);
   const txns = [
     normalizeTransaction({ amount: 200, category: "餐饮", account: "招商银行", title: "晚餐" }),
-    normalizeTransaction({ type: "income", amount: 500, category: "工作", account: "微信", title: "收入" }),
+    normalizeTransaction({ type: "income", amount: 500, category: "薪酬", account: "微信", title: "收入" }),
   ];
   const summary = summarizeLedger(txns, {}, new Date("2026-06-24T12:00"), accounts);
 
@@ -43,7 +43,7 @@ test("normalizes accounts and includes opening balances in account net", () => {
 test("summarizes current month and today totals", () => {
   const txns = [
     normalizeTransaction({ amount: 30, category: "餐饮", account: "微信", title: "早餐", occurredAt: "2026-06-24T08:00" }),
-    normalizeTransaction({ type: "income", amount: 1000, category: "工作", account: "银行卡", title: "报销", occurredAt: "2026-06-24T09:00" }),
+    normalizeTransaction({ type: "income", amount: 1000, category: "退款", account: "银行卡", title: "退款", occurredAt: "2026-06-24T09:00" }),
     normalizeTransaction({ amount: 899, category: "运动装备", account: "支付宝", title: "越野鞋", occurredAt: "2026-06-23T09:00" }),
   ];
   const summary = summarizeLedger(txns, { "运动装备": 1000 }, new Date("2026-06-24T12:00"));
@@ -53,6 +53,16 @@ test("summarizes current month and today totals", () => {
   assert.equal(summary.monthExpense, 929);
   assert.equal(summary.monthBalance, 71);
   assert.equal(summary.budgets["运动装备"].remaining, 101);
+});
+
+test("normalizes income with income-only categories and legacy work income", () => {
+  const salary = normalizeTransaction({ type: "income", amount: 500, category: "薪酬", title: "工资" });
+  const legacy = normalizeTransaction({ type: "income", amount: 300, category: "工作", title: "旧收入" });
+  const invalid = normalizeTransaction({ type: "income", amount: 100, category: "交通", title: "错误分类" });
+
+  assert.equal(salary.category, "薪酬");
+  assert.equal(legacy.category, "薪酬");
+  assert.equal(invalid.category, "其他收入");
 });
 
 test("filters transactions by book and query", () => {

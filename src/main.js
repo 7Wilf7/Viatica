@@ -1,6 +1,13 @@
 import "./styles.css";
 import { productLogoUrl } from "./assets/logo.js";
-import { ACCOUNTS, CATEGORIES, DEFAULT_BUDGETS, TRANSACTION_TYPES } from "./core/constants.js";
+import {
+  ACCOUNTS,
+  CATEGORIES,
+  DEFAULT_BUDGETS,
+  EXPENSE_CATEGORIES,
+  INCOME_CATEGORIES,
+  TRANSACTION_TYPES,
+} from "./core/constants.js";
 import { exportTransactionsCsv, importTransactionsCsv } from "./core/csv.js";
 import {
   DEMO_ACCOUNTS,
@@ -217,6 +224,30 @@ const GLYPHS = {
     <path d="M5.2 4.2 V3.1 H8.8 V4.2" />
     <path d="M2.3 7 H11.7" />
   `,
+  salary: `
+    <rect x="2.3" y="3.5" width="9.4" height="7" rx="1.2" />
+    <path d="M4.1 5.5 H9.9" />
+    <path d="M4.1 7.2 H7.4" />
+    <path d="M9.1 8.5 H9.2" />
+  `,
+  gift: `
+    <rect x="2.7" y="5.6" width="8.6" height="5.2" rx="1" />
+    <path d="M2.3 5.6 H11.7" />
+    <path d="M7 5.6 V10.8" />
+    <path d="M7 5.4 C6.2 3.6 4.4 3.1 4 4.2 C3.7 5.1 5.1 5.6 7 5.6 Z" />
+    <path d="M7 5.4 C7.8 3.6 9.6 3.1 10 4.2 C10.3 5.1 8.9 5.6 7 5.6 Z" />
+  `,
+  transferIn: `
+    <path d="M2.5 9.6 H11.5 V11.3 H2.5 Z" />
+    <path d="M7 2.4 V8.2" />
+    <path d="M4.7 6 L7 8.3 L9.3 6" />
+  `,
+  refund: `
+    <path d="M4.1 4.6 C4.9 3.5 6.1 3 7.5 3 C9.8 3 11.6 4.8 11.6 7.1 C11.6 9.4 9.8 11.2 7.5 11.2 C5.7 11.2 4.2 10.2 3.5 8.8" />
+    <path d="M4 2.9 V4.7 H5.8" />
+    <path d="M7 5.1 V8.9" />
+    <path d="M5.7 6.2 H8.2" />
+  `,
   cash: `
     <path d="M2.2 4.3 H11.8 V10.7 H2.2 Z" />
     <circle cx="7" cy="7.5" r="1.4" />
@@ -250,6 +281,11 @@ const CATEGORY_META = {
   "娱乐": { icon: "entertainment", fg: "oklch(0.76 0.10 95)", bg: "oklch(0.76 0.10 95 / 0.16)" },
   "旅行": { icon: "travel", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
   "工作": { icon: "work", fg: "oklch(0.76 0.08 82)", bg: "oklch(0.76 0.08 82 / 0.16)" },
+  "薪酬": { icon: "salary", fg: "oklch(0.76 0.08 120)", bg: "oklch(0.76 0.08 120 / 0.15)" },
+  "红包": { icon: "gift", fg: "oklch(0.72 0.13 28)", bg: "oklch(0.72 0.13 28 / 0.14)" },
+  "转入": { icon: "transferIn", fg: "oklch(0.72 0.10 165)", bg: "oklch(0.72 0.10 165 / 0.14)" },
+  "退款": { icon: "refund", fg: "oklch(0.74 0.08 205)", bg: "oklch(0.74 0.08 205 / 0.14)" },
+  "其他收入": { icon: "cash", fg: "oklch(0.76 0.05 118)", bg: "oklch(0.76 0.05 118 / 0.13)" },
   "其他": { icon: "more", fg: "oklch(0.76 0.05 85)", bg: "oklch(0.76 0.05 85 / 0.13)" },
 };
 
@@ -262,20 +298,27 @@ const ACCOUNT_META = {
   "其他": { icon: "more", fg: "oklch(0.76 0.05 85)", bg: "oklch(0.76 0.05 85 / 0.13)" },
 };
 
-const CAPTURE_CATEGORY_GROUPS = [
-  { category: "餐饮", items: ["三餐", "咖啡", "零食", "水果蔬菜", "外卖"] },
-  { category: "交通", items: ["地铁公交", "打车", "停车", "高铁机票"] },
+const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
+  { category: "餐饮", items: ["早餐", "午餐", "晚餐", "宵夜", "咖啡", "奶茶", "水果"] },
+  { category: "交通", items: ["地铁", "打车", "高铁", "机票"] },
   { category: "购物", items: ["日用品", "服饰", "数码", "家居"] },
-  { category: "运动装备", items: ["鞋服", "装备", "补给", "维修"] },
-  { category: "比赛/训练", items: ["赛事", "训练课", "场地", "康复"] },
-  { category: "健康", items: ["医疗", "药品", "体检", "保险"] },
-  { category: "AI 工具", items: ["API", "模型订阅", "软件", "存储"] },
-  { category: "订阅", items: ["App", "会员", "云服务", "内容"] },
+  { category: "运动装备", items: ["装备", "补给"] },
+  { category: "比赛/训练", items: ["赛事", "训练课", "康复"] },
+  { category: "健康", items: ["医疗", "药品", "保险"] },
+  { category: "AI 工具", items: ["ChatGPT"] },
+  { category: "订阅", items: ["App"] },
   { category: "学习", items: ["课程", "书籍", "资料", "工具"] },
-  { category: "娱乐", items: ["电影", "游戏", "聚会", "内容"] },
-  { category: "旅行", items: ["住宿", "餐饮", "交通", "门票"] },
-  { category: "工作", items: ["办公", "设备", "服务", "差旅"] },
+  { category: "娱乐", items: ["电影", "游戏", "聚会"] },
+  { category: "旅行", items: ["住宿", "餐饮", "门票"] },
   { category: "其他", items: ["杂项", "临时", "待整理"] },
+];
+
+const INCOME_CAPTURE_CATEGORY_GROUPS = [
+  { category: "薪酬", items: ["工资", "奖金", "项目款", "稿费"] },
+  { category: "红包", items: ["红包", "转账"] },
+  { category: "转入", items: ["账户转入", "家庭转入"] },
+  { category: "退款", items: ["退款", "退货"] },
+  { category: "其他收入", items: ["其他"] },
 ];
 
 const AMOUNT_KEY_ROWS = [
@@ -293,14 +336,14 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "从底部中间的“+”开始，先点支出或收入，再点分类、子项和金额。",
-        "新增流水默认使用内置金额键盘，尽量避免调出系统键盘。",
-        "先把精力放在真实付款账户和分类上；备注可以稍后再补。",
+        "从底部中间的“+”开始，先点支出或收入，再点对应类型的分类、子项和金额。",
+        "新增流水默认使用内置金额键盘，尽量避免调出系统键盘；账户先走默认付款账户。",
+        "支出和收入使用不同分类：收入不会出现交通、购物这类支出入口。",
       ],
       en: [
-        "Start from the centered + tab. Pick expense or income, then category, detail, and amount.",
-        "New entries use the built-in amount keypad first, so the system keyboard stays out of the way.",
-        "Focus on real payment accounts and categories first; notes can come later.",
+        "Start from the centered + tab. Pick expense or income, then the matching category, detail, and amount.",
+        "New entries use the built-in amount keypad first; the account stays on the default payment account.",
+        "Expense and income use different categories, so income no longer shows spending categories like transport or shopping.",
       ],
     },
   },
@@ -390,12 +433,14 @@ const CHANGELOG_ENTRIES = [
     items: {
       zh: [
         "新增流水改为支出 / 收入双栏切换，按钮各占一半宽度。",
-        "Capture 加入分类、子项、账户和内置金额键盘，减少系统键盘输入。",
+        "Capture 加入支出 / 收入专用分类、子项和内置金额键盘，减少系统键盘输入。",
+        "收入分类改为薪酬、红包、转入、退款和其他收入，并补齐对应 monoline 图标。",
         "资产页默认只保留我的总资产和分类预算，账户新增收进资产概览的小加号。",
       ],
       en: [
         "Changed the new-entry type switch to a balanced Expense / Income two-segment control.",
-        "Added category, detail, account, and built-in amount keypad controls to reduce system-keyboard input.",
+        "Added type-specific category, detail, and built-in amount keypad controls to reduce system-keyboard input.",
+        "Changed income capture to Salary, Gift, Transfer in, Refund, and Other income with matching monoline icons.",
         "Kept Assets focused on Total assets and category budgets, with account setup tucked behind the overview plus button.",
       ],
     },
@@ -1102,13 +1147,29 @@ function accountNames(transactions = activeLedgerState().transactions, accounts 
   ]);
 }
 
-function accountOptions() {
-  return itemOptions(accountNames());
-}
-
 function defaultAccountName() {
   const names = accountNames();
   return names.includes("微信") ? "微信" : names[0] || "其他";
+}
+
+function defaultCategoryForType(type = "expense") {
+  return type === "income" ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0];
+}
+
+function categoriesForType(type = "all") {
+  if (type === "income") return INCOME_CATEGORIES;
+  if (type === "expense") return EXPENSE_CATEGORIES;
+  return uniqueItems([...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES]);
+}
+
+function captureGroupsForType(type = "expense") {
+  return type === "income" ? INCOME_CAPTURE_CATEGORY_GROUPS : EXPENSE_CAPTURE_CATEGORY_GROUPS;
+}
+
+function sanitizeCategoryForType(type, category) {
+  if (type === "income" && category === "工作") return "薪酬";
+  const options = categoriesForType(type);
+  return options.includes(category) ? category : defaultCategoryForType(type);
 }
 
 function typeOptions(includeAll = false) {
@@ -1838,7 +1899,7 @@ function renderStat(label, value) {
 }
 
 function renderCaptureForm(editingTransaction) {
-  const txn = editingTransaction || {
+  const sourceTxn = editingTransaction || {
     type: "expense",
     amount: "",
     currency: "CNY",
@@ -1852,6 +1913,12 @@ function renderCaptureForm(editingTransaction) {
     note: "",
     reimbursable: false,
     receiptDataUrl: "",
+  };
+  const type = sourceTxn.type === "income" ? "income" : "expense";
+  const txn = {
+    ...sourceTxn,
+    type,
+    category: sanitizeCategoryForType(type, sourceTxn.category),
   };
 
   return `
@@ -1875,7 +1942,6 @@ function renderCaptureForm(editingTransaction) {
       </div>
 
       ${renderCaptureCategoryBoard(txn)}
-      ${renderCaptureAccountStrip(txn)}
 
       <section class="amount-pad-panel" aria-label="${escapeHtml(t("capture.amount"))}">
         <div class="amount-readout">
@@ -1900,12 +1966,13 @@ function renderCaptureForm(editingTransaction) {
 }
 
 function renderCaptureCategoryBoard(txn) {
-  const selectedCategory = txn.category || "餐饮";
+  const selectedCategory = txn.category || defaultCategoryForType(txn.type);
   const selectedTitle = txn.title || "";
+  const groups = captureGroupsForType(txn.type);
   return `
     <section class="capture-category-board" aria-label="${escapeHtml(t("capture.category"))}">
       <div class="capture-category-grid">
-        ${CAPTURE_CATEGORY_GROUPS.map((group) => `
+        ${groups.map((group) => `
           <button class="capture-category-button ${selectedCategory === group.category ? "active" : ""}" type="button" data-action="pick-field" data-field="category" data-value="${escapeHtml(group.category)}" data-pick-button>
             ${renderIconBadge(group.category, "category")}
             <span>${escapeHtml(group.category)}</span>
@@ -1913,7 +1980,7 @@ function renderCaptureCategoryBoard(txn) {
         `).join("")}
       </div>
       <div class="capture-subcategory-wrap">
-        ${CAPTURE_CATEGORY_GROUPS.map((group) => `
+        ${groups.map((group) => `
           <div class="capture-subcategory-grid ${selectedCategory === group.category ? "active" : ""}" data-subcategory-group="${escapeHtml(group.category)}">
             ${group.items.map((item) => `
               <button class="capture-subcategory-button ${selectedCategory === group.category && selectedTitle === item ? "active" : ""}" type="button" data-action="pick-subcategory" data-category="${escapeHtml(group.category)}" data-title="${escapeHtml(item)}">
@@ -1923,20 +1990,6 @@ function renderCaptureCategoryBoard(txn) {
           </div>
         `).join("")}
       </div>
-    </section>
-  `;
-}
-
-function renderCaptureAccountStrip(txn) {
-  const selectedAccount = txn.account || defaultAccountName();
-  return `
-    <section class="capture-account-strip" aria-label="${escapeHtml(t("capture.account"))}">
-      ${accountOptions().map((account) => `
-        <button class="capture-account-chip ${selectedAccount === account.value ? "active" : ""}" type="button" data-action="pick-field" data-field="account" data-value="${escapeHtml(account.value)}" data-pick-button>
-          ${renderIconBadge(account.value, "account", "tiny")}
-          <span>${escapeHtml(account.label)}</span>
-        </button>
-      `).join("")}
     </section>
   `;
 }
@@ -1984,6 +2037,7 @@ function renderAccountSetupForm() {
 
 function renderBudgetRows(summary, limit = 6) {
   const entries = Object.entries(summary.budgets)
+    .filter(([category]) => CATEGORIES.includes(category))
     .sort((a, b) => b[1].spent - a[1].spent)
     .slice(0, limit);
   if (!entries.length) return `<div class="empty">${escapeHtml(t("assets.noBudget"))}</div>`;
@@ -2033,7 +2087,7 @@ function renderFilters() {
         ${glyphSvg("search")}
       </button>
       ${state.searchOpen ? `<input class="search-filter-input" data-filter="query" placeholder="${escapeHtml(t("filter.search"))}" value="${escapeHtml(state.filters.query)}">` : ""}
-      ${renderFilterChoice("category", state.filters.category, [{ value: "all", label: t("filter.allCategories") }, ...itemOptions(CATEGORIES)])}
+      ${renderFilterChoice("category", state.filters.category, [{ value: "all", label: t("filter.allCategories") }, ...itemOptions(categoriesForType(state.filters.type))])}
     </div>
   `;
 }
@@ -2129,6 +2183,20 @@ function syncPickButtons(form) {
   });
 }
 
+function refreshCaptureCategoryBoard(form) {
+  const type = form?.elements?.namedItem("type")?.value || "expense";
+  const category = form?.elements?.namedItem("category")?.value || defaultCategoryForType(type);
+  const title = form?.elements?.namedItem("title")?.value || "";
+  const board = form?.querySelector(".capture-category-board");
+  if (board) {
+    board.outerHTML = renderCaptureCategoryBoard({
+      type,
+      category: sanitizeCategoryForType(type, category),
+      title,
+    });
+  }
+}
+
 function fillForm(values) {
   const form = document.querySelector("#transaction-form");
   if (!form) return;
@@ -2149,6 +2217,13 @@ function pickFormField(button) {
   const input = form?.elements?.namedItem(field);
   if (!form || !field || value == null || !input) return;
   input.value = value;
+  if (field === "type") {
+    const category = form.elements.namedItem("category");
+    const title = form.elements.namedItem("title");
+    if (category) category.value = defaultCategoryForType(value);
+    if (title) title.value = "";
+    refreshCaptureCategoryBoard(form);
+  }
   if (field === "category") {
     const title = form.elements.namedItem("title");
     if (title) title.value = "";
@@ -2242,6 +2317,10 @@ function chooseOption(optionNode) {
   const filterKey = choice.dataset.choiceFilter;
   if (filterKey) {
     state.filters[filterKey] = value;
+    if (filterKey === "type" && state.filters.category !== "all") {
+      const options = categoriesForType(value);
+      if (!options.includes(state.filters.category)) state.filters.category = "all";
+    }
     render();
   }
 }

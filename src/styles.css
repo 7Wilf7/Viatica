@@ -372,7 +372,7 @@ label span {
   position: relative;
   z-index: 25;
   display: grid;
-  grid-template-columns: minmax(104px, 0.34fr) minmax(0, 1fr);
+  grid-template-columns: minmax(124px, 0.40fr) minmax(0, 1fr);
   gap: 8px;
   align-items: center;
 }
@@ -566,6 +566,8 @@ label span {
 
 .ledger-type-filter .choice-trigger span:first-child {
   color: var(--ink);
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .ledger-type-filter .choice-chevron {
@@ -806,6 +808,14 @@ label span {
 
 .asset-overview-title {
   align-items: center;
+  min-height: 34px;
+  margin-bottom: 8px;
+}
+
+.asset-overview-title > div {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
 }
 
 .account-form {
@@ -967,7 +977,6 @@ label span {
 }
 
 .capture-subcategory-button,
-.capture-account-chip,
 .amount-key {
   min-height: 30px;
   border: 1px solid var(--line);
@@ -988,41 +997,16 @@ label span {
 
 .capture-subcategory-button:hover,
 .capture-subcategory-button.active,
-.capture-account-chip:hover,
-.capture-account-chip.active,
 .amount-key:hover {
   border-color: var(--line-strong);
   background: var(--panel-2);
   color: var(--ink);
 }
 
-.capture-subcategory-button.active,
-.capture-account-chip.active {
+.capture-subcategory-button.active {
   border-color: oklch(0.700 0.052 86 / 0.46);
   background: linear-gradient(180deg, var(--accent-soft), oklch(0.158 0.007 95 / 0.84));
   box-shadow: 0 0 0 1px oklch(0.700 0.052 86 / 0.08) inset;
-}
-
-.capture-account-strip {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 1px;
-  scrollbar-width: none;
-}
-
-.capture-account-strip::-webkit-scrollbar {
-  display: none;
-}
-
-.capture-account-chip {
-  flex: 0 0 auto;
-  padding: 4px 8px 4px 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  white-space: nowrap;
 }
 
 .amount-pad-panel {
@@ -2149,13 +2133,13 @@ input[type="datetime-local"] {
   }
 
   .ledger-topbar {
-    grid-template-columns: minmax(96px, 0.34fr) minmax(0, 1fr);
+    grid-template-columns: minmax(122px, 0.40fr) minmax(0, 1fr);
     gap: 8px;
   }
 
   .ledger-type-filter .choice-trigger {
     min-height: 36px;
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .ledger-period-switch {

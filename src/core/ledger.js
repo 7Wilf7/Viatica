@@ -4,6 +4,7 @@ import {
   CATEGORIES,
   CURRENCIES,
   DEFAULT_BUDGETS,
+  INCOME_CATEGORIES,
 } from "./constants.js";
 import { monthKey, todayKey, transactionSign } from "./format.js";
 
@@ -31,6 +32,15 @@ function moneyValue(input) {
     throw new Error("金额必须是数字");
   }
   return Math.round(value * 100) / 100;
+}
+
+function normalizeCategory(type, input) {
+  const category = String(input || "").trim();
+  if (type === "income") {
+    if (category === "工作") return "薪酬";
+    return INCOME_CATEGORIES.includes(category) ? category : "其他收入";
+  }
+  return CATEGORIES.includes(category) ? category : "其他";
 }
 
 export function normalizeAccount(input = {}, now = new Date()) {
@@ -87,7 +97,7 @@ export function normalizeTransaction(input = {}, now = new Date()) {
     throw new Error("时间格式无效");
   }
 
-  const category = CATEGORIES.includes(input.category) ? input.category : "其他";
+  const category = normalizeCategory(type, input.category);
   const account = String(input.account || "").trim() || "其他";
   const book = BOOKS.includes(input.book) ? input.book : "日常账本";
   const currency = CURRENCIES.includes(input.currency) ? input.currency : "CNY";
