@@ -27,12 +27,14 @@ a gamified finance app.
   one short form. Book selection stays out of the primary UI for now.
 - App shell first: mobile navigation uses five bottom tabs in this order:
   Ledger, Calendar, Add, Assets, and Settings. Add is the centered plus action.
-- Ledger first, not dashboard first: Ledger owns the top Flow / Charts switch.
-  Charts means statistics. The Flow view should stay compact: month selection
-  lives in the monthly overview row, search is collapsed behind a magnifier,
-  and visible filtering should prioritize quick type chips plus category.
-  Do not place an All Books selector or visible book/account filter in Ledger
-  until a real need appears.
+- Ledger first, not dashboard first: Ledger owns the top type filter and Flow /
+  Charts switch. Charts means statistics. The top structure should mirror
+  Ultreia's Training home pattern in ledger form: type filter, Flow / Charts,
+  period switch for All Time / This Week / This Month / This Year, then compact
+  period metrics for expense, income, and record count. The type filter affects
+  both Flow and Charts; the period switch affects the overview, list, and chart
+  statistics. Search is collapsed behind a magnifier. Do not place an All Books
+  selector or visible book/account filter in Ledger until a real need appears.
 - Category statistics and category budgets are different concepts. Statistics
   summarize actual spending by category. Budgets compare actual spending against
   editable monthly category targets saved locally.
@@ -40,8 +42,9 @@ a gamified finance app.
   small plus action, opening balances are set there, and account net equals
   opening balance plus ledger income/expense flow. The top Assets overview
   should lead with total assets rather than duplicating monthly income/expense.
-- Settings should stay compact on mobile. Manual, changelog, and budget editing
-  open as second-level pages following Ultreia's settings pattern.
+- Settings should stay compact on mobile. The manual and changelog live together
+  in one second-level guide page following Ultreia's settings pattern. Budget
+  editing also opens as a second-level page.
 - Requirement review first: before building new product requests, compare the
   idea with strong mobile accounting apps such as iCost, then adapt it to
   Wilf's personal needs instead of copying generic finance-app complexity.
@@ -65,10 +68,11 @@ The active milestone is to make the PWA ready for real daily accounting by
 2026-07-01. The priority is not AI features yet; it is speed, clarity, account
 setup, backup, and confidence in the transaction workflow.
 
-## Temporary Demo State
-Temporary demo data is enabled before formal bookkeeping starts. It is stored in
-`src/core/demoData.js` and only shown when local `viatica:v1` has no real
-transactions. The demo seed is for reviewing Ledger, Calendar, Charts, Assets,
-and budget behavior. Explicit data-saving actions exit demo mode and start real
-local state, but the demo seed should still be removed or disabled before
-Viatica becomes the source of truth for real records.
+## Personal / Demo Data Mode
+Viatica supports a one-tap Personal / Demo mode switch for safe product demos.
+Personal mode reads and writes the local `viatica:v1` ledger. Demo mode displays
+bundled sample transactions, budgets, and accounts from `src/core/demoData.js`
+without overwriting real local data, so Wilf can show the app without exposing
+personal assets or spending. In Demo mode, add/edit/delete/import/export-style
+real-data actions should be blocked with a reminder to switch back to Personal
+mode first.

@@ -68,11 +68,14 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   categories, accounts, and row actions. Category icons may use subtle
   differentiated colors, but they should stay soft and tool-like, not childish
   or promotional.
-- Ledger owns filtering, editing, deletion, and a top Flow / Charts switch.
-  Charts means statistics. In Flow, keep the control stack shallow: month
-  selection sits beside the monthly overview title, search is a collapsed
-  magnifier, and the visible filter row keeps quick type chips plus category
-  only unless Wilf asks for more.
+- Ledger owns filtering, editing, deletion, and the top Flow / Charts switch.
+  Charts means statistics. Its top structure follows Ultreia's Training home
+  rhythm, adapted to accounting: type filter on the left, Flow / Charts switch
+  on the right, a four-part period switch below, then three compact metric cells
+  for expense, income, and record count. The type filter affects both Flow and
+  Charts; the period switch affects the overview, Flow rows, and Charts
+  statistics. Search stays collapsed behind a magnifier, and the visible filter
+  row should stay minimal.
 - Ledger must not show an All Books selector or visible book filter unless the
   product intentionally reintroduces multi-book workflow.
 - Calendar owns the monthly spending calendar and a compact month summary.
@@ -85,9 +88,14 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   income/expense flow. Account creation and opening-balance entry should stay
   behind the small plus action because they are low-frequency controls.
   Category budgets compare actual spending with monthly targets.
-- Settings uses the Ultreia-style compact mobile list. Long content such as the
-  manual, changelog, and category budget editor opens as a second-level page,
-  not inline on the Settings home.
+- Settings uses the Ultreia-style compact mobile list. The manual and changelog
+  are combined into one guide page so usage notes and product iteration history
+  live together. Long content such as the guide and category budget editor opens
+  as a second-level page, not inline on the Settings home.
+- The Personal / Demo data mode switch belongs in Settings. It uses the same
+  compact capsule vocabulary as the language switch. Demo mode is a display
+  privacy layer, not a second data model: it shows bundled sample ledger data
+  and blocks real-data actions with a clear toast reminder.
 - Settings owns local data actions, exports, imports, editable budgets, and
   PWA/storage notes.
 - Budget rows and transaction rows use dense panels, not oversized cards.

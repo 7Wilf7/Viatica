@@ -29,18 +29,20 @@ const PRODUCT_NAME = "Viatica";
 let bootSplashVisible = true;
 let bootSplashDismissTimer = 0;
 const storedState = loadState();
-const demoDataEnabled = VIATICA_DEMO_DATA_ENABLED && storedState.transactions.length === 0;
+const hasStoredDataMode = ["personal", "demo"].includes(storedState.preferences?.dataMode);
+const initialDataMode = hasStoredDataMode
+  ? storedState.preferences.dataMode
+  : (VIATICA_DEMO_DATA_ENABLED && storedState.transactions.length === 0 ? "demo" : "personal");
+const demoLedgerState = {
+  transactions: DEMO_TRANSACTIONS.map((txn) => normalizeTransaction(txn, new Date(DEMO_REFERENCE_DATE))),
+  budgets: { ...DEMO_BUDGETS },
+  accounts: DEMO_ACCOUNTS,
+};
 const state = {
   ...storedState,
-  transactions: demoDataEnabled
-    ? DEMO_TRANSACTIONS.map((txn) => normalizeTransaction(txn, new Date(DEMO_REFERENCE_DATE)))
-    : storedState.transactions,
-  budgets: demoDataEnabled && !Object.keys(storedState.budgets || {}).length
-    ? { ...DEMO_BUDGETS }
-    : storedState.budgets,
-  accounts: demoDataEnabled && !storedState.accounts.length
-    ? DEMO_ACCOUNTS
-    : storedState.accounts,
+  transactions: storedState.transactions,
+  budgets: storedState.budgets,
+  accounts: storedState.accounts,
   activeTab: "ledger",
   filters: {
     query: "",
@@ -57,21 +59,23 @@ const state = {
   dashboardRange: "month",
   ledgerView: "flow",
   settingsContent: "home",
-  demoDataEnabled,
 };
 
 state.budgets = { ...DEFAULT_BUDGETS, ...state.budgets };
 state.preferences = {
   activeBook: "日常账本",
   locale: "zh",
+  dataMode: initialDataMode,
   deletedAccounts: [],
   ...state.preferences,
 };
 if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
 state.accounts = visibleAccounts(normalizeAccounts(pruneLegacyDefaultAccounts(state.accounts)));
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
+if (!["personal", "demo"].includes(state.preferences.dataMode)) state.preferences.dataMode = initialDataMode;
 state.filters.book = "all";
 state.filters.account = "all";
+state.filters.month = "";
 
 const TABS = [
   { id: "ledger", labelKey: "tab.ledger" },
@@ -81,17 +85,11 @@ const TABS = [
   { id: "settings", labelKey: "tab.settings" },
 ];
 
-const QUICK_FILTERS = [
-  { id: "all", labelKey: "quick.all", filters: { type: "all" } },
-  { id: "expense", labelKey: "quick.expense", filters: { type: "expense" } },
-  { id: "income", labelKey: "quick.income", filters: { type: "income" } },
-];
-
 const DASHBOARD_RANGES = [
-  { id: "month", labelKey: "range.month" },
-  { id: "week", labelKey: "range.week" },
-  { id: "year", labelKey: "range.year" },
   { id: "all", labelKey: "range.all" },
+  { id: "week", labelKey: "range.week" },
+  { id: "month", labelKey: "range.month" },
+  { id: "year", labelKey: "range.year" },
 ];
 
 const LEDGER_VIEWS = [
@@ -297,14 +295,14 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "“账本”顶部只保留“流水 / 图表”：流水用于查单笔记录，图表就是统计。",
+        "“账本”顶部是类型筛选 + 流水 / 图表切换：流水用于查单笔记录，图表就是统计。",
         "“日历”用于快速定位日期，并查看本月支出、收入和有记录的天数。",
-        "流水用顶部月份切换月份，用快捷按钮切换全部/支出/收入；需要时点放大镜搜索，或用分类筛选。长按单笔流水可以编辑或删除。",
+        "账本周期可切换所有时间、本周、本月、今年；支出、收入和记录数会跟着周期变化。需要时点放大镜搜索，或用分类筛选。长按单笔流水可以编辑或删除。",
       ],
       en: [
-        "Ledger keeps only Flow and Charts at the top: Flow reviews individual entries, and Charts means statistics.",
+        "Ledger starts with type filtering plus Flow / Charts: Flow reviews individual entries, and Charts means statistics.",
         "Calendar locates dates quickly and shows monthly spending, income, and active ledger days.",
-        "Use the overview month to change months, quick chips for All/Expense/Income, the magnifier for search, and Category when needed. Long-press an entry to edit or delete it.",
+        "Switch the Ledger period between All Time, This Week, This Month, and This Year. Expense, income, and entry count follow that period. Use the magnifier for search or Category when needed. Long-press an entry to edit or delete it.",
       ],
     },
   },
@@ -315,12 +313,12 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "分类统计只看真实流水：本月每个分类实际花了多少钱，用来回答“钱花到哪里了”。",
+        "分类统计只看当前数据模式下的流水：所选周期内每个分类实际花了多少钱，用来回答“钱花到哪里了”。",
         "分类预算是目标对照：实际支出 / 你设置的每月预算，用来回答“这个分类有没有接近上限”。",
         "预算在“设置 → 分类预算”里改，初始值来自 Viatica 默认预算，保存后只写入本机 `viatica:v1`。",
       ],
       en: [
-        "Category statistics only read real entries: how much each category spent this month.",
+        "Category statistics read the current data mode: how much each category spent in the selected period.",
         "Category budgets compare actual spending against the monthly target you set.",
         "Edit budgets in Settings → Category budgets. Defaults come from Viatica and saved values stay local in `viatica:v1`.",
       ],
@@ -334,11 +332,13 @@ const MANUAL_SECTIONS = [
     items: {
       zh: [
         "“资产”先看我的总资产；点账户金额右上角“+”新增账户和初始资金，账户金额按初始资金加流水收支计算，长按账户可以删除。",
+        "“设置 → 数据模式”可在个人 / Demo 之间切换。Demo 用于展示给朋友看，不暴露真实资产；在 Demo 下点加号会提醒先切回个人模式。",
         "“设置”里的 CSV 适合表格分析，JSON 是完整本地备份。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
         "Assets leads with total assets. Tap the plus in Account balances to add an account and opening balance; balances combine opening balance with ledger flow, and accounts can be deleted by long press.",
+        "Settings → Data mode switches between Personal and Demo. Demo is for showing the app without exposing real assets; tapping Add in Demo reminds you to switch back to Personal first.",
         "CSV is for spreadsheet review. JSON is the full local backup.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
       ],
@@ -365,6 +365,25 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-06-28",
+    title: {
+      zh: "对齐 Ultreia 的账本顶部结构",
+      en: "Aligned Ledger top structure with Ultreia",
+    },
+    items: {
+      zh: [
+        "账本顶部改为类型筛选 + 流水/图表切换，再接时间周期和三项概览数据，整体更接近 Ultreia Training 首页。",
+        "类型筛选会同时影响流水和图表；时间周期会影响概览、流水列表和图表统计。",
+        "设置页合并使用手册和更新日志，并加入个人 / Demo 数据模式一键切换。",
+      ],
+      en: [
+        "Reworked Ledger top structure into type filter + Flow/Charts, then period range and three overview metrics, closer to Ultreia Training.",
+        "The type filter now affects both Flow and Charts; the period range affects overview metrics, entries, and chart statistics.",
+        "Merged Manual and Changelog in Settings and added a one-tap Personal / Demo data mode switch.",
+      ],
+    },
+  },
   {
     date: "2026-06-28",
     title: {
@@ -707,14 +726,13 @@ const MESSAGES = {
     "capture.save": "保存流水",
     "ledger.title": "账本",
     "ledger.overview": "账本概览",
-    "ledger.overviewTitle": "本月概览",
-    "ledger.monthBalance": "本月结余",
     "ledger.monthExpense": "支出",
     "ledger.monthIncome": "收入",
     "ledger.flow": "流水",
     "ledger.chart": "图表",
     "ledger.matchCount": "{count} 条匹配记录。",
     "ledger.empty": "还没有匹配流水。先记录一笔，或调整筛选条件。",
+    "ledger.typeFilter": "流水类型",
     "stats.title": "统计",
     "stats.hint": "图表先覆盖支出、收入和记录数。",
     "stats.categoryTitle": "分类统计",
@@ -731,10 +749,8 @@ const MESSAGES = {
     "assets.openingBalance": "初始资金",
     "assets.addAccount": "添加账户",
     "assets.deleteAccount": "删除账户",
-    "assets.saveAccounts": "保存初始资金",
     "assets.accountSaved": "账户已保存。",
     "assets.accountDeleted": "账户已删除。",
-    "assets.accountBalanceSaved": "初始资金已保存。",
     "assets.accountInvalid": "账户名称不能为空，初始资金必须是数字。",
     "assets.accountNetTitle": "账户净额",
     "assets.noAccount": "还没有账户。点击右上角加号添加。",
@@ -765,22 +781,21 @@ const MESSAGES = {
     "settings.guideTitle": "使用手册与更新日志",
     "settings.guideHint": "使用说明和产品变化",
     "settings.manualTitle": "使用手册",
-    "settings.manualHint": "单独阅读，不占设置首页",
-    "settings.changelogTitle": "更新日志",
-    "settings.changelogHint": "查看 Viatica 产品变化",
+    "settings.manualHint": "包含使用说明和迭代过程",
+    "settings.dataModeTitle": "数据模式",
+    "settings.dataModePersonal": "个人",
+    "settings.dataModeDemo": "Demo",
     "settings.back": "返回",
+    "manual.changelogHeading": "产品迭代过程",
     "filter.search": "搜索标题、商家、标签",
     "filter.allTypes": "全部类型",
     "filter.allBooks": "账本",
     "filter.allCategories": "分类",
     "filter.allAccounts": "账户",
-    "quick.all": "全部",
-    "quick.expense": "支出",
-    "quick.income": "收入",
     "range.month": "本月",
     "range.week": "本周",
-    "range.year": "本年",
-    "range.all": "全部",
+    "range.year": "今年",
+    "range.all": "所有时间",
     "template.lunch": "午餐",
     "template.coffee": "咖啡",
     "template.commute": "通勤",
@@ -797,6 +812,9 @@ const MESSAGES = {
     "toast.imported": "已导入 {count} 条流水。",
     "toast.importFailed": "导入失败：{message}",
     "toast.deleted": "流水已删除。",
+    "toast.demoMode": "当前是 Demo 展示模式。请先在设置里切回个人模式再操作真实数据。",
+    "toast.demoOn": "已切换到 Demo 展示模式，真实账本不会展示。",
+    "toast.demoOff": "已切换回个人模式。",
   },
   en: {
     "app.sections": "Viatica sections",
@@ -835,14 +853,13 @@ const MESSAGES = {
     "capture.save": "Save entry",
     "ledger.title": "Ledger",
     "ledger.overview": "Ledger overview",
-    "ledger.overviewTitle": "Monthly overview",
-    "ledger.monthBalance": "Month balance",
     "ledger.monthExpense": "Spent",
     "ledger.monthIncome": "Income",
     "ledger.flow": "Flow",
     "ledger.chart": "Charts",
     "ledger.matchCount": "{count} matching entries.",
     "ledger.empty": "No matching entries yet. Record one or adjust filters.",
+    "ledger.typeFilter": "Entry type",
     "stats.title": "Statistics",
     "stats.hint": "Charts start with spending, income, and entry count.",
     "stats.categoryTitle": "Category statistics",
@@ -859,10 +876,8 @@ const MESSAGES = {
     "assets.openingBalance": "Opening balance",
     "assets.addAccount": "Add account",
     "assets.deleteAccount": "Delete account",
-    "assets.saveAccounts": "Save opening balances",
     "assets.accountSaved": "Account saved.",
     "assets.accountDeleted": "Account deleted.",
-    "assets.accountBalanceSaved": "Opening balances saved.",
     "assets.accountInvalid": "Account name is required and opening balance must be a number.",
     "assets.accountNetTitle": "Account net",
     "assets.noAccount": "No accounts yet. Tap the plus button to add one.",
@@ -893,22 +908,21 @@ const MESSAGES = {
     "settings.guideTitle": "Manual and changelog",
     "settings.guideHint": "Usage notes and product changes",
     "settings.manualTitle": "Manual",
-    "settings.manualHint": "Read separately from Settings home",
-    "settings.changelogTitle": "Changelog",
-    "settings.changelogHint": "Review Viatica product changes",
+    "settings.manualHint": "Includes usage notes and product history",
+    "settings.dataModeTitle": "Data mode",
+    "settings.dataModePersonal": "Personal",
+    "settings.dataModeDemo": "Demo",
     "settings.back": "Back",
+    "manual.changelogHeading": "Product history",
     "filter.search": "Search title, merchant, tags",
     "filter.allTypes": "All types",
     "filter.allBooks": "Book",
     "filter.allCategories": "Category",
     "filter.allAccounts": "Account",
-    "quick.all": "All",
-    "quick.expense": "Expense",
-    "quick.income": "Income",
-    "range.month": "Month",
-    "range.week": "Week",
-    "range.year": "Year",
-    "range.all": "All",
+    "range.month": "This Month",
+    "range.week": "This Week",
+    "range.year": "This Year",
+    "range.all": "All Time",
     "template.lunch": "Lunch",
     "template.coffee": "Coffee",
     "template.commute": "Commute",
@@ -925,6 +939,9 @@ const MESSAGES = {
     "toast.imported": "Imported {count} entries.",
     "toast.importFailed": "Import failed: {message}",
     "toast.deleted": "Entry deleted.",
+    "toast.demoMode": "Demo mode is on. Switch back to Personal in Settings before changing real data.",
+    "toast.demoOn": "Demo mode is on. Your real ledger is hidden.",
+    "toast.demoOff": "Back to Personal mode.",
   },
 };
 
@@ -939,12 +956,6 @@ function t(key, replacements = {}) {
 
 function displayLocale() {
   return state.preferences.locale === "en" ? "en-US" : "zh-CN";
-}
-
-function dateForMonthFilter(value) {
-  const match = /^(\d{4})-(\d{2})$/.exec(String(value || ""));
-  if (!match) return new Date();
-  return new Date(Number(match[1]), Number(match[2]) - 1, 1, 12);
 }
 
 function formatMoney(amount, currency) {
@@ -969,21 +980,31 @@ function localized(copy) {
   return copy?.[locale] || copy?.zh || "";
 }
 
+function isDemoMode() {
+  return state.preferences.dataMode === "demo";
+}
+
+function activeLedgerState() {
+  if (isDemoMode()) return demoLedgerState;
+  return {
+    transactions: state.transactions,
+    budgets: state.budgets,
+    accounts: state.accounts,
+  };
+}
+
 function persist() {
   saveState({
-    transactions: state.demoDataEnabled ? [] : state.transactions,
-    budgets: state.demoDataEnabled ? {} : state.budgets,
-    accounts: state.demoDataEnabled ? [] : state.accounts,
+    transactions: state.transactions,
+    budgets: state.budgets,
+    accounts: state.accounts,
     preferences: state.preferences,
   });
 }
 
 function beginRealDataMode() {
-  if (!state.demoDataEnabled) return;
-  state.demoDataEnabled = false;
-  state.transactions = [];
-  state.budgets = { ...DEFAULT_BUDGETS };
-  state.accounts = visibleAccounts(normalizeAccounts([]));
+  if (!isDemoMode()) return;
+  state.preferences.dataMode = "personal";
   state.filters = {
     ...state.filters,
     type: "all",
@@ -991,6 +1012,16 @@ function beginRealDataMode() {
     category: "all",
     account: "all",
   };
+}
+
+function warnDemoMode() {
+  toast(t("toast.demoMode"));
+}
+
+function guardDemoMutation() {
+  if (!isDemoMode()) return false;
+  warnDemoMode();
+  return true;
 }
 
 function itemOptions(items) {
@@ -1018,12 +1049,12 @@ function pruneLegacyDefaultAccounts(accounts) {
   });
 }
 
-function accountNames() {
-  const deleted = deletedAccountSet();
+function accountNames(transactions = activeLedgerState().transactions, accounts = activeLedgerState().accounts) {
+  const deleted = isDemoMode() ? new Set() : deletedAccountSet();
   return uniqueItems([
-    ...state.accounts.map((account) => account.name),
+    ...accounts.map((account) => account.name),
     ...ACCOUNTS.filter((account) => !deleted.has(account)),
-    ...state.transactions.map((txn) => txn.account).filter((account) => !deleted.has(account)),
+    ...transactions.map((txn) => txn.account).filter((account) => !deleted.has(account)),
   ]);
 }
 
@@ -1078,13 +1109,6 @@ function renderChoiceControl({ name = "", filterKey = "", value, options }) {
   `;
 }
 
-function activeQuickFilterId() {
-  const match = QUICK_FILTERS.find((item) => (
-    (item.filters.type || "all") === (state.filters.type || "all")
-  ));
-  return match?.id || "custom";
-}
-
 function startOfWeek(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -1102,21 +1126,73 @@ function transactionInDashboardRange(txn, range, now = new Date()) {
   return monthKey(d) === monthKey(now);
 }
 
-function summarizeDashboardRange(transactions, range = "month", now = new Date()) {
-  const result = {
-    expense: 0,
-    income: 0,
-    count: 0,
+function summarizeLedgerPeriod(transactions = [], budgets = DEFAULT_BUDGETS) {
+  const summary = {
+    monthKey: t(DASHBOARD_RANGES.find((item) => item.id === state.dashboardRange)?.labelKey || "range.month"),
+    todayExpense: 0,
+    todayIncome: 0,
+    monthExpense: 0,
+    monthIncome: 0,
+    monthBalance: 0,
+    categoryExpense: {},
+    accountNet: {},
+    budgets: {},
+    bookExpense: {},
+    reimbursableExpense: 0,
+    transactionCount: transactions.length,
   };
 
   for (const txn of transactions) {
-    if (!transactionInDashboardRange(txn, range, now)) continue;
     const amount = Number(txn.amount || 0);
-    result.count += 1;
-    if (txn.type === "expense") result.expense += amount;
-    if (txn.type === "income") result.income += amount;
+    if (txn.type === "expense") {
+      summary.monthExpense += amount;
+      summary.categoryExpense[txn.category] = (summary.categoryExpense[txn.category] || 0) + amount;
+      summary.bookExpense[txn.book || "日常账本"] = (summary.bookExpense[txn.book || "日常账本"] || 0) + amount;
+      if (txn.reimbursable) summary.reimbursableExpense += amount;
+    }
+    if (txn.type === "income") summary.monthIncome += amount;
   }
-  return result;
+
+  summary.monthBalance = summary.monthIncome - summary.monthExpense;
+
+  for (const [category, budget] of Object.entries(budgets || {})) {
+    const spent = summary.categoryExpense[category] || 0;
+    summary.budgets[category] = {
+      budget,
+      spent,
+      remaining: Math.max(0, budget - spent),
+      ratio: budget > 0 ? spent / budget : 0,
+    };
+  }
+
+  return summary;
+}
+
+function rangeFilterTransactions(transactions, range = "month") {
+  return transactions.filter((txn) => transactionInDashboardRange(txn, range));
+}
+
+function ledgerTypeFilteredTransactions(transactions) {
+  return filterTransactions(transactions, {
+    type: state.filters.type,
+    book: "all",
+    category: "all",
+    account: "all",
+    reimbursable: "all",
+    receipt: "all",
+    month: "",
+    query: "",
+  });
+}
+
+function ledgerFlowTransactions(periodTransactions) {
+  return filterTransactions(periodTransactions, {
+    ...state.filters,
+    type: "all",
+    book: "all",
+    account: "all",
+    month: "",
+  });
 }
 
 function transactionTone(txn) {
@@ -1219,14 +1295,12 @@ function scheduleBootSplashDismiss() {
 
 function render() {
   document.documentElement.lang = state.preferences.locale === "en" ? "en" : "zh-CN";
-  const summary = summarizeLedger(state.transactions, state.budgets, new Date(), state.accounts);
-  const ledgerSummary = summarizeLedger(
-    state.transactions,
-    state.budgets,
-    dateForMonthFilter(state.filters.month),
-    state.accounts,
-  );
-  const filteredTransactions = filterTransactions(state.transactions, state.filters)
+  const activeState = activeLedgerState();
+  const summary = summarizeLedger(activeState.transactions, activeState.budgets, new Date(), activeState.accounts);
+  const typeTransactions = ledgerTypeFilteredTransactions(activeState.transactions);
+  const periodTransactions = rangeFilterTransactions(typeTransactions, state.dashboardRange);
+  const ledgerSummary = summarizeLedgerPeriod(periodTransactions, activeState.budgets);
+  const filteredTransactions = ledgerFlowTransactions(periodTransactions)
     .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt));
   const editingTransaction = state.transactions.find((txn) => txn.id === state.editingTransactionId) || null;
 
@@ -1315,42 +1389,66 @@ function renderLedgerModeSwitch() {
   `;
 }
 
-function renderLedgerTab(filteredTransactions, summary) {
+function renderLedgerTypeFilter() {
   return `
-    ${renderLedgerModeSwitch()}
-    ${state.ledgerView === "chart" ? renderLedgerStats(summary) : renderLedgerFlow(filteredTransactions, summary)}
+    <div class="ledger-type-filter" aria-label="${escapeHtml(t("ledger.typeFilter"))}">
+      ${renderFilterChoice("type", state.filters.type, typeOptions(true))}
+    </div>
   `;
 }
 
-function renderLedgerOverview(summary, count) {
+function renderLedgerTopbar() {
+  return `
+    <section class="ledger-topbar">
+      ${renderLedgerTypeFilter()}
+      ${renderLedgerModeSwitch()}
+    </section>
+  `;
+}
+
+function renderLedgerPeriodSwitch() {
+  return `
+    <section class="time-switch ledger-period-switch" aria-label="Time range">
+      ${DASHBOARD_RANGES.map((item) => `
+        <button class="${state.dashboardRange === item.id ? "active" : ""}" data-action="dashboard-range" data-range="${escapeHtml(item.id)}">${escapeHtml(t(item.labelKey))}</button>
+      `).join("")}
+    </section>
+  `;
+}
+
+function renderLedgerTab(filteredTransactions, summary) {
+  return `
+    ${renderLedgerTopbar()}
+    ${renderLedgerPeriodSwitch()}
+    ${renderLedgerOverview(summary)}
+    ${state.ledgerView === "chart" ? renderLedgerStats(summary) : renderLedgerFlow(filteredTransactions)}
+  `;
+}
+
+function renderLedgerOverview(summary) {
   return `
     <section class="ledger-overview" aria-label="${escapeHtml(t("ledger.overview"))}">
-      <div class="overview-card">
-        <div class="overview-main">
-          <h2>${escapeHtml(t("ledger.overviewTitle"))}</h2>
-          <label class="overview-month-control">
-            <span>${escapeHtml(summary.monthKey)}</span>
-            <input class="overview-month-input" type="month" data-filter="month" value="${escapeHtml(summary.monthKey)}" aria-label="${escapeHtml(t("ledger.overviewTitle"))}">
-          </label>
-          <strong class="${summary.monthBalance >= 0 ? "amount positive" : "amount negative"}">
-            ${escapeHtml(signedMoney(summary.monthBalance))}
-          </strong>
-        </div>
-        <div class="overview-mini">
-          <span><b>${escapeHtml(compactMoney(summary.monthExpense))}</b>${escapeHtml(t("ledger.monthExpense"))}</span>
-          <span><b>${escapeHtml(compactMoney(summary.monthIncome))}</b>${escapeHtml(t("ledger.monthIncome"))}</span>
-          <span><b>${escapeHtml(String(count))}</b>${escapeHtml(t("today.transactionCount"))}</span>
-        </div>
+      <div class="ledger-metric-grid">
+        ${renderLedgerMetric(t("ledger.monthExpense"), compactMoney(summary.monthExpense))}
+        ${renderLedgerMetric(t("ledger.monthIncome"), compactMoney(summary.monthIncome))}
+        ${renderLedgerMetric(t("today.transactionCount"), String(summary.transactionCount))}
       </div>
     </section>
   `;
 }
 
-function renderLedgerFlow(filteredTransactions, summary) {
+function renderLedgerMetric(label, value) {
   return `
-    ${renderLedgerOverview(summary, filteredTransactions.length)}
+    <div class="ledger-metric-card">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>
+  `;
+}
+
+function renderLedgerFlow(filteredTransactions) {
+  return `
     <section class="panel ledger-flow-panel">
-      ${renderQuickFilters()}
       ${renderFilters()}
       <div class="list">
         ${filteredTransactions.length ? filteredTransactions.map(renderTransactionRow).join("") : `<div class="empty">${escapeHtml(t("ledger.empty"))}</div>`}
@@ -1360,28 +1458,11 @@ function renderLedgerFlow(filteredTransactions, summary) {
 }
 
 function renderLedgerStats(summary) {
-  const rangeSummary = summarizeDashboardRange(state.transactions, state.dashboardRange);
-  const rangeLabel = t(DASHBOARD_RANGES.find((item) => item.id === state.dashboardRange)?.labelKey || "range.month");
-
   return `
     <section class="panel stats-panel">
       <div class="section-title">
         <div>
           <h2>${escapeHtml(t("stats.title"))}</h2>
-        </div>
-      </div>
-
-      <section class="time-switch" aria-label="Time range">
-        ${DASHBOARD_RANGES.map((item) => `
-          <button class="${state.dashboardRange === item.id ? "active" : ""}" data-action="dashboard-range" data-range="${escapeHtml(item.id)}">${escapeHtml(t(item.labelKey))}</button>
-        `).join("")}
-      </section>
-
-      <div class="ledger-hero dashboard-hero">
-        <div class="hero-grid">
-          ${renderStat(t("today.expense", { range: rangeLabel }), compactMoney(rangeSummary.expense))}
-          ${renderStat(t("today.income", { range: rangeLabel }), compactMoney(rangeSummary.income))}
-          ${renderStat(t("today.transactionCount"), `${rangeSummary.count}`)}
         </div>
       </div>
 
@@ -1424,15 +1505,17 @@ function renderCalendarTab(summary) {
 }
 
 function monthActiveDays() {
+  const { transactions } = activeLedgerState();
   const currentMonth = monthKey(new Date());
   return new Set(
-    state.transactions
+    transactions
       .filter((txn) => monthKey(txn.occurredAt) === currentMonth)
       .map((txn) => todayKey(txn.occurredAt)),
   ).size;
 }
 
 function renderMonthCalendar() {
+  const { transactions } = activeLedgerState();
   const now = new Date();
   const currentMonth = monthKey(now);
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1441,7 +1524,7 @@ function renderMonthCalendar() {
   const dayIncome = new Map();
   const today = todayKey(now);
 
-  for (const txn of state.transactions) {
+  for (const txn of transactions) {
     if (monthKey(txn.occurredAt) !== currentMonth) continue;
     const key = todayKey(txn.occurredAt);
     const amount = Number(txn.amount || 0);
@@ -1499,19 +1582,6 @@ function renderCaptureTab(editingTransaction) {
   `;
 }
 
-function renderQuickFilters() {
-  const active = activeQuickFilterId();
-  return `
-    <div class="quick-filters" aria-label="Quick ledger filters">
-      ${QUICK_FILTERS.map((item) => `
-        <button class="quick-chip ${active === item.id ? "active" : ""}" data-action="quick-filter" data-filter-id="${escapeHtml(item.id)}">
-          ${escapeHtml(t(item.labelKey))}
-        </button>
-      `).join("")}
-    </div>
-  `;
-}
-
 function renderAssetsTab(summary) {
   const assetTotal = totalAccountNet(summary);
   return `
@@ -1556,7 +1626,6 @@ function renderAssetsTab(summary) {
 
 function renderSettingsTab() {
   if (state.settingsContent === "manual") return renderSettingsPage(t("settings.manualTitle"), renderManual());
-  if (state.settingsContent === "changelog") return renderSettingsPage(t("settings.changelogTitle"), renderChangelog());
   if (state.settingsContent === "budgets") return renderSettingsPage(t("settings.budgetTitle"), renderBudgetSettings());
 
   return `
@@ -1565,8 +1634,8 @@ function renderSettingsTab() {
 
       ${renderSettingsSection(t("settings.productSection"), [
         renderSettingsCell(t("settings.languageTitle"), "", renderLanguageSwitch()),
+        renderSettingsCell(t("settings.dataModeTitle"), "", renderDataModeSwitch()),
         renderSettingsCell(t("settings.manualTitle"), "", "", "manual"),
-        renderSettingsCell(t("settings.changelogTitle"), "", "", "changelog"),
       ])}
 
       ${renderSettingsSection(t("settings.dataSection"), [
@@ -1631,7 +1700,7 @@ function renderSettingsCell(primary, secondary = "", right = "", action = "", di
   `;
   if (!isButton) return `<div class="settings-cell">${content}</div>`;
   return `
-    <button class="settings-cell" data-action="${escapeHtml(action === "manual" || action === "changelog" || action === "budgets" ? "settings-content" : action)}" ${action === "manual" || action === "changelog" || action === "budgets" ? `data-content="${escapeHtml(action)}"` : ""} ${disabled ? "disabled aria-busy=\"true\"" : ""}>
+    <button class="settings-cell" data-action="${escapeHtml(action === "manual" || action === "budgets" ? "settings-content" : action)}" ${action === "manual" || action === "budgets" ? `data-content="${escapeHtml(action)}"` : ""} ${disabled ? "disabled aria-busy=\"true\"" : ""}>
       ${content}
     </button>
   `;
@@ -1645,7 +1714,18 @@ function renderLanguageSwitch() {
   `;
 }
 
+function renderDataModeSwitch() {
+  const demo = isDemoMode();
+  return `
+    <button class="mode-switch data-mode-switch" type="button" data-action="toggle-data-mode" data-mode="${demo ? "demo" : "personal"}" aria-label="${escapeHtml(t("settings.dataModeTitle"))}">
+      <span class="${demo ? "" : "active"}">${escapeHtml(t("settings.dataModePersonal"))}</span>
+      <span class="${demo ? "active" : ""}">${escapeHtml(t("settings.dataModeDemo"))}</span>
+    </button>
+  `;
+}
+
 function renderBudgetSettings() {
+  const { budgets } = activeLedgerState();
   return `
     <form id="budget-form" class="budget-form">
       <p class="settings-page-hint">${escapeHtml(t("settings.budgetPageHint"))}</p>
@@ -1656,7 +1736,7 @@ function renderBudgetSettings() {
               ${renderIconBadge(category, "category", "small")}
               <span>${escapeHtml(category)}</span>
             </span>
-            <input name="${escapeHtml(category)}" inputmode="decimal" type="number" min="0" step="1" value="${escapeHtml(state.budgets[category] ?? 0)}">
+            <input name="${escapeHtml(category)}" inputmode="decimal" type="number" min="0" step="1" value="${escapeHtml(budgets[category] ?? 0)}">
           </label>
         `).join("")}
       </div>
@@ -1679,26 +1759,26 @@ function renderManual() {
           </ul>
         </article>
       `).join("")}
+      <article class="reading-entry guide-changelog-heading">
+        <h3>${escapeHtml(t("manual.changelogHeading"))}</h3>
+      </article>
+      ${renderChangelogEntries()}
     </div>
   `;
 }
 
-function renderChangelog() {
-  return `
-    <div class="reading-list changelog-list">
-      ${CHANGELOG_ENTRIES.map((entry) => `
-        <article class="reading-entry changelog-entry">
-          <div class="changelog-head">
-            <span>${escapeHtml(entry.date)}</span>
-            <h3>${escapeHtml(localized(entry.title))}</h3>
-          </div>
-          <ul>
-            ${localized(entry.items).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
-          </ul>
-        </article>
-      `).join("")}
-    </div>
-  `;
+function renderChangelogEntries() {
+  return CHANGELOG_ENTRIES.map((entry) => `
+    <article class="reading-entry changelog-entry">
+      <div class="changelog-head">
+        <span>${escapeHtml(entry.date)}</span>
+        <h3>${escapeHtml(localized(entry.title))}</h3>
+      </div>
+      <ul>
+        ${localized(entry.items).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ul>
+    </article>
+  `).join("");
 }
 
 function renderLocaleSegment(locale) {
@@ -2074,6 +2154,7 @@ document.addEventListener("submit", (event) => {
   if (!(form instanceof HTMLFormElement)) return;
   event.preventDefault();
   if (form.getAttribute("id") === "budget-form") {
+    if (guardDemoMutation()) return;
     beginRealDataMode();
     try {
       const nextBudgets = {};
@@ -2092,6 +2173,7 @@ document.addEventListener("submit", (event) => {
     return;
   }
   if (form.getAttribute("id") === "account-form") {
+    if (guardDemoMutation()) return;
     beginRealDataMode();
     try {
       const data = Object.fromEntries(new FormData(form).entries());
@@ -2118,25 +2200,8 @@ document.addEventListener("submit", (event) => {
     }
     return;
   }
-  if (form.getAttribute("id") === "account-balances-form") {
-    const formData = new FormData(form);
-    beginRealDataMode();
-    try {
-      const nextAccounts = state.accounts.map((account) => {
-        const value = Number(formData.get(account.name) || 0);
-        if (!Number.isFinite(value)) throw new Error(t("assets.accountInvalid"));
-        return { ...account, openingBalance: Math.round(value * 100) / 100 };
-      });
-      state.accounts = visibleAccounts(normalizeAccounts(nextAccounts));
-      persist();
-      render();
-      toast(t("assets.accountBalanceSaved"));
-    } catch (err) {
-      toast(err.message || t("assets.accountInvalid"));
-    }
-    return;
-  }
   if (form.getAttribute("id") !== "transaction-form") return;
+  if (guardDemoMutation()) return;
   try {
     const data = formToTransaction(form);
     beginRealDataMode();
@@ -2168,6 +2233,10 @@ document.addEventListener("input", (event) => {
 
 document.addEventListener("change", (event) => {
   if (event.target.id === "csv-import") {
+    if (guardDemoMutation()) {
+      event.target.value = "";
+      return;
+    }
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -2215,11 +2284,19 @@ document.addEventListener("click", (event) => {
     pickFormField(node);
   }
   if (action === "tab") {
+    if ((node.dataset.tab || "") === "capture" && isDemoMode()) {
+      warnDemoMode();
+      return;
+    }
     state.activeTab = node.dataset.tab || "ledger";
     if (state.activeTab === "settings") state.settingsContent = "home";
     render();
   }
   if (action === "open-capture") {
+    if (isDemoMode()) {
+      warnDemoMode();
+      return;
+    }
     state.editingTransactionId = null;
     state.activeTab = "capture";
     render();
@@ -2253,12 +2330,6 @@ document.addEventListener("click", (event) => {
     state.ledgerView = view;
     render();
   }
-  if (action === "quick-filter") {
-    const preset = QUICK_FILTERS.find((item) => item.id === node.dataset.filterId);
-    if (!preset) return;
-    state.filters = { ...state.filters, ...preset.filters };
-    render();
-  }
   if (action === "dashboard-range") {
     const range = node.dataset.range;
     if (!DASHBOARD_RANGES.some((item) => item.id === range)) return;
@@ -2267,11 +2338,12 @@ document.addEventListener("click", (event) => {
   }
   if (action === "settings-content") {
     const content = node.dataset.content || "home";
-    if (!["home", "manual", "changelog", "budgets"].includes(content)) return;
+    if (!["home", "manual", "budgets"].includes(content)) return;
     state.settingsContent = content;
     render();
   }
   if (action === "reset-budgets") {
+    if (guardDemoMutation()) return;
     beginRealDataMode();
     state.budgets = { ...DEFAULT_BUDGETS };
     persist();
@@ -2279,6 +2351,7 @@ document.addEventListener("click", (event) => {
     toast(t("settings.budgetResetDone"));
   }
   if (action === "toggle-account-form") {
+    if (guardDemoMutation()) return;
     state.accountFormOpen = !state.accountFormOpen;
     render();
     if (state.accountFormOpen) requestAnimationFrame(() => document.querySelector("#account-form input[name=\"name\"]")?.focus());
@@ -2288,12 +2361,14 @@ document.addEventListener("click", (event) => {
     render();
   }
   if (action === "edit") {
+    if (guardDemoMutation()) return;
     state.editingTransactionId = node.dataset.id;
     state.activeTab = "capture";
     render();
     document.querySelector("#transaction-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
   if (action === "delete") {
+    if (guardDemoMutation()) return;
     if (!confirm(t("confirm.delete"))) return;
     state.transactions = state.transactions.filter((txn) => txn.id !== node.dataset.id);
     persist();
@@ -2301,6 +2376,7 @@ document.addEventListener("click", (event) => {
     toast(t("toast.deleted"));
   }
   if (action === "delete-account") {
+    if (guardDemoMutation()) return;
     const accountName = node.dataset.account || "";
     if (!accountName || !confirm(t("confirm.deleteAccount", { account: accountName }))) return;
     state.accounts = state.accounts.filter((account) => account.name !== accountName);
@@ -2314,12 +2390,15 @@ document.addEventListener("click", (event) => {
     toast(t("assets.accountDeleted"));
   }
   if (action === "export-csv") {
+    if (guardDemoMutation()) return;
     download("viatica-transactions.csv", exportTransactionsCsv(state.transactions), "text/csv;charset=utf-8");
   }
   if (action === "import-csv") {
+    if (guardDemoMutation()) return;
     document.querySelector("#csv-import")?.click();
   }
   if (action === "export-json") {
+    if (guardDemoMutation()) return;
     download("viatica-backup.json", exportState({
       transactions: state.transactions,
       budgets: state.budgets,
@@ -2334,6 +2413,24 @@ document.addEventListener("click", (event) => {
     state.preferences.locale = state.preferences.locale === "en" ? "zh" : "en";
     persist();
     render();
+  }
+  if (action === "toggle-data-mode") {
+    const nextMode = isDemoMode() ? "personal" : "demo";
+    state.preferences.dataMode = nextMode;
+    state.activeTab = nextMode === "demo" && state.activeTab === "capture" ? "ledger" : state.activeTab;
+    state.editingTransactionId = null;
+    state.searchOpen = false;
+    state.filters = {
+      ...state.filters,
+      query: "",
+      category: "all",
+      account: "all",
+      book: "all",
+      month: "",
+    };
+    persist();
+    render();
+    toast(t(nextMode === "demo" ? "toast.demoOn" : "toast.demoOff"));
   }
   if (action === "set-locale") {
     const locale = node.dataset.locale;

@@ -94,18 +94,25 @@ of copying training-specific behavior.
   decorative stickers.
 - Use bottom tabs for the mobile app shell, in this order: Ledger, Calendar,
   Add, Assets, Settings. The Add tab is the center plus action.
-- The Ledger tab top switch should keep only Flow and Charts. Charts means
-  statistics. Flow should stay compact: month selection belongs in the monthly
-  overview row, search stays collapsed behind a magnifier, and visible filters
-  should prioritize quick type chips plus category. Do not put an All Books
-  selector or visible book/account filter in Ledger unless the product
-  intentionally reintroduces that workflow.
+- The Ledger tab should follow the Ultreia Training home structure adapted for
+  accounting: a top type filter plus Flow / Charts switch, then a period switch
+  for All Time / This Week / This Month / This Year, then compact period metrics
+  for expense, income, and record count. The type filter affects both Flow and
+  Charts; the period switch affects the overview, Flow list, and Charts
+  statistics. Search stays collapsed behind a magnifier, and visible filters
+  should stay minimal. Do not put an All Books selector or visible book/account
+  filter in Ledger unless the product intentionally reintroduces that workflow.
 - Keep category statistics and category budgets separate. Statistics summarize
   actual spending from transactions. Budgets compare actual spending against
   editable monthly targets saved under `viatica:v1`.
 - Settings should follow Ultreia's compact mobile pattern: a short settings
-  list first, with manual, changelog, budget editing, or long explanatory
-  content opening as second-level pages.
+  list first, with the manual and changelog combined into one second-level
+  guide page. Budget editing and other long explanatory content also open as
+  second-level pages.
+- Viatica may provide a Personal / Demo data mode switch for safe demos. Demo
+  mode must use bundled sample ledger data for display only, must not overwrite
+  `viatica:v1`, and must block add/edit/delete/import/export-style real-data
+  actions with a clear reminder to switch back to Personal mode first.
 - Assets owns total assets, account creation, opening-balance editing, account
   net, and category budgets. Account creation and opening-balance entry should
   stay behind the small plus action instead of occupying the default view.
