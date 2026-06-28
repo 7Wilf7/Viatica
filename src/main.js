@@ -1,6 +1,6 @@
 import "./styles.css";
 import { productLogoUrl } from "./assets/logo.js";
-import { ACCOUNTS, CATEGORIES, CURRENCIES, DEFAULT_BUDGETS, TRANSACTION_TYPES } from "./core/constants.js";
+import { ACCOUNTS, CATEGORIES, DEFAULT_BUDGETS, TRANSACTION_TYPES } from "./core/constants.js";
 import { exportTransactionsCsv, importTransactionsCsv } from "./core/csv.js";
 import {
   DEMO_ACCOUNTS,
@@ -262,11 +262,27 @@ const ACCOUNT_META = {
   "其他": { icon: "more", fg: "oklch(0.76 0.05 85)", bg: "oklch(0.76 0.05 85 / 0.13)" },
 };
 
-const CAPTURE_TEMPLATES = [
-  { labelKey: "template.lunch", values: { amount: "35", title: "午餐", category: "餐饮", account: "微信" } },
-  { labelKey: "template.coffee", values: { amount: "22", title: "咖啡", category: "餐饮", account: "微信" } },
-  { labelKey: "template.commute", values: { amount: "8", title: "通勤", category: "交通", account: "支付宝" } },
-  { labelKey: "template.gear", values: { amount: "899", title: "跑步装备", category: "运动装备", tags: "gear ultreia" } },
+const CAPTURE_CATEGORY_GROUPS = [
+  { category: "餐饮", items: ["三餐", "咖啡", "零食", "水果蔬菜", "外卖"] },
+  { category: "交通", items: ["地铁公交", "打车", "停车", "高铁机票"] },
+  { category: "购物", items: ["日用品", "服饰", "数码", "家居"] },
+  { category: "运动装备", items: ["鞋服", "装备", "补给", "维修"] },
+  { category: "比赛/训练", items: ["赛事", "训练课", "场地", "康复"] },
+  { category: "健康", items: ["医疗", "药品", "体检", "保险"] },
+  { category: "AI 工具", items: ["API", "模型订阅", "软件", "存储"] },
+  { category: "订阅", items: ["App", "会员", "云服务", "内容"] },
+  { category: "学习", items: ["课程", "书籍", "资料", "工具"] },
+  { category: "娱乐", items: ["电影", "游戏", "聚会", "内容"] },
+  { category: "旅行", items: ["住宿", "餐饮", "交通", "门票"] },
+  { category: "工作", items: ["办公", "设备", "服务", "差旅"] },
+  { category: "其他", items: ["杂项", "临时", "待整理"] },
+];
+
+const AMOUNT_KEY_ROWS = [
+  ["1", "2", "3", "backspace"],
+  ["4", "5", "6", "clear"],
+  ["7", "8", "9", "00"],
+  [".", "0", "submit"],
 ];
 
 const MANUAL_SECTIONS = [
@@ -277,14 +293,14 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "从底部中间的“+”开始，先填金额和标题；分类和备注可以稍后补。",
-        "午餐、咖啡、通勤、装备模板用于十秒内录入常见流水。",
-        "先把精力放在真实付款账户和分类上；账户负责记录真实付款出口。",
+        "从底部中间的“+”开始，先点支出或收入，再点分类、子项和金额。",
+        "新增流水默认使用内置金额键盘，尽量避免调出系统键盘。",
+        "先把精力放在真实付款账户和分类上；备注可以稍后再补。",
       ],
       en: [
-        "Start from the centered + tab. Enter amount and title first; category and notes can come later.",
-        "Lunch, Coffee, Commute, and Gear templates cover common entries in a few taps.",
-        "Focus on real payment accounts and categories first.",
+        "Start from the centered + tab. Pick expense or income, then category, detail, and amount.",
+        "New entries use the built-in amount keypad first, so the system keyboard stays out of the way.",
+        "Focus on real payment accounts and categories first; notes can come later.",
       ],
     },
   },
@@ -365,6 +381,25 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-06-29",
+    title: {
+      zh: "新增点按式记账输入",
+      en: "Tap-first capture input",
+    },
+    items: {
+      zh: [
+        "新增流水改为支出 / 收入双栏切换，按钮各占一半宽度。",
+        "Capture 加入分类、子项、账户和内置金额键盘，减少系统键盘输入。",
+        "资产页默认只保留我的总资产和分类预算，账户新增收进资产概览的小加号。",
+      ],
+      en: [
+        "Changed the new-entry type switch to a balanced Expense / Income two-segment control.",
+        "Added category, detail, account, and built-in amount keypad controls to reduce system-keyboard input.",
+        "Kept Assets focused on Total assets and category budgets, with account setup tucked behind the overview plus button.",
+      ],
+    },
+  },
   {
     date: "2026-06-28",
     title: {
@@ -722,6 +757,11 @@ const MESSAGES = {
     "capture.time": "时间",
     "capture.tags": "标签",
     "capture.note": "备注",
+    "capture.notePlaceholder": "点击填写备注",
+    "capture.amountKeypad": "金额键盘",
+    "capture.done": "完成",
+    "capture.keypadBackspace": "退格",
+    "capture.keypadClear": "清空",
     "capture.saveEdit": "保存修改",
     "capture.save": "保存流水",
     "ledger.title": "账本",
@@ -796,10 +836,6 @@ const MESSAGES = {
     "range.week": "本周",
     "range.year": "今年",
     "range.all": "所有时间",
-    "template.lunch": "午餐",
-    "template.coffee": "咖啡",
-    "template.commute": "通勤",
-    "template.gear": "装备",
     "txn.edit": "编辑",
     "txn.delete": "删除",
     "confirm.delete": "删除这笔流水？",
@@ -849,6 +885,11 @@ const MESSAGES = {
     "capture.time": "Time",
     "capture.tags": "Tags",
     "capture.note": "Note",
+    "capture.notePlaceholder": "Tap to add a note",
+    "capture.amountKeypad": "Amount keypad",
+    "capture.done": "Done",
+    "capture.keypadBackspace": "Backspace",
+    "capture.keypadClear": "Clear",
     "capture.saveEdit": "Save changes",
     "capture.save": "Save entry",
     "ledger.title": "Ledger",
@@ -923,10 +964,6 @@ const MESSAGES = {
     "range.week": "This Week",
     "range.year": "This Year",
     "range.all": "All Time",
-    "template.lunch": "Lunch",
-    "template.coffee": "Coffee",
-    "template.commute": "Commute",
-    "template.gear": "Gear",
     "txn.edit": "Edit",
     "txn.delete": "Delete",
     "confirm.delete": "Delete this entry?",
@@ -960,6 +997,13 @@ function displayLocale() {
 
 function formatMoney(amount, currency) {
   return formatCurrency(amount, currency, currency === "CNY" ? "zh-CN" : displayLocale());
+}
+
+function captureAmountDisplay(amount, currency = "CNY") {
+  const value = String(amount ?? "").trim();
+  if (!value) return currency === "CNY" ? "¥0.00" : formatMoney(0, currency);
+  if (currency !== "CNY") return `${currency} ${value}`;
+  return `¥${value}`;
 }
 
 function formatWhen(value) {
@@ -1576,7 +1620,6 @@ function renderCaptureTab(editingTransaction) {
       <div class="section-title">
         <div>
           <h2>${escapeHtml(editingTransaction ? t("capture.editTitle") : t("capture.quickTitle"))}</h2>
-          <p>${escapeHtml(t("capture.hint"))}</p>
         </div>
         ${editingTransaction ? `<button class="btn ghost" data-action="cancel-edit">${escapeHtml(t("capture.cancel"))}</button>` : ""}
       </div>
@@ -1589,30 +1632,22 @@ function renderAssetsTab(summary) {
   const assetTotal = totalAccountNet(summary);
   return `
     <section class="panel">
-      <div class="section-title">
+      <div class="section-title asset-overview-title">
         <div>
           <h2>${escapeHtml(t("assets.title"))}</h2>
         </div>
+        <button class="icon-button account-add-button ${state.accountFormOpen ? "active" : ""}" type="button" data-action="toggle-account-form" aria-label="${escapeHtml(t("assets.addAccount"))}" aria-pressed="${state.accountFormOpen ? "true" : "false"}">
+          ${glyphSvg("plus")}
+        </button>
       </div>
       <div class="asset-total-card">
         <span>${escapeHtml(t("assets.totalAssets"))}</span>
         <strong class="amount ${assetTotal >= 0 ? "positive" : "negative"}">${escapeHtml(signedMoney(assetTotal))}</strong>
       </div>
+      ${state.accountFormOpen ? renderAccountSetupForm() : ""}
     </section>
 
     <div class="workspace budget-workspace">
-      <section class="panel account-panel">
-        <div class="section-title compact-section-title">
-          <div>
-            <h2>${escapeHtml(t("assets.accountTitle"))}</h2>
-          </div>
-          <button class="icon-button account-add-button ${state.accountFormOpen ? "active" : ""}" type="button" data-action="toggle-account-form" aria-label="${escapeHtml(t("assets.addAccount"))}" aria-pressed="${state.accountFormOpen ? "true" : "false"}">
-            ${glyphSvg("plus")}
-          </button>
-        </div>
-        ${renderAccountManager(summary)}
-      </section>
-
       <section class="panel">
         <div class="section-title">
           <div>
@@ -1820,75 +1855,120 @@ function renderCaptureForm(editingTransaction) {
   };
 
   return `
-    <form id="transaction-form" class="transaction-form" autocomplete="off">
+    <form id="transaction-form" class="transaction-form type-${escapeHtml(txn.type)}" autocomplete="off">
       <input type="hidden" name="id" value="${escapeHtml(txn.id || "")}">
       <input type="hidden" name="type" value="${escapeHtml(txn.type)}">
+      <input type="hidden" name="amount" value="${escapeHtml(txn.amount || "")}">
+      <input type="hidden" name="title" value="${escapeHtml(txn.title || "")}">
+      <input type="hidden" name="merchant" value="${escapeHtml(txn.merchant || "")}">
+      <input type="hidden" name="book" value="${escapeHtml(txn.book || "日常账本")}">
+      <input type="hidden" name="account" value="${escapeHtml(txn.account || defaultAccountName())}">
+      <input type="hidden" name="category" value="${escapeHtml(txn.category || "餐饮")}">
+      <input type="hidden" name="currency" value="${escapeHtml(txn.currency || "CNY")}">
+      <input type="hidden" name="tags" value="${escapeHtml(Array.isArray(txn.tags) ? txn.tags.join(" ") : txn.tags || "")}">
       <div class="capture-switch" data-choice-group="type">
         ${TRANSACTION_TYPES.map((item) => `
-          <button class="capture-segment ${txn.type === item.id ? "active" : ""}" type="button" data-action="pick-field" data-field="type" data-value="${escapeHtml(item.id)}">
+          <button class="capture-segment ${txn.type === item.id ? "active" : ""}" type="button" data-action="pick-field" data-field="type" data-value="${escapeHtml(item.id)}" data-pick-button>
             ${escapeHtml(t(`type.${item.id}`))}
           </button>
         `).join("")}
       </div>
-      <div class="amount-line">
-        <label>
+
+      ${renderCaptureCategoryBoard(txn)}
+      ${renderCaptureAccountStrip(txn)}
+
+      <section class="amount-pad-panel" aria-label="${escapeHtml(t("capture.amount"))}">
+        <div class="amount-readout">
           <span>${escapeHtml(t("capture.amount"))}</span>
-          <input class="money-input" name="amount" inputmode="decimal" value="${escapeHtml(txn.amount || "")}" required>
-        </label>
-      </div>
+          <strong data-amount-display>${escapeHtml(captureAmountDisplay(txn.amount, txn.currency))}</strong>
+        </div>
+        <div class="capture-detail-row">
+          <label>
+            <span>${escapeHtml(t("capture.time"))}</span>
+            <input type="datetime-local" name="occurredAt" value="${escapeHtml(toDateInputValue(txn.occurredAt || new Date()))}">
+          </label>
+          <label>
+            <span>${escapeHtml(t("capture.note"))}</span>
+            <input name="note" value="${escapeHtml(txn.note || "")}" placeholder="${escapeHtml(t("capture.notePlaceholder"))}">
+          </label>
+        </div>
 
-      <div class="template-row">
-        ${CAPTURE_TEMPLATES.map((template) => renderTemplateButton(t(template.labelKey), template.values)).join("")}
-      </div>
-
-      <div class="field-grid">
-        <label>
-          <span>${escapeHtml(t("capture.title"))}</span>
-          <input name="title" value="${escapeHtml(txn.title || "")}" required>
-        </label>
-        <label>
-          <span>${escapeHtml(t("capture.merchant"))}</span>
-          <input name="merchant" value="${escapeHtml(txn.merchant || "")}">
-        </label>
-        <input type="hidden" name="book" value="${escapeHtml(txn.book || "日常账本")}">
-        ${renderChoiceField({ label: t("capture.account"), name: "account", value: txn.account, options: accountOptions() })}
-        ${renderChoiceField({ label: t("capture.category"), name: "category", value: txn.category, options: itemOptions(CATEGORIES) })}
-        ${renderChoiceField({ label: t("capture.currency"), name: "currency", value: txn.currency, options: itemOptions(CURRENCIES) })}
-        <label>
-          <span>${escapeHtml(t("capture.time"))}</span>
-          <input type="datetime-local" name="occurredAt" value="${escapeHtml(toDateInputValue(txn.occurredAt || new Date()))}">
-        </label>
-        <label>
-          <span>${escapeHtml(t("capture.tags"))}</span>
-          <input name="tags" value="${escapeHtml((txn.tags || []).join(" "))}">
-        </label>
-      </div>
-
-      <label>
-        <span>${escapeHtml(t("capture.note"))}</span>
-        <textarea name="note" rows="2">${escapeHtml(txn.note || "")}</textarea>
-      </label>
-
-      <div class="capture-footer">
-        <button class="btn primary" type="submit">${escapeHtml(editingTransaction ? t("capture.saveEdit") : t("capture.save"))}</button>
-      </div>
+        ${renderAmountKeypad(Boolean(editingTransaction))}
+      </section>
     </form>
   `;
 }
 
-function renderTemplateButton(label, values) {
+function renderCaptureCategoryBoard(txn) {
+  const selectedCategory = txn.category || "餐饮";
+  const selectedTitle = txn.title || "";
   return `
-    <button class="template-chip" type="button" data-action="template" data-values='${escapeHtml(JSON.stringify(values))}'>
-      ${renderIconBadge(values.category || "其他", "category", "tiny")}
-      <span>${escapeHtml(label)}</span>
+    <section class="capture-category-board" aria-label="${escapeHtml(t("capture.category"))}">
+      <div class="capture-category-grid">
+        ${CAPTURE_CATEGORY_GROUPS.map((group) => `
+          <button class="capture-category-button ${selectedCategory === group.category ? "active" : ""}" type="button" data-action="pick-field" data-field="category" data-value="${escapeHtml(group.category)}" data-pick-button>
+            ${renderIconBadge(group.category, "category")}
+            <span>${escapeHtml(group.category)}</span>
+          </button>
+        `).join("")}
+      </div>
+      <div class="capture-subcategory-wrap">
+        ${CAPTURE_CATEGORY_GROUPS.map((group) => `
+          <div class="capture-subcategory-grid ${selectedCategory === group.category ? "active" : ""}" data-subcategory-group="${escapeHtml(group.category)}">
+            ${group.items.map((item) => `
+              <button class="capture-subcategory-button ${selectedCategory === group.category && selectedTitle === item ? "active" : ""}" type="button" data-action="pick-subcategory" data-category="${escapeHtml(group.category)}" data-title="${escapeHtml(item)}">
+                ${escapeHtml(item)}
+              </button>
+            `).join("")}
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderCaptureAccountStrip(txn) {
+  const selectedAccount = txn.account || defaultAccountName();
+  return `
+    <section class="capture-account-strip" aria-label="${escapeHtml(t("capture.account"))}">
+      ${accountOptions().map((account) => `
+        <button class="capture-account-chip ${selectedAccount === account.value ? "active" : ""}" type="button" data-action="pick-field" data-field="account" data-value="${escapeHtml(account.value)}" data-pick-button>
+          ${renderIconBadge(account.value, "account", "tiny")}
+          <span>${escapeHtml(account.label)}</span>
+        </button>
+      `).join("")}
+    </section>
+  `;
+}
+
+function renderAmountKeypad(isEditing = false) {
+  return `
+    <div class="amount-keypad" aria-label="${escapeHtml(t("capture.amountKeypad"))}">
+      ${AMOUNT_KEY_ROWS.flatMap((row) => row).map((key) => renderAmountKey(key, isEditing)).join("")}
+    </div>
+  `;
+}
+
+function renderAmountKey(key, isEditing) {
+  if (key === "submit") {
+    return `
+      <button class="amount-key amount-submit" type="submit">
+        ${escapeHtml(isEditing ? t("capture.saveEdit") : t("capture.done"))}
+      </button>
+    `;
+  }
+  const label = key === "backspace" ? "⌫" : key === "clear" ? "C" : key;
+  const aria = key === "backspace" ? t("capture.keypadBackspace") : key === "clear" ? t("capture.keypadClear") : key;
+  return `
+    <button class="amount-key ${key === "backspace" || key === "clear" ? "utility" : ""}" type="button" data-action="amount-key" data-key="${escapeHtml(key)}" aria-label="${escapeHtml(aria)}">
+      ${escapeHtml(label)}
     </button>
   `;
 }
 
-function renderAccountManager(summary) {
-  const accountRows = renderAccountRows(summary);
+function renderAccountSetupForm() {
   return `
-    ${state.accountFormOpen ? `<form id="account-form" class="account-form" autocomplete="off">
+    <form id="account-form" class="account-form asset-account-form" autocomplete="off">
       <label>
         <span>${escapeHtml(t("assets.accountName"))}</span>
         <input name="name" required>
@@ -1898,13 +1978,7 @@ function renderAccountManager(summary) {
         <input name="openingBalance" inputmode="decimal" type="number" step="0.01" value="0">
       </label>
       <button class="btn secondary" type="submit">${escapeHtml(t("assets.addAccount"))}</button>
-    </form>` : ""}
-
-    <div class="account-net-block">
-      <div class="budget-list">
-        ${accountRows || `<div class="empty">${escapeHtml(t("assets.noAccount"))}</div>`}
-      </div>
-    </div>
+    </form>
   `;
 }
 
@@ -1948,31 +2022,6 @@ function renderCategoryStatRows(summary, limit = 8) {
         <span class="metric-amount">${Math.round((amount / total) * 100)}%</span>
       </div>
       <div class="budget-track"><span style="width: ${Math.round((amount / total) * 100)}%"></span></div>
-    </div>
-  `).join("");
-}
-
-function renderAccountRows(summary) {
-  const order = accountNames();
-  const entries = order.map((account) => [account, Number(summary.accountNet[account] || 0)]);
-  if (!entries.length) return "";
-  const total = Math.max(1, ...entries.map(([, amount]) => Math.abs(amount)));
-  return entries.map(([account, amount]) => `
-    <div class="budget-row account-row action-row" data-long-press-actions>
-      <div class="metric-row-head">
-        ${renderIconBadge(account, "account", "small")}
-        <div class="metric-copy">
-          <strong>${escapeHtml(account)}</strong>
-        </div>
-        <span class="metric-amount amount ${amount >= 0 ? "positive" : "negative"}">${amount >= 0 ? formatMoney(amount) : `-${formatMoney(Math.abs(amount))}`}</span>
-      </div>
-      <div class="budget-track"><span style="width: ${Math.round((Math.abs(amount) / total) * 100)}%"></span></div>
-      <div class="row-actions account-row-actions">
-        <button class="btn ghost danger-text row-action-button" type="button" data-action="delete-account" data-account="${escapeHtml(account)}">
-          ${glyphSvg("trash")}
-          <span>${escapeHtml(t("assets.deleteAccount"))}</span>
-        </button>
-      </div>
     </div>
   `).join("");
 }
@@ -2049,6 +2098,37 @@ function syncChoiceControl(form, field, value) {
   });
 }
 
+function syncAmountDisplay(form) {
+  const amount = form?.elements?.namedItem("amount")?.value || "";
+  const currency = form?.elements?.namedItem("currency")?.value || "CNY";
+  const display = form?.querySelector("[data-amount-display]");
+  if (display) display.textContent = captureAmountDisplay(amount, currency);
+}
+
+function syncPickButtons(form) {
+  if (!form) return;
+  form.querySelectorAll("[data-pick-button]").forEach((button) => {
+    const field = button.dataset.field;
+    const input = field ? form.elements.namedItem(field) : null;
+    button.classList.toggle("active", Boolean(input && button.dataset.value === input.value));
+  });
+
+  const category = form.elements.namedItem("category")?.value || "";
+  const title = form.elements.namedItem("title")?.value || "";
+  const type = form.elements.namedItem("type")?.value || "expense";
+  form.classList.toggle("type-income", type === "income");
+  form.classList.toggle("type-expense", type !== "income");
+  form.querySelectorAll("[data-subcategory-group]").forEach((group) => {
+    group.classList.toggle("active", group.dataset.subcategoryGroup === category);
+  });
+  form.querySelectorAll("[data-action=\"pick-subcategory\"]").forEach((button) => {
+    button.classList.toggle(
+      "active",
+      button.dataset.category === category && button.dataset.title === title,
+    );
+  });
+}
+
 function fillForm(values) {
   const form = document.querySelector("#transaction-form");
   if (!form) return;
@@ -2058,6 +2138,8 @@ function fillForm(values) {
     syncChoiceControl(form, key, value);
     syncChoiceGroup(form, key);
   });
+  syncAmountDisplay(form);
+  syncPickButtons(form);
 }
 
 function pickFormField(button) {
@@ -2067,8 +2149,41 @@ function pickFormField(button) {
   const input = form?.elements?.namedItem(field);
   if (!form || !field || value == null || !input) return;
   input.value = value;
+  if (field === "category") {
+    const title = form.elements.namedItem("title");
+    if (title) title.value = "";
+  }
   syncChoiceControl(form, field, value);
   syncChoiceGroup(form, field);
+  syncPickButtons(form);
+}
+
+function pickCaptureSubcategory(button) {
+  fillForm({
+    category: button.dataset.category || "其他",
+    title: button.dataset.title || "",
+  });
+}
+
+function nextAmountValue(current, key) {
+  if (key === "clear") return "";
+  if (key === "backspace") return current.slice(0, -1);
+  if (key === ".") return current.includes(".") ? current : `${current || "0"}.`;
+  if (key === "00" && (!current || current === "0")) return "0";
+
+  const next = current === "0" && key !== "00" ? key : `${current}${key}`;
+  const [whole = "", cents = ""] = next.split(".");
+  if (whole.replace(/^0+/, "").length > 8) return current;
+  if (cents.length > 2) return current;
+  return next;
+}
+
+function applyAmountKey(button) {
+  const form = button.closest("form");
+  const input = form?.elements?.namedItem("amount");
+  if (!form || !input) return;
+  input.value = nextAmountValue(String(input.value || ""), button.dataset.key || "");
+  syncAmountDisplay(form);
 }
 
 async function clearPwaCacheAndReload() {
@@ -2276,15 +2391,14 @@ document.addEventListener("click", (event) => {
   if (action === "choose-option") {
     chooseOption(node);
   }
-  if (action === "template") {
-    try {
-      fillForm(JSON.parse(node.dataset.values || "{}"));
-    } catch {
-      // Ignore malformed template data; templates are static app-owned markup.
-    }
-  }
   if (action === "pick-field") {
     pickFormField(node);
+  }
+  if (action === "pick-subcategory") {
+    pickCaptureSubcategory(node);
+  }
+  if (action === "amount-key") {
+    applyAmountKey(node);
   }
   if (action === "tab") {
     if ((node.dataset.tab || "") === "capture" && isDemoMode()) {

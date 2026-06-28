@@ -23,8 +23,10 @@ Precise, calm, practical. It should feel like a durable ledger tool rather than
 a gamified finance app.
 
 ## Design Principles
-- Fast capture first: amount, title, account, category, and notes stay within
-  one short form. Book selection stays out of the primary UI for now.
+- Fast capture first: new entries should be mostly tap-driven. Pick expense /
+  income, category, detail, account, and amount from compact app-native
+  controls; title falls back to the chosen detail/category and notes stay
+  optional. Book selection stays out of the primary UI for now.
 - App shell first: mobile navigation uses five bottom tabs in this order:
   Ledger, Calendar, Add, Assets, and Settings. Add is the centered plus action.
 - Ledger first, not dashboard first: Ledger owns the top type filter and Flow /
@@ -38,10 +40,10 @@ a gamified finance app.
 - Category statistics and category budgets are different concepts. Statistics
   summarize actual spending by category. Budgets compare actual spending against
   editable monthly category targets saved locally.
-- Assets owns local account setup: accounts can be created locally from the
-  small plus action, opening balances are set there, and account net equals
-  opening balance plus ledger income/expense flow. The top Assets overview
-  should lead with total assets rather than duplicating monthly income/expense.
+- Assets owns local account setup, but it should not foreground account balance
+  rows by default. Accounts can be created locally from the Assets overview
+  plus action, opening balances are set there, and total assets equals opening
+  balances plus ledger income/expense flow.
 - Settings should stay compact on mobile. The manual and changelog live together
   in one second-level guide page following Ultreia's settings pattern. Budget
   editing also opens as a second-level page.

@@ -57,6 +57,11 @@ transaction rows, and data-first cards that feel useful rather than decorative.
 - Add opens the capture form and is the primary action surface in the center of
   the bottom tab bar. The center tab shows a large plus only; the other four
   tabs use the same restrained monoline SVG icon style as Ultreia.
+- Capture uses a tap-first accounting flow inspired by iCost's interaction
+  clarity, not its light visual skin: expense / income fills the full switch,
+  category buttons reveal detail chips, account chips replace low-frequency
+  dropdown use, and a built-in amount keypad keeps the system keyboard out of
+  the main path.
 - The official Viatica logo source lives at `resources/brand/viatica-logo.png`.
   In-app brand surfaces use the resized display copy through
   `src/assets/logo.js`; PWA launcher icons in `public/icons/` are generated
@@ -84,10 +89,11 @@ transaction rows, and data-first cards that feel useful rather than decorative.
 - Charts under Ledger own actual statistics only. Category statistics are
   actual spending summaries and must not display budget targets.
 - Assets owns total assets, account creation, opening balances, account net,
-  and category budgets. Account net is opening balance plus ledger
-  income/expense flow. Account creation and opening-balance entry should stay
-  behind the small plus action because they are low-frequency controls.
-  Category budgets compare actual spending with monthly targets.
+  and category budgets. The default Assets screen should lead with total assets
+  and category budgets, not a visible account-balance list. Account creation and
+  opening-balance entry stay behind the Assets overview plus action because
+  they are low-frequency controls. Category budgets compare actual spending
+  with monthly targets.
 - Settings uses the Ultreia-style compact mobile list. The manual and changelog
   are combined into one guide page so usage notes and product iteration history
   live together. Long content such as the guide and category budget editor opens
