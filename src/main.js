@@ -1429,8 +1429,8 @@ function renderLedgerOverview(summary) {
   return `
     <section class="ledger-overview" aria-label="${escapeHtml(t("ledger.overview"))}">
       <div class="ledger-metric-grid">
-        ${renderLedgerMetric(t("ledger.monthExpense"), compactMoney(summary.monthExpense))}
-        ${renderLedgerMetric(t("ledger.monthIncome"), compactMoney(summary.monthIncome))}
+        ${renderLedgerMetric(t("ledger.monthExpense"), formatMoney(summary.monthExpense))}
+        ${renderLedgerMetric(t("ledger.monthIncome"), formatMoney(summary.monthIncome))}
         ${renderLedgerMetric(t("today.transactionCount"), String(summary.transactionCount))}
       </div>
     </section>
@@ -1490,15 +1490,18 @@ function renderCalendarTab(summary) {
     </section>
 
     <section class="panel calendar-summary-panel">
-      <div class="section-title">
+      <div class="section-title calendar-summary-title">
         <div>
           <h2>${escapeHtml(t("calendar.summaryTitle"))}</h2>
         </div>
+        <span class="calendar-active-days">
+          <span>${escapeHtml(t("calendar.activeDays"))}</span>
+          <strong>${monthActiveDays()}</strong>
+        </span>
       </div>
       <div class="hero-grid calendar-summary">
         ${renderStat(t("today.expense", { range: t("range.month") }), compactMoney(summary.monthExpense))}
         ${renderStat(t("today.income", { range: t("range.month") }), compactMoney(summary.monthIncome))}
-        ${renderStat(t("calendar.activeDays"), `${monthActiveDays()}`)}
       </div>
     </section>
   `;

@@ -365,7 +365,7 @@ label span {
 
 .ledger-overview {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ledger-topbar {
@@ -373,7 +373,7 @@ label span {
   z-index: 25;
   display: grid;
   grid-template-columns: minmax(104px, 0.34fr) minmax(0, 1fr);
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
@@ -492,8 +492,8 @@ label span {
 .capture-switch,
 .ledger-mode-switch {
   display: grid;
-  gap: 3px;
-  padding: 4px;
+  gap: 2px;
+  padding: 3px;
 }
 
 .segmented {
@@ -503,7 +503,7 @@ label span {
 
 .ledger-mode-switch {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  min-height: 48px;
+  min-height: 38px;
 }
 
 .time-switch {
@@ -519,9 +519,9 @@ label span {
 .ledger-mode-switch button,
 .capture-segment,
 .template-chip {
-  min-height: 34px;
+  min-height: 30px;
   border-radius: calc(var(--r-sm) - 3px);
-  padding: 7px 10px;
+  padding: 6px 9px;
   background: transparent;
   color: var(--ink-2);
   font-size: 12px;
@@ -552,13 +552,13 @@ label span {
 }
 
 .ledger-type-filter .choice-trigger {
-  min-height: 46px;
+  min-height: 38px;
   border-color: transparent;
   padding: 0 4px 0 0;
   background: transparent;
-  font-size: 18px;
-  font-weight: 780;
-  letter-spacing: -0.02em;
+  font-size: 16px;
+  font-weight: 740;
+  letter-spacing: -0.01em;
 }
 
 .ledger-type-filter .choice-trigger:hover {
@@ -580,7 +580,7 @@ label span {
 }
 
 .ledger-period-switch {
-  min-height: 48px;
+  min-height: 38px;
 }
 
 .ledger-period-switch button {
@@ -592,35 +592,38 @@ label span {
 .ledger-metric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .ledger-metric-card {
-  min-height: 70px;
-  padding: 10px;
+  min-height: 54px;
+  padding: 7px 6px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   display: grid;
-  align-content: space-between;
-  gap: 8px;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
   background:
     linear-gradient(180deg, oklch(0.170 0.008 95 / 0.72), oklch(0.122 0.006 95 / 0.72));
   box-shadow: 0 0 0 1px oklch(0.700 0.052 86 / 0.035) inset;
+  text-align: center;
 }
 
 .ledger-metric-card span {
   color: var(--ink-2);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.1;
-  font-weight: 760;
+  font-weight: 720;
 }
 
 .ledger-metric-card strong {
   color: var(--ink);
   overflow: hidden;
-  font-size: 20px;
-  line-height: 1;
-  letter-spacing: -0.03em;
+  max-width: 100%;
+  font-size: 17px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -631,7 +634,7 @@ label span {
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   background: var(--surface-raised);
@@ -784,7 +787,18 @@ label span {
 
 .compact-section-title {
   align-items: center;
+  min-height: 34px;
   margin-bottom: 8px;
+}
+
+.compact-section-title > div {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+}
+
+.compact-section-title h2 {
+  line-height: 1;
 }
 
 .account-add-button {
@@ -863,6 +877,36 @@ label span {
   font-size: 15px;
   line-height: 1.2;
   font-weight: 760;
+}
+
+.calendar-summary-title {
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.calendar-active-days {
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: oklch(0.130 0.006 95 / 0.62);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 680;
+  white-space: nowrap;
+}
+
+.calendar-active-days strong {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.calendar-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .transaction-form {
@@ -1046,6 +1090,14 @@ input[type="datetime-local"] {
 
 .icon-button.active {
   box-shadow: 0 0 0 1px oklch(0.700 0.052 86 / 0.08) inset;
+}
+
+.icon-button.account-add-button {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  border-radius: 11px;
 }
 
 .filters {
@@ -1945,16 +1997,17 @@ input[type="datetime-local"] {
   }
 
   .ledger-type-filter .choice-trigger {
-    min-height: 46px;
+    min-height: 36px;
     font-size: 16px;
   }
 
   .ledger-period-switch {
-    min-height: 46px;
+    min-height: 36px;
   }
 
   .ledger-period-switch button {
-    padding-inline: 6px;
+    min-height: 30px;
+    padding-inline: 5px;
     font-size: 11px;
   }
 
@@ -1963,12 +2016,12 @@ input[type="datetime-local"] {
   }
 
   .ledger-metric-card {
-    min-height: 64px;
-    padding: 8px;
+    min-height: 52px;
+    padding: 6px 5px;
   }
 
   .ledger-metric-card strong {
-    font-size: 17px;
+    font-size: 15px;
   }
 
   .filters {
@@ -1986,6 +2039,10 @@ input[type="datetime-local"] {
 
   .hero-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .calendar-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dashboard-controls {
