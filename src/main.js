@@ -871,7 +871,8 @@ const MESSAGES = {
     "stats.hint": "图表先覆盖支出、收入和记录数。",
     "stats.pieTitle": "分类占比",
     "stats.barTitle": "金额对比",
-    "stats.lineTitle": "趋势",
+    "stats.lineTitle": "每日金额趋势",
+    "stats.lineMeta": "底部是日期 · 左侧是金额",
     "stats.categoryTitle": "分类统计",
     "stats.categoryHint": "只按真实流水汇总，不看预算目标。",
     "stats.noCategory": "当前范围还没有可统计数据。",
@@ -961,21 +962,21 @@ const MESSAGES = {
     "type.expense": "Expense",
     "type.income": "Income",
     "today.transactionCount": "Entries",
-    "today.expense": "{range} spent",
-    "today.income": "{range} income",
-    "today.calendarTitle": "{month} calendar",
-    "today.recentTitle": "Recent entries",
+    "today.expense": "{range} Spent",
+    "today.income": "{range} Income",
+    "today.calendarTitle": "{month} Calendar",
+    "today.recentTitle": "Recent Entries",
     "today.recentSorted": "Sorted by time.",
     "today.recentEmptyHint": "Start with the first entry today.",
     "today.recentEmpty": "No entries yet. Tap the bottom + to start.",
-    "capture.editTitle": "Edit entry",
-    "capture.quickTitle": "Quick capture",
+    "capture.editTitle": "Edit Entry",
+    "capture.quickTitle": "Quick Capture",
     "capture.hint": "Record the real transaction first. Category and notes can come later.",
     "capture.cancel": "Cancel",
     "capture.amount": "Amount",
     "capture.type": "Type",
     "capture.title": "Title",
-    "capture.merchant": "Merchant / person",
+    "capture.merchant": "Merchant / Person",
     "capture.book": "Book",
     "capture.account": "Account",
     "capture.category": "Category",
@@ -989,81 +990,82 @@ const MESSAGES = {
     "capture.tags": "Tags",
     "capture.note": "Note",
     "capture.notePlaceholder": "Tap to add a note",
-    "capture.amountKeypad": "Amount keypad",
+    "capture.amountKeypad": "Amount Keypad",
     "capture.done": "Done",
     "capture.keypadBackspace": "Backspace",
     "capture.keypadClear": "Clear",
-    "capture.saveEdit": "Save changes",
-    "capture.save": "Save entry",
+    "capture.saveEdit": "Save Changes",
+    "capture.save": "Save Entry",
     "ledger.title": "Ledger",
-    "ledger.overview": "Ledger overview",
+    "ledger.overview": "Ledger Overview",
     "ledger.monthExpense": "Spent",
     "ledger.monthIncome": "Income",
     "ledger.flow": "Flow",
     "ledger.chart": "Charts",
     "ledger.matchCount": "{count} matching entries.",
     "ledger.empty": "No matching entries yet. Record one or adjust filters.",
-    "ledger.typeFilter": "Entry type",
+    "ledger.typeFilter": "Entry Type",
     "stats.title": "Statistics",
     "stats.hint": "Charts start with spending, income, and entry count.",
-    "stats.pieTitle": "Category share",
-    "stats.barTitle": "Amount compare",
-    "stats.lineTitle": "Trend",
-    "stats.categoryTitle": "Category statistics",
+    "stats.pieTitle": "Category Share",
+    "stats.barTitle": "Amount Comparison",
+    "stats.lineTitle": "Daily Amount Trend",
+    "stats.lineMeta": "Date Across The Bottom / Amount Up The Left",
+    "stats.categoryTitle": "Category Statistics",
     "stats.categoryHint": "Based only on real entries, not budget targets.",
     "stats.noCategory": "No chartable data in this range yet.",
     "stats.other": "Other",
-    "assets.title": "Asset overview",
-    "assets.totalAssets": "Total assets",
+    "assets.title": "Asset Overview",
+    "assets.totalAssets": "Total Assets",
     "assets.hint": "Starts from account net based on ledger entries.",
-    "assets.accountTitle": "Account balances",
+    "assets.accountTitle": "Account Balances",
     "assets.accountHint": "Income is positive and expense is negative.",
-    "assets.categoryTitle": "Category budgets",
+    "assets.categoryTitle": "Category Budgets",
     "assets.categoryHint": "Actual spending against monthly targets.",
-    "assets.accountName": "Account name",
-    "assets.openingBalance": "Opening balance",
-    "assets.addAccount": "Add account",
-    "assets.deleteAccount": "Delete account",
+    "assets.accountName": "Account Name",
+    "assets.openingBalance": "Opening Balance",
+    "assets.addAccount": "Add Account",
+    "assets.deleteAccount": "Delete Account",
     "assets.accountSaved": "Account saved.",
     "assets.accountDeleted": "Account deleted.",
     "assets.accountInvalid": "Account name is required and opening balance must be a number.",
-    "assets.accountNetTitle": "Account net",
+    "assets.accountNetTitle": "Account Net",
     "assets.noAccount": "No accounts yet. Tap the plus button to add one.",
     "assets.noBudget": "No budget data yet.",
-    "settings.languageTitle": "Interface language",
-    "settings.brandLine": "Local-first personal ledger",
+    "settings.languageTitle": "Interface Language",
+    "settings.brandLine": "Local-First Personal Ledger",
     "settings.languageHint": "Switches interface copy only; existing entries, books, categories, and exports stay unchanged.",
     "settings.dataSection": "Data",
     "settings.productSection": "Product",
     "settings.localSection": "Local",
-    "settings.importExportTitle": "Backup and migration",
+    "settings.importExportTitle": "Backup and Migration",
     "settings.importExportHint": "Use this to move devices, restore data, or keep a local backup until cloud sync is available.",
     "settings.exportCsv": "Export CSV",
     "settings.importCsv": "Import CSV",
-    "settings.exportJson": "Export full backup",
-    "settings.budgetTitle": "Category budgets",
-    "settings.budgetHint": "Set monthly category targets",
+    "settings.exportJson": "Export Full Backup",
+    "settings.budgetTitle": "Category Budgets",
+    "settings.budgetHint": "Set Monthly Category Targets",
     "settings.budgetPageHint": "Budgets are targets, not entries. Assets uses these values for budget progress.",
-    "settings.budgetSave": "Save budgets",
-    "settings.budgetReset": "Restore defaults",
+    "settings.budgetSave": "Save Budgets",
+    "settings.budgetReset": "Restore Defaults",
     "settings.budgetSaved": "Budgets saved.",
     "settings.budgetResetDone": "Budgets restored to defaults.",
     "settings.budgetInvalid": "Budgets must be 0 or positive.",
-    "settings.pwaTitle": "PWA refresh",
+    "settings.pwaTitle": "PWA Refresh",
     "settings.pwaHint": "Use this when the app still shows an old interface; viatica:v1 ledger data is kept.",
     "settings.clearing": "Clearing...",
-    "settings.clearCache": "Clear cache and reload",
-    "settings.guideTitle": "Manual and changelog",
-    "settings.guideHint": "Usage notes and product changes",
+    "settings.clearCache": "Clear Cache And Reload",
+    "settings.guideTitle": "Manual And Changelog",
+    "settings.guideHint": "Usage Notes And Product Changes",
     "settings.manualTitle": "Manual",
-    "settings.manualHint": "Includes usage notes and product history",
-    "settings.dataModeTitle": "Data mode",
+    "settings.manualHint": "Includes Usage Notes And Product History",
+    "settings.dataModeTitle": "Data Mode",
     "settings.dataModePersonal": "Personal",
     "settings.dataModeDemo": "Demo",
     "settings.back": "Back",
-    "manual.changelogHeading": "Product history",
+    "manual.changelogHeading": "Product History",
     "filter.search": "Search title, merchant, tags",
-    "filter.allTypes": "All types",
+    "filter.allTypes": "All Types",
     "filter.allBooks": "Book",
     "filter.allCategories": "Category",
     "filter.allAccounts": "Account",
@@ -1075,8 +1077,8 @@ const MESSAGES = {
     "txn.delete": "Delete",
     "confirm.delete": "Delete this entry?",
     "confirm.deleteAccount": "Delete account “{account}”? Existing entries will not be deleted.",
-    "calendar.summaryTitle": "Month summary",
-    "calendar.activeDays": "Active days",
+    "calendar.summaryTitle": "Month Summary",
+    "calendar.activeDays": "Active Days",
     "toast.updated": "Entry updated.",
     "toast.saved": "Entry saved.",
     "toast.saveFailed": "Save failed: {message}",
@@ -1775,27 +1777,49 @@ function renderBarChart(entries) {
 function renderLineChart(transactions) {
   const series = dailyChartEntries(transactions);
   const max = Math.max(...series.map(([, amount]) => amount), 1);
-  const width = 260;
-  const left = 14;
-  const right = 246;
-  const top = 14;
-  const bottom = 78;
+  const width = 280;
+  const height = 118;
+  const left = 42;
+  const right = 264;
+  const top = 18;
+  const middle = 53;
+  const bottom = 88;
   const points = series.map(([date, amount], index) => {
     const x = series.length === 1 ? width / 2 : left + ((right - left) * index) / (series.length - 1);
     const y = bottom - ((amount / max) * (bottom - top));
     return { date, amount, x: chartNumber(x), y: chartNumber(y) };
   });
   const path = points.map((point, index) => `${index ? "L" : "M"} ${point.x} ${point.y}`).join(" ");
-  const pointNodes = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.4"></circle>`).join("");
+  const areaPath = points.length > 1
+    ? `${path} L ${points[points.length - 1].x} ${bottom} L ${points[0].x} ${bottom} Z`
+    : "";
+  const pointNodes = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="1.9"></circle>`).join("");
+  const maxPoint = points.reduce((highest, point) => (point.amount > highest.amount ? point : highest), points[0]);
+  const maxAnchor = maxPoint.x > (left + right) / 2 ? "end" : "start";
+  const maxLabelX = maxAnchor === "end" ? Math.max(left + 18, maxPoint.x - 7) : Math.min(right - 18, maxPoint.x + 7);
+  const maxLabelY = Math.max(top + 8, maxPoint.y - 6);
   const first = points[0]?.date.slice(5).replace("-", "/") || "";
   const last = points[points.length - 1]?.date.slice(5).replace("-", "/") || "";
+  const xLabels = points.length === 1
+    ? `<text x="${width / 2}" y="112" text-anchor="middle">${escapeHtml(first)}</text>`
+    : `
+      <text x="${left}" y="112" text-anchor="start">${escapeHtml(first)}</text>
+      <text x="${right}" y="112" text-anchor="end">${escapeHtml(last)}</text>
+    `;
   return `
-    <svg class="stats-chart-svg line-chart" viewBox="0 0 ${width} 96" role="img" aria-label="${escapeHtml(t("stats.lineTitle"))}">
-      <path d="M14 78 H246" class="chart-axis"></path>
+    <svg class="stats-chart-svg line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(`${t("stats.lineTitle")} ${t("stats.lineMeta")}`)}">
+      <path d="M${left} ${top} H${right}" class="chart-grid-line"></path>
+      <path d="M${left} ${middle} H${right}" class="chart-grid-line"></path>
+      <path d="M${left} ${bottom} H${right}" class="chart-axis"></path>
+      <path d="M${left} ${top} V${bottom}" class="chart-axis"></path>
+      <text x="${left - 7}" y="${top + 3}" text-anchor="end">${escapeHtml(compactMoney(max))}</text>
+      <text x="${left - 7}" y="${bottom + 3}" text-anchor="end">0</text>
+      ${areaPath ? `<path d="${areaPath}" class="line-chart-area"></path>` : ""}
       <path d="${path}" class="line-chart-path"></path>
       ${pointNodes}
-      <text x="14" y="92" text-anchor="start">${escapeHtml(first)}</text>
-      <text x="246" y="92" text-anchor="end">${escapeHtml(last)}</text>
+      <circle class="line-chart-max-marker" cx="${maxPoint.x}" cy="${maxPoint.y}" r="3.1"></circle>
+      <text class="line-chart-max-label" x="${chartNumber(maxLabelX)}" y="${chartNumber(maxLabelY)}" text-anchor="${maxAnchor}">${escapeHtml(compactMoney(maxPoint.amount))}</text>
+      ${xLabels}
     </svg>
   `;
 }
@@ -1813,21 +1837,24 @@ function renderStatsCharts(transactions, entries, total) {
       <article class="stats-chart-card">
         <div class="stats-chart-title">
           ${glyphSvg("chartPie")}
-          <span>${escapeHtml(t("stats.pieTitle"))}</span>
+          <span class="stats-chart-copy"><strong>${escapeHtml(t("stats.pieTitle"))}</strong></span>
         </div>
         ${renderPieChart(entries, total)}
       </article>
       <article class="stats-chart-card">
         <div class="stats-chart-title">
           ${glyphSvg("chartBars")}
-          <span>${escapeHtml(t("stats.barTitle"))}</span>
+          <span class="stats-chart-copy"><strong>${escapeHtml(t("stats.barTitle"))}</strong></span>
         </div>
         ${renderBarChart(entries)}
       </article>
       <article class="stats-chart-card trend">
         <div class="stats-chart-title">
           ${glyphSvg("chartLine")}
-          <span>${escapeHtml(t("stats.lineTitle"))}</span>
+          <span class="stats-chart-copy">
+            <strong>${escapeHtml(t("stats.lineTitle"))}</strong>
+            <small>${escapeHtml(t("stats.lineMeta"))}</small>
+          </span>
         </div>
         ${renderLineChart(transactions)}
       </article>
