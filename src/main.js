@@ -299,8 +299,8 @@ const ACCOUNT_META = {
 };
 
 const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
-  { category: "餐饮", items: ["早餐", "午餐", "晚餐", "宵夜", "咖啡", "奶茶", "水果"] },
-  { category: "交通", items: ["地铁", "打车", "高铁", "机票"] },
+  { category: "餐饮", items: ["早餐", "午餐", "晚餐", "宵夜", "咖啡", "奶茶", "水果", "其他"] },
+  { category: "交通", items: ["地铁", "打车"] },
   { category: "购物", items: ["日用品", "服饰", "数码", "家居"] },
   { category: "运动装备", items: ["装备", "补给"] },
   { category: "比赛/训练", items: ["赛事", "训练课", "康复"] },
@@ -308,8 +308,8 @@ const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
   { category: "AI 工具", items: ["ChatGPT"] },
   { category: "订阅", items: ["App"] },
   { category: "学习", items: ["课程", "书籍", "资料", "工具"] },
-  { category: "娱乐", items: ["电影", "游戏", "聚会"] },
-  { category: "旅行", items: ["住宿", "餐饮", "门票"] },
+  { category: "娱乐", items: ["电影", "游戏", "餐饮", "其他"] },
+  { category: "旅行", items: ["交通", "住宿", "餐饮", "门票"] },
   { category: "其他", items: ["杂项", "临时", "待整理"] },
 ];
 
@@ -326,6 +326,14 @@ const AMOUNT_KEY_ROWS = [
   ["4", "5", "6", "clear"],
   ["7", "8", "9", "00"],
   [".", "0", "submit"],
+];
+
+const CAPTURE_TIME_SEGMENTS = [
+  { id: "morning", labelKey: "capture.timeMorning", hour: 8 },
+  { id: "noon", labelKey: "capture.timeNoon", hour: 12 },
+  { id: "afternoon", labelKey: "capture.timeAfternoon", hour: 15 },
+  { id: "evening", labelKey: "capture.timeEvening", hour: 19 },
+  { id: "late", labelKey: "capture.timeLate", hour: 1 },
 ];
 
 const MANUAL_SECTIONS = [
@@ -802,6 +810,11 @@ const MESSAGES = {
     "capture.category": "分类",
     "capture.currency": "币种",
     "capture.time": "时间",
+    "capture.timeMorning": "早上",
+    "capture.timeNoon": "中午",
+    "capture.timeAfternoon": "下午",
+    "capture.timeEvening": "晚上",
+    "capture.timeLate": "凌晨",
     "capture.tags": "标签",
     "capture.note": "备注",
     "capture.notePlaceholder": "点击填写备注",
@@ -930,6 +943,11 @@ const MESSAGES = {
     "capture.category": "Category",
     "capture.currency": "Currency",
     "capture.time": "Time",
+    "capture.timeMorning": "Morning",
+    "capture.timeNoon": "Noon",
+    "capture.timeAfternoon": "Afternoon",
+    "capture.timeEvening": "Evening",
+    "capture.timeLate": "Late",
     "capture.tags": "Tags",
     "capture.note": "Note",
     "capture.notePlaceholder": "Tap to add a note",
@@ -1051,6 +1069,32 @@ function captureAmountDisplay(amount, currency = "CNY") {
   if (!value) return currency === "CNY" ? "¥0.00" : formatMoney(0, currency);
   if (currency !== "CNY") return `${currency} ${value}`;
   return `¥${value}`;
+}
+
+function captureTimeSegmentId(value) {
+  const d = value ? new Date(value) : new Date();
+  if (Number.isNaN(d.getTime())) return "morning";
+  const hour = d.getHours();
+  if (hour >= 5 && hour < 11) return "morning";
+  if (hour >= 11 && hour < 14) return "noon";
+  if (hour >= 14 && hour < 18) return "afternoon";
+  if (hour >= 18 && hour < 24) return "evening";
+  return "late";
+}
+
+function dateInputValueWithHour(value, hour) {
+  const d = value ? new Date(value) : new Date();
+  const safeDate = Number.isNaN(d.getTime()) ? new Date() : d;
+  safeDate.setHours(hour, 0, 0, 0);
+  return toDateInputValue(safeDate);
+}
+
+function chunkList(items, size) {
+  const chunks = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
 }
 
 function formatWhen(value) {
@@ -1680,12 +1724,14 @@ function renderMonthCalendar() {
 function renderCaptureTab(editingTransaction) {
   return `
     <section class="panel capture-panel">
-      <div class="section-title">
-        <div>
-          <h2>${escapeHtml(editingTransaction ? t("capture.editTitle") : t("capture.quickTitle"))}</h2>
+      ${editingTransaction ? `
+        <div class="section-title">
+          <div>
+            <h2>${escapeHtml(t("capture.editTitle"))}</h2>
+          </div>
+          <button class="btn ghost" data-action="cancel-edit">${escapeHtml(t("capture.cancel"))}</button>
         </div>
-        ${editingTransaction ? `<button class="btn ghost" data-action="cancel-edit">${escapeHtml(t("capture.cancel"))}</button>` : ""}
-      </div>
+      ` : ""}
       ${renderCaptureForm(editingTransaction)}
     </section>
   `;
@@ -1951,13 +1997,11 @@ function renderCaptureForm(editingTransaction) {
           <strong data-amount-display>${escapeHtml(captureAmountDisplay(txn.amount, txn.currency))}</strong>
         </div>
         <div class="capture-detail-row">
-          <label>
-            <span>${escapeHtml(t("capture.time"))}</span>
-            <input type="datetime-local" name="occurredAt" value="${escapeHtml(toDateInputValue(txn.occurredAt || new Date()))}">
-          </label>
+          <input type="hidden" name="occurredAt" value="${escapeHtml(toDateInputValue(txn.occurredAt || new Date()))}">
+          ${renderCaptureTimeSegments(txn.occurredAt || new Date())}
           <label>
             <span>${escapeHtml(t("capture.note"))}</span>
-            <input name="note" value="${escapeHtml(txn.note || "")}" placeholder="${escapeHtml(t("capture.notePlaceholder"))}">
+            <input name="note" value="${escapeHtml(txn.note || "")}">
           </label>
         </div>
 
@@ -1971,28 +2015,44 @@ function renderCaptureCategoryBoard(txn) {
   const selectedCategory = txn.category || defaultCategoryForType(txn.type);
   const selectedTitle = txn.title || "";
   const groups = captureGroupsForType(txn.type);
+  const rows = chunkList(groups, 5);
   return `
     <section class="capture-category-board" aria-label="${escapeHtml(t("capture.category"))}">
-      <div class="capture-category-grid">
-        ${groups.map((group) => `
-          <button class="capture-category-button ${selectedCategory === group.category ? "active" : ""}" type="button" data-action="pick-field" data-field="category" data-value="${escapeHtml(group.category)}" data-pick-button>
-            ${renderIconBadge(group.category, "category")}
-            <span>${escapeHtml(group.category)}</span>
-          </button>
-        `).join("")}
-      </div>
-      <div class="capture-subcategory-wrap">
-        ${groups.map((group) => `
-          <div class="capture-subcategory-grid ${selectedCategory === group.category ? "active" : ""}" data-subcategory-group="${escapeHtml(group.category)}">
-            ${group.items.map((item) => `
-              <button class="capture-subcategory-button ${selectedCategory === group.category && selectedTitle === item ? "active" : ""}" type="button" data-action="pick-subcategory" data-category="${escapeHtml(group.category)}" data-title="${escapeHtml(item)}">
-                ${escapeHtml(item)}
+      ${rows.map((row) => `
+        <div class="capture-category-row">
+          <div class="capture-category-grid">
+            ${row.map((group) => `
+              <button class="capture-category-button ${selectedCategory === group.category ? "active" : ""}" type="button" data-action="pick-field" data-field="category" data-value="${escapeHtml(group.category)}" data-pick-button>
+                ${renderIconBadge(group.category, "category")}
+                <span>${escapeHtml(group.category)}</span>
               </button>
             `).join("")}
           </div>
-        `).join("")}
-      </div>
+          ${row.map((group) => `
+            <div class="capture-subcategory-grid ${selectedCategory === group.category ? "active" : ""}" data-subcategory-group="${escapeHtml(group.category)}">
+              ${group.items.map((item) => `
+                <button class="capture-subcategory-button ${selectedCategory === group.category && selectedTitle === item ? "active" : ""}" type="button" data-action="pick-subcategory" data-category="${escapeHtml(group.category)}" data-title="${escapeHtml(item)}">
+                  ${escapeHtml(item)}
+                </button>
+              `).join("")}
+            </div>
+          `).join("")}
+        </div>
+      `).join("")}
     </section>
+  `;
+}
+
+function renderCaptureTimeSegments(value) {
+  const selected = captureTimeSegmentId(value);
+  return `
+    <div class="capture-time-segments" data-choice-group="timeSegment" aria-label="${escapeHtml(t("capture.time"))}">
+      ${CAPTURE_TIME_SEGMENTS.map((item) => `
+        <button class="capture-time-button ${selected === item.id ? "active" : ""}" type="button" data-action="pick-time-segment" data-segment="${escapeHtml(item.id)}" data-hour="${item.hour}">
+          ${escapeHtml(t(item.labelKey))}
+        </button>
+        `).join("")}
+    </div>
   `;
 }
 
@@ -2242,6 +2302,17 @@ function pickCaptureSubcategory(button) {
   });
 }
 
+function pickCaptureTimeSegment(button) {
+  const form = button.closest("form");
+  const input = form?.elements?.namedItem("occurredAt");
+  if (!form || !input) return;
+  const hour = Number(button.dataset.hour || 8);
+  input.value = dateInputValueWithHour(input.value || new Date(), Number.isFinite(hour) ? hour : 8);
+  form.querySelectorAll("[data-action=\"pick-time-segment\"]").forEach((item) => {
+    item.classList.toggle("active", item === button);
+  });
+}
+
 function nextAmountValue(current, key) {
   if (key === "clear") return "";
   if (key === "backspace") return current.slice(0, -1);
@@ -2477,6 +2548,9 @@ document.addEventListener("click", (event) => {
   }
   if (action === "pick-subcategory") {
     pickCaptureSubcategory(node);
+  }
+  if (action === "pick-time-segment") {
+    pickCaptureTimeSegment(node);
   }
   if (action === "amount-key") {
     applyAmountKey(node);
