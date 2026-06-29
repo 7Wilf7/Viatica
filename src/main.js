@@ -100,8 +100,8 @@ const DASHBOARD_RANGES = [
 ];
 
 const LEDGER_VIEWS = [
-  { id: "flow", labelKey: "ledger.flow" },
-  { id: "chart", labelKey: "ledger.chart" },
+  { id: "flow", labelKey: "ledger.flow", icon: "flow" },
+  { id: "chart", labelKey: "ledger.chart", icon: "chartLine" },
 ];
 
 const GLYPHS = {
@@ -127,6 +127,31 @@ const GLYPHS = {
   search: `
     <circle cx="6.2" cy="6.2" r="3.5" />
     <path d="M8.8 8.8 L11.6 11.6" />
+  `,
+  flow: `
+    <path d="M2.5 3.4 H8.8" />
+    <path d="M2.5 7 H11.5" />
+    <path d="M2.5 10.6 H7.5" />
+    <circle cx="10.8" cy="3.4" r="0.8" fill="currentColor" stroke="none" />
+    <circle cx="8.9" cy="10.6" r="0.8" fill="currentColor" stroke="none" />
+  `,
+  chartPie: `
+    <path d="M7 2.2 V7 H11.8" />
+    <path d="M11.8 7 C11.8 9.7 9.7 11.8 7 11.8 C4.3 11.8 2.2 9.7 2.2 7 C2.2 4.3 4.3 2.2 7 2.2 Z" />
+    <path d="M7 2.2 C9.7 2.2 11.8 4.3 11.8 7" />
+  `,
+  chartBars: `
+    <path d="M2.2 11.4 H11.8" />
+    <rect x="3" y="6.6" width="1.6" height="4.4" rx="0.45" />
+    <rect x="6.2" y="3.8" width="1.6" height="7.2" rx="0.45" />
+    <rect x="9.4" y="5.3" width="1.6" height="5.7" rx="0.45" />
+  `,
+  chartLine: `
+    <path d="M2.2 11.2 H11.8" />
+    <path d="M2.8 9.4 L5.1 6.8 L7.3 8.1 L11.2 3.8" />
+    <circle cx="5.1" cy="6.8" r="0.65" fill="currentColor" stroke="none" />
+    <circle cx="7.3" cy="8.1" r="0.65" fill="currentColor" stroke="none" />
+    <circle cx="11.2" cy="3.8" r="0.65" fill="currentColor" stroke="none" />
   `,
   assets: `
     <path d="M2.2 4.2 H11.8 V11.2 H2.2 Z" />
@@ -1533,6 +1558,7 @@ function renderLedgerModeSwitch() {
     <section class="ledger-mode-switch" aria-label="${escapeHtml(t("ledger.title"))}">
       ${LEDGER_VIEWS.map((item) => `
         <button class="${state.ledgerView === item.id ? "active" : ""}" data-action="ledger-view" data-view="${escapeHtml(item.id)}" aria-pressed="${state.ledgerView === item.id ? "true" : "false"}">
+          ${glyphSvg(item.icon, "mode-icon")}
           ${escapeHtml(t(item.labelKey))}
         </button>
       `).join("")}
@@ -1580,19 +1606,22 @@ function renderLedgerOverview(summary) {
   return `
     <section class="ledger-overview" aria-label="${escapeHtml(t("ledger.overview"))}">
       <div class="ledger-metric-grid">
-        ${renderLedgerMetric(t("ledger.monthExpense"), formatMoney(summary.monthExpense))}
-        ${renderLedgerMetric(t("ledger.monthIncome"), formatMoney(summary.monthIncome))}
-        ${renderLedgerMetric(t("today.transactionCount"), String(summary.transactionCount))}
+        ${renderLedgerMetric(t("ledger.monthExpense"), formatMoney(summary.monthExpense), "chartPie")}
+        ${renderLedgerMetric(t("ledger.monthIncome"), formatMoney(summary.monthIncome), "chartLine")}
+        ${renderLedgerMetric(t("today.transactionCount"), String(summary.transactionCount), "chartBars")}
       </div>
     </section>
   `;
 }
 
-function renderLedgerMetric(label, value) {
+function renderLedgerMetric(label, value, icon) {
   return `
     <div class="ledger-metric-card">
-      <span>${escapeHtml(label)}</span>
-      <strong>${escapeHtml(value)}</strong>
+      <span class="ledger-metric-icon">${glyphSvg(icon)}</span>
+      <div class="ledger-metric-copy">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+      </div>
     </div>
   `;
 }
@@ -1615,6 +1644,12 @@ function renderLedgerStats(summary) {
         <div>
           <h2>${escapeHtml(t("stats.title"))}</h2>
         </div>
+      </div>
+
+      <div class="stats-visual-grid" aria-hidden="true">
+        <span>${glyphSvg("chartPie", "stats-visual-glyph")}</span>
+        <span>${glyphSvg("chartBars", "stats-visual-glyph")}</span>
+        <span>${glyphSvg("chartLine", "stats-visual-glyph")}</span>
       </div>
 
       <div class="section-title inline-section-title">
@@ -1999,7 +2034,7 @@ function renderCaptureForm(editingTransaction) {
         <div class="capture-detail-row">
           <input type="hidden" name="occurredAt" value="${escapeHtml(toDateInputValue(txn.occurredAt || new Date()))}">
           ${renderCaptureTimeChoice(txn.occurredAt || new Date())}
-          <label>
+          <label class="capture-note-field">
             <span>${escapeHtml(t("capture.note"))}</span>
             <input name="note" value="${escapeHtml(txn.note || "")}">
           </label>

@@ -529,6 +529,20 @@ label span {
   white-space: nowrap;
 }
 
+.ledger-mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.ledger-mode-switch .mode-icon {
+  width: 14px;
+  height: 14px;
+  color: currentColor;
+  opacity: 0.82;
+}
+
 .segmented button.active,
 .time-switch button.active,
 .ledger-mode-switch button.active,
@@ -607,27 +621,49 @@ label span {
 
 .ledger-metric-card {
   min-height: 54px;
-  padding: 7px 6px;
+  padding: 7px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 4px;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
   background:
     linear-gradient(180deg, oklch(0.170 0.008 95 / 0.72), oklch(0.122 0.006 95 / 0.72));
   box-shadow: 0 0 0 1px oklch(0.700 0.052 86 / 0.035) inset;
-  text-align: center;
+  text-align: left;
 }
 
-.ledger-metric-card span {
+.ledger-metric-icon {
+  width: 26px;
+  height: 26px;
+  border: 1px solid oklch(0.700 0.052 86 / 0.20);
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: oklch(0.700 0.052 86 / 0.08);
+  color: var(--accent-strong);
+}
+
+.ledger-metric-icon .glyph {
+  width: 15px;
+  height: 15px;
+}
+
+.ledger-metric-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.ledger-metric-copy span {
   color: var(--ink-2);
   font-size: 10px;
   line-height: 1.1;
   font-weight: 720;
 }
 
-.ledger-metric-card strong {
+.ledger-metric-copy strong {
   color: var(--ink);
   overflow: hidden;
   max-width: 100%;
@@ -636,6 +672,29 @@ label span {
   letter-spacing: -0.02em;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.stats-visual-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.stats-visual-grid span {
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 30%, oklch(0.700 0.052 86 / 0.12), transparent 58%),
+    oklch(0.145 0.006 95 / 0.62);
+  color: var(--accent-strong);
+}
+
+.stats-visual-glyph {
+  width: 24px;
+  height: 24px;
 }
 
 .asset-total-card {
@@ -1043,26 +1102,34 @@ label span {
 }
 
 .amount-readout {
-  min-height: 44px;
+  min-height: 40px;
   padding: 5px 2px 6px;
   border-bottom: 1px solid var(--line);
-  display: grid;
-  align-content: center;
-  gap: 2px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .amount-readout span {
+  flex: 0 0 auto;
   color: var(--ink-3);
   font-size: 11px;
   font-weight: 720;
 }
 
 .amount-readout strong {
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--danger);
   font-size: 26px;
   line-height: 1;
   font-weight: 780;
   letter-spacing: -0.02em;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .transaction-form.type-income .amount-readout strong {
@@ -1079,6 +1146,28 @@ label span {
   display: grid;
   grid-template-columns: minmax(112px, 0.7fr) minmax(0, 1fr);
   gap: 6px;
+}
+
+.capture-note-field {
+  position: relative;
+  display: block;
+}
+
+.capture-note-field span {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  z-index: 1;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.capture-note-field input {
+  padding-left: 48px;
 }
 
 .capture-time-choice .choice-trigger {
@@ -2251,7 +2340,7 @@ input[type="datetime-local"] {
     padding: 6px 5px;
   }
 
-  .ledger-metric-card strong {
+  .ledger-metric-copy strong {
     font-size: 15px;
   }
 
