@@ -1998,7 +1998,7 @@ function renderCaptureForm(editingTransaction) {
         </div>
         <div class="capture-detail-row">
           <input type="hidden" name="occurredAt" value="${escapeHtml(toDateInputValue(txn.occurredAt || new Date()))}">
-          ${renderCaptureTimeSegments(txn.occurredAt || new Date())}
+          ${renderCaptureTimeChoice(txn.occurredAt || new Date())}
           <label>
             <span>${escapeHtml(t("capture.note"))}</span>
             <input name="note" value="${escapeHtml(txn.note || "")}">
@@ -2043,15 +2043,22 @@ function renderCaptureCategoryBoard(txn) {
   `;
 }
 
-function renderCaptureTimeSegments(value) {
+function renderCaptureTimeChoice(value) {
   const selected = captureTimeSegmentId(value);
+  const selectedItem = CAPTURE_TIME_SEGMENTS.find((item) => item.id === selected) || CAPTURE_TIME_SEGMENTS[0];
   return `
-    <div class="capture-time-segments" data-choice-group="timeSegment" aria-label="${escapeHtml(t("capture.time"))}">
+    <div class="choice-control capture-time-choice" data-choice data-choice-time aria-label="${escapeHtml(t("capture.time"))}">
+      <button class="choice-trigger" type="button" data-action="toggle-choice" aria-expanded="false">
+        <span>${escapeHtml(t(selectedItem.labelKey))}</span>
+        <span class="choice-chevron" aria-hidden="true">▼</span>
+      </button>
+      <div class="choice-menu">
       ${CAPTURE_TIME_SEGMENTS.map((item) => `
-        <button class="capture-time-button ${selected === item.id ? "active" : ""}" type="button" data-action="pick-time-segment" data-segment="${escapeHtml(item.id)}" data-hour="${item.hour}">
+          <button class="choice-option ${selected === item.id ? "active" : ""}" type="button" data-action="choose-option" data-choice-value="${escapeHtml(item.id)}" data-hour="${item.hour}">
           ${escapeHtml(t(item.labelKey))}
         </button>
         `).join("")}
+      </div>
     </div>
   `;
 }
@@ -2302,17 +2309,6 @@ function pickCaptureSubcategory(button) {
   });
 }
 
-function pickCaptureTimeSegment(button) {
-  const form = button.closest("form");
-  const input = form?.elements?.namedItem("occurredAt");
-  if (!form || !input) return;
-  const hour = Number(button.dataset.hour || 8);
-  input.value = dateInputValueWithHour(input.value || new Date(), Number.isFinite(hour) ? hour : 8);
-  form.querySelectorAll("[data-action=\"pick-time-segment\"]").forEach((item) => {
-    item.classList.toggle("active", item === button);
-  });
-}
-
 function nextAmountValue(current, key) {
   if (key === "clear") return "";
   if (key === "backspace") return current.slice(0, -1);
@@ -2386,6 +2382,12 @@ function chooseOption(optionNode) {
 
   const choiceName = choice.dataset.choiceName;
   if (choiceName) syncChoiceGroup(choice.closest("form"), choiceName);
+
+  if (choice.dataset.choiceTime != null) {
+    const input = choice.closest("form")?.elements?.namedItem("occurredAt");
+    const hour = Number(optionNode.dataset.hour || 8);
+    if (input) input.value = dateInputValueWithHour(input.value || new Date(), Number.isFinite(hour) ? hour : 8);
+  }
 
   const filterKey = choice.dataset.choiceFilter;
   if (filterKey) {
@@ -2548,9 +2550,6 @@ document.addEventListener("click", (event) => {
   }
   if (action === "pick-subcategory") {
     pickCaptureSubcategory(node);
-  }
-  if (action === "pick-time-segment") {
-    pickCaptureTimeSegment(node);
   }
   if (action === "amount-key") {
     applyAmountKey(node);

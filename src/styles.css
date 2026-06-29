@@ -372,7 +372,7 @@ label span {
   position: relative;
   z-index: 25;
   display: grid;
-  grid-template-columns: minmax(112px, 0.33fr) minmax(0, 1.08fr);
+  grid-template-columns: minmax(98px, 0.28fr) minmax(0, 1.14fr);
   gap: 8px;
   align-items: center;
 }
@@ -927,6 +927,7 @@ label span {
 
 .capture-category-board {
   display: grid;
+  align-content: start;
   gap: 6px;
 }
 
@@ -1076,35 +1077,24 @@ label span {
 
 .capture-detail-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  grid-template-columns: minmax(112px, 0.7fr) minmax(0, 1fr);
   gap: 6px;
 }
 
-.capture-time-segments {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 4px;
-}
-
-.capture-time-button {
+.capture-time-choice .choice-trigger {
   min-height: 38px;
-  padding: 0 4px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: oklch(0.158 0.007 95 / 0.72);
-  color: var(--ink-2);
-  font-size: 11px;
+  padding: 0 10px;
+  background: oklch(0.145 0.006 95 / 0.74);
+  font-size: 12px;
   font-weight: 760;
-  line-height: 1;
-  transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out), color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
 }
 
-.capture-time-button:hover,
-.capture-time-button.active {
-  border-color: oklch(0.700 0.052 86 / 0.46);
-  background: linear-gradient(180deg, var(--accent-soft), oklch(0.158 0.007 95 / 0.84));
-  color: var(--ink);
-  box-shadow: 0 0 0 1px oklch(0.700 0.052 86 / 0.08) inset;
+.capture-time-choice .choice-menu {
+  min-width: 132px;
+}
+
+.capture-time-choice .choice-option {
+  text-align: center;
 }
 
 .amount-key {
@@ -2213,24 +2203,28 @@ input[type="datetime-local"] {
   }
 
   .app-shell.tab-capture .transaction-form {
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
   }
 
   .app-shell.tab-capture .capture-category-board {
     min-height: 0;
     padding-right: 2px;
+    flex: 0 1 auto;
     overflow-y: auto;
     overscroll-behavior: contain;
   }
 
   .app-shell.tab-capture .amount-pad-panel {
+    margin-top: auto;
     align-self: end;
+    width: 100%;
   }
 
   .ledger-topbar {
-    grid-template-columns: minmax(102px, 0.30fr) minmax(0, 1.12fr);
-    gap: 8px;
+    grid-template-columns: minmax(88px, 0.24fr) minmax(0, 1.20fr);
+    gap: 6px;
   }
 
   .ledger-type-filter .choice-trigger {
