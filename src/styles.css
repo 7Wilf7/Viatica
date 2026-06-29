@@ -674,27 +674,86 @@ label span {
   white-space: nowrap;
 }
 
-.stats-visual-grid {
+.stats-chart-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
   gap: 6px;
 }
 
-.stats-visual-grid span {
-  min-height: 48px;
+.stats-chart-card {
+  min-width: 0;
+  min-height: 136px;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   display: grid;
-  place-items: center;
+  align-content: start;
+  justify-items: stretch;
+  gap: 7px;
   background:
-    radial-gradient(circle at 50% 30%, oklch(0.700 0.052 86 / 0.12), transparent 58%),
+    radial-gradient(circle at 50% 18%, oklch(0.700 0.052 86 / 0.10), transparent 54%),
     oklch(0.145 0.006 95 / 0.62);
   color: var(--accent-strong);
 }
 
-.stats-visual-glyph {
-  width: 24px;
-  height: 24px;
+.stats-chart-card.trend {
+  grid-column: 1 / -1;
+  min-height: 122px;
+}
+
+.stats-chart-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.stats-chart-title .glyph {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-strong);
+}
+
+.stats-chart-svg {
+  width: 100%;
+  height: 92px;
+  display: block;
+  overflow: visible;
+}
+
+.pie-chart {
+  width: min(100%, 104px);
+  height: 96px;
+  justify-self: center;
+}
+
+.bar-chart text,
+.line-chart text {
+  fill: var(--ink-3);
+  font-size: 8px;
+  font-weight: 720;
+}
+
+.chart-axis {
+  fill: none;
+  stroke: oklch(0.560 0.028 90 / 0.34);
+  stroke-width: 1;
+}
+
+.line-chart-path {
+  fill: none;
+  stroke: var(--accent-strong);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.line-chart circle {
+  fill: var(--accent-strong);
+  stroke: oklch(0.130 0.006 95);
+  stroke-width: 1.4;
 }
 
 .asset-total-card {
@@ -1106,7 +1165,7 @@ label span {
   padding: 5px 2px 6px;
   border-bottom: 1px solid var(--line);
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
 }

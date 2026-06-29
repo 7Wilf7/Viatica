@@ -99,6 +99,15 @@ const DASHBOARD_RANGES = [
   { id: "year", labelKey: "range.year" },
 ];
 
+const CHART_COLORS = [
+  "oklch(0.700 0.052 86)",
+  "oklch(0.720 0.090 145)",
+  "oklch(0.680 0.090 230)",
+  "oklch(0.720 0.090 330)",
+  "oklch(0.720 0.100 50)",
+  "oklch(0.730 0.080 275)",
+];
+
 const LEDGER_VIEWS = [
   { id: "flow", labelKey: "ledger.flow", icon: "flow" },
   { id: "chart", labelKey: "ledger.chart", icon: "chartLine" },
@@ -860,9 +869,13 @@ const MESSAGES = {
     "ledger.typeFilter": "流水类型",
     "stats.title": "统计",
     "stats.hint": "图表先覆盖支出、收入和记录数。",
+    "stats.pieTitle": "分类占比",
+    "stats.barTitle": "金额对比",
+    "stats.lineTitle": "趋势",
     "stats.categoryTitle": "分类统计",
     "stats.categoryHint": "只按真实流水汇总，不看预算目标。",
-    "stats.noCategory": "本月还没有分类支出。",
+    "stats.noCategory": "当前范围还没有可统计数据。",
+    "stats.other": "其他",
     "assets.title": "资产概览",
     "assets.totalAssets": "我的总资产",
     "assets.hint": "先基于流水汇总账户净额。",
@@ -993,9 +1006,13 @@ const MESSAGES = {
     "ledger.typeFilter": "Entry type",
     "stats.title": "Statistics",
     "stats.hint": "Charts start with spending, income, and entry count.",
+    "stats.pieTitle": "Category share",
+    "stats.barTitle": "Amount compare",
+    "stats.lineTitle": "Trend",
     "stats.categoryTitle": "Category statistics",
     "stats.categoryHint": "Based only on real entries, not budget targets.",
-    "stats.noCategory": "No category spending this month yet.",
+    "stats.noCategory": "No chartable data in this range yet.",
+    "stats.other": "Other",
     "assets.title": "Asset overview",
     "assets.totalAssets": "Total assets",
     "assets.hint": "Starts from account net based on ledger entries.",
@@ -1484,7 +1501,7 @@ function render() {
     ${bootSplashVisible ? renderBootSplash() : ""}
     <main class="app-shell tab-${escapeHtml(state.activeTab)}">
       <section class="tab-stage">
-        ${renderActiveTab(summary, ledgerSummary, filteredTransactions, editingTransaction)}
+        ${renderActiveTab(summary, ledgerSummary, filteredTransactions, editingTransaction, periodTransactions)}
       </section>
 
       <nav class="bottom-tabs" aria-label="${escapeHtml(t("app.sections"))}">
@@ -1505,12 +1522,12 @@ function renderBootSplash() {
   `;
 }
 
-function renderActiveTab(summary, ledgerSummary, filteredTransactions, editingTransaction) {
+function renderActiveTab(summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions) {
   if (state.activeTab === "capture") return renderCaptureTab(editingTransaction);
   if (state.activeTab === "calendar") return renderCalendarTab(summary);
   if (state.activeTab === "assets") return renderAssetsTab(summary);
   if (state.activeTab === "settings") return renderSettingsTab();
-  return renderLedgerTab(filteredTransactions, ledgerSummary);
+  return renderLedgerTab(filteredTransactions, ledgerSummary, chartTransactions);
 }
 
 function glyphSvg(name, className = "glyph") {
@@ -1593,12 +1610,12 @@ function renderLedgerPeriodSwitch() {
   `;
 }
 
-function renderLedgerTab(filteredTransactions, summary) {
+function renderLedgerTab(filteredTransactions, summary, chartTransactions) {
   return `
     ${renderLedgerTopbar()}
     ${renderLedgerPeriodSwitch()}
     ${renderLedgerOverview(summary)}
-    ${state.ledgerView === "chart" ? renderLedgerStats(summary) : renderLedgerFlow(filteredTransactions)}
+    ${state.ledgerView === "chart" ? renderLedgerStats(summary, chartTransactions) : renderLedgerFlow(filteredTransactions)}
   `;
 }
 
@@ -1637,7 +1654,9 @@ function renderLedgerFlow(filteredTransactions) {
   `;
 }
 
-function renderLedgerStats(summary) {
+function renderLedgerStats(summary, transactions = []) {
+  const chartEntries = categoryChartEntries(transactions, 5);
+  const chartTotal = Math.max(1, chartEntries.reduce((total, [, amount]) => total + amount, 0));
   return `
     <section class="panel stats-panel">
       <div class="section-title">
@@ -1646,11 +1665,7 @@ function renderLedgerStats(summary) {
         </div>
       </div>
 
-      <div class="stats-visual-grid" aria-hidden="true">
-        <span>${glyphSvg("chartPie", "stats-visual-glyph")}</span>
-        <span>${glyphSvg("chartBars", "stats-visual-glyph")}</span>
-        <span>${glyphSvg("chartLine", "stats-visual-glyph")}</span>
-      </div>
+      ${renderStatsCharts(transactions, chartEntries, chartTotal)}
 
       <div class="section-title inline-section-title">
         <div>
@@ -1658,9 +1673,165 @@ function renderLedgerStats(summary) {
         </div>
       </div>
       <div class="budget-list">
-        ${renderCategoryStatRows(summary, 8)}
+        ${renderCategoryStatRows(summary, 8, chartEntries, chartTotal)}
       </div>
     </section>
+  `;
+}
+
+function chartSourceType() {
+  return state.filters.type === "income" ? "income" : "expense";
+}
+
+function categoryChartEntries(transactions = [], limit = 5) {
+  const sourceType = chartSourceType();
+  const totals = new Map();
+  for (const txn of transactions) {
+    if (txn.type !== sourceType) continue;
+    const amount = Number(txn.amount || 0);
+    if (!(amount > 0)) continue;
+    totals.set(txn.category, (totals.get(txn.category) || 0) + amount);
+  }
+  const entries = [...totals.entries()].sort((a, b) => b[1] - a[1]);
+  if (entries.length <= limit) return entries;
+  const visible = entries.slice(0, limit - 1);
+  const rest = entries.slice(limit - 1).reduce((sum, [, amount]) => sum + amount, 0);
+  return [...visible, [t("stats.other"), rest]];
+}
+
+function dailyChartEntries(transactions = []) {
+  const sourceType = chartSourceType();
+  const totals = new Map();
+  for (const txn of transactions) {
+    if (txn.type !== sourceType) continue;
+    const amount = Number(txn.amount || 0);
+    if (!(amount > 0)) continue;
+    const key = todayKey(txn.occurredAt);
+    totals.set(key, (totals.get(key) || 0) + amount);
+  }
+  return [...totals.entries()].sort((a, b) => new Date(a[0]) - new Date(b[0]));
+}
+
+function chartNumber(value) {
+  return Number(value.toFixed(2));
+}
+
+function pieSlicePath(cx, cy, radius, start, end) {
+  const startAngle = start * Math.PI * 2 - Math.PI / 2;
+  const endAngle = end * Math.PI * 2 - Math.PI / 2;
+  const x1 = chartNumber(cx + radius * Math.cos(startAngle));
+  const y1 = chartNumber(cy + radius * Math.sin(startAngle));
+  const x2 = chartNumber(cx + radius * Math.cos(endAngle));
+  const y2 = chartNumber(cy + radius * Math.sin(endAngle));
+  const largeArc = end - start > 0.5 ? 1 : 0;
+  return `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+}
+
+function renderPieChart(entries, total) {
+  let cursor = 0;
+  const slices = entries.length === 1
+    ? `<circle cx="44" cy="44" r="34" fill="${CHART_COLORS[0]}"></circle>`
+    : entries.map(([, amount], index) => {
+      const start = cursor;
+      const share = amount / total;
+      cursor += share;
+      return `<path d="${pieSlicePath(44, 44, 34, start, cursor)}" fill="${CHART_COLORS[index % CHART_COLORS.length]}"></path>`;
+    }).join("");
+  return `
+    <svg class="stats-chart-svg pie-chart" viewBox="0 0 88 88" role="img" aria-label="${escapeHtml(t("stats.pieTitle"))}">
+      <circle cx="44" cy="44" r="34" fill="oklch(0.145 0.006 95)"></circle>
+      ${slices}
+      <circle cx="44" cy="44" r="17" fill="oklch(0.130 0.006 95 / 0.92)"></circle>
+    </svg>
+  `;
+}
+
+function renderBarChart(entries) {
+  const max = Math.max(...entries.map(([, amount]) => amount), 1);
+  const chartWidth = 220;
+  const bottom = 82;
+  const top = 14;
+  const plotWidth = 188;
+  const step = plotWidth / Math.max(entries.length, 1);
+  const barWidth = Math.min(24, Math.max(12, step * 0.52));
+  const bars = entries.map(([category, amount], index) => {
+    const height = Math.max(4, ((amount / max) * (bottom - top)));
+    const x = chartNumber(18 + (step * index) + ((step - barWidth) / 2));
+    const y = chartNumber(bottom - height);
+    const label = shortChartLabel(category);
+    return `
+      <rect x="${x}" y="${y}" width="${chartNumber(barWidth)}" height="${chartNumber(height)}" rx="3" fill="${CHART_COLORS[index % CHART_COLORS.length]}"></rect>
+      <text x="${chartNumber(x + (barWidth / 2))}" y="94" text-anchor="middle">${escapeHtml(label)}</text>
+    `;
+  }).join("");
+  return `
+    <svg class="stats-chart-svg bar-chart" viewBox="0 0 ${chartWidth} 100" role="img" aria-label="${escapeHtml(t("stats.barTitle"))}">
+      <path d="M16 82 H208" class="chart-axis"></path>
+      ${bars}
+    </svg>
+  `;
+}
+
+function renderLineChart(transactions) {
+  const series = dailyChartEntries(transactions);
+  const max = Math.max(...series.map(([, amount]) => amount), 1);
+  const width = 260;
+  const left = 14;
+  const right = 246;
+  const top = 14;
+  const bottom = 78;
+  const points = series.map(([date, amount], index) => {
+    const x = series.length === 1 ? width / 2 : left + ((right - left) * index) / (series.length - 1);
+    const y = bottom - ((amount / max) * (bottom - top));
+    return { date, amount, x: chartNumber(x), y: chartNumber(y) };
+  });
+  const path = points.map((point, index) => `${index ? "L" : "M"} ${point.x} ${point.y}`).join(" ");
+  const pointNodes = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.4"></circle>`).join("");
+  const first = points[0]?.date.slice(5).replace("-", "/") || "";
+  const last = points[points.length - 1]?.date.slice(5).replace("-", "/") || "";
+  return `
+    <svg class="stats-chart-svg line-chart" viewBox="0 0 ${width} 96" role="img" aria-label="${escapeHtml(t("stats.lineTitle"))}">
+      <path d="M14 78 H246" class="chart-axis"></path>
+      <path d="${path}" class="line-chart-path"></path>
+      ${pointNodes}
+      <text x="14" y="92" text-anchor="start">${escapeHtml(first)}</text>
+      <text x="246" y="92" text-anchor="end">${escapeHtml(last)}</text>
+    </svg>
+  `;
+}
+
+function shortChartLabel(label) {
+  const text = String(label || "");
+  if (text.length <= 3) return text;
+  return state.preferences.locale === "en" ? text.slice(0, 4) : text.slice(0, 2);
+}
+
+function renderStatsCharts(transactions, entries, total) {
+  if (!entries.length) return `<div class="empty">${escapeHtml(t("stats.noCategory"))}</div>`;
+  return `
+    <div class="stats-chart-grid">
+      <article class="stats-chart-card">
+        <div class="stats-chart-title">
+          ${glyphSvg("chartPie")}
+          <span>${escapeHtml(t("stats.pieTitle"))}</span>
+        </div>
+        ${renderPieChart(entries, total)}
+      </article>
+      <article class="stats-chart-card">
+        <div class="stats-chart-title">
+          ${glyphSvg("chartBars")}
+          <span>${escapeHtml(t("stats.barTitle"))}</span>
+        </div>
+        ${renderBarChart(entries)}
+      </article>
+      <article class="stats-chart-card trend">
+        <div class="stats-chart-title">
+          ${glyphSvg("chartLine")}
+          <span>${escapeHtml(t("stats.lineTitle"))}</span>
+        </div>
+        ${renderLineChart(transactions)}
+      </article>
+    </div>
   `;
 }
 
