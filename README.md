@@ -36,9 +36,10 @@ software.
 
 ## Data Model
 
-Viatica currently stores data only on the device in the browser's `localStorage`
-under `viatica:v1`. It does not upload transactions to Supabase or any other
-database.
+Viatica's real ledger source is still the device's `localStorage` under
+`viatica:v1`. Aevum account login can identify the user through the shared
+Supabase project, and the future cloud tables already use the `viatica_*`
+prefix, but transaction upload/sync is a separate reviewed step.
 
 The local state includes transactions, category budgets, preferences, and
 account records. Account net is calculated as each account's opening balance
@@ -69,7 +70,13 @@ npm run dev
 npm run test
 npm run lint
 npm run build
+npm run android:sync
+npm run apk:debug
 ```
+
+`apk:debug` builds the Capacitor Android debug APK after syncing the latest Vite
+bundle. It requires a local JDK and Android SDK, just like Ultreia's Android
+build.
 
 ## Deployment
 
@@ -91,4 +98,4 @@ GitHub:
 
 - `https://github.com/7Wilf7/Viatica`
 
-APK packaging comes after the PWA workflow is confirmed.
+APK packaging uses Capacitor with Android package id `app.aevum.viatica`.

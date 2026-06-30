@@ -35,6 +35,7 @@ of copying training-specific behavior.
 ## Stack
 - Vanilla HTML, CSS, and JavaScript.
 - Vite for local development and builds.
+- Capacitor Android for APK packaging.
 - Node's built-in test runner.
 - No framework until shared component complexity becomes real.
 - No backend writes, Supabase schema, cloud sync, OCR API, or paid API usage
@@ -44,6 +45,7 @@ of copying training-specific behavior.
 - `src/` holds app source.
 - `src/core/` holds pure business logic and tests.
 - `public/` holds PWA assets such as the manifest, icons, and service worker.
+- `android/` holds the generated Capacitor Android project for APK builds.
 - `resources/brand/` holds source brand artwork. PWA launcher icons in
   `public/icons/` should be generated from the source logo, not redesigned
   separately.
@@ -128,6 +130,8 @@ of copying training-specific behavior.
 
 ## Validation
 - Run `npm run test`, `npm run lint`, and `npm run build` before delivery.
+- For Android packaging changes, also run `npm run android:sync`; run
+  `npm run apk:debug` when a JDK and Android SDK are available.
 - If ledger behavior changes, add or update tests in `src/core/*.test.js`.
 - Do not overwrite user data files.
 - Browser data reset, destructive import, or storage migration must be an

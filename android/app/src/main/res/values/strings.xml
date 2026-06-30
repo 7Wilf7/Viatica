@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Viatica</string>
+    <string name="title_activity_main">Viatica</string>
+    <string name="package_name">app.aevum.viatica</string>
+    <string name="custom_url_scheme">app.aevum.viatica</string>
+</resources>
