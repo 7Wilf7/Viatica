@@ -98,6 +98,22 @@ via Vite's `__APP_VERSION__` define, checks
 Android APK uses the native `ApkDownloader` / `ApkInstaller` bridge to download
 and open the system installer. In Web/PWA mode it opens the APK asset link.
 
+Release shorthand and versioning also follow Ultreia:
+
+- `git tag v0.1.1 && git push origin v0.1.1` triggers the APK release.
+- Wilf saying "推 APK" means validate, bump if needed, commit, push the `v*`
+  tag, and let GitHub Actions create the signed APK.
+- Wilf saying a shorthand such as "推 0111" means `0.11.1`; `0110` means
+  `0.11.0`. If the number is ambiguous, confirm before tagging.
+- Before pushing an APK tag, run `npm run test`, `npm run lint`,
+  `npm run build`, and, when the local Android toolchain is available,
+  `cd android && .\gradlew.bat :app:processReleaseMainManifest --no-daemon`.
+- Pre-1.0 versions only advance by release content: PATCH for fixes/style/copy
+  polish, MINOR for user-visible feature batches, and no skipped numbers by
+  feel.
+- Viatica's GitHub repo should stay public like Ultreia so Releases and APK
+  downloads work without a private-repo login barrier.
+
 Required GitHub Secrets match Ultreia's naming:
 
 | Secret | Purpose |

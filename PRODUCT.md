@@ -81,8 +81,9 @@ a gamified finance app.
 - Android distribution follows Ultreia's model: signed APK releases are built
   from semver Git tags by GitHub Actions, published to GitHub Releases, mirrored
   to Supabase Storage when available, and checked from the in-app Settings
-  update row. The Web/PWA cache refresh remains a separate Web-only maintenance
-  action.
+  update row. Release shorthand, local validation, and pre-1.0 versioning rules
+  should stay aligned with Ultreia. The Web/PWA cache refresh remains a
+  separate Web-only maintenance action.
 
 ## Current Milestone
 The active milestone is to make the PWA ready for real daily accounting by

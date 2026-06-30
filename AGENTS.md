@@ -142,10 +142,13 @@ of copying training-specific behavior.
   explicit user action with a clear backup path.
 
 ## Android APK Release Flow
-- Viatica should follow Ultreia's APK distribution model: push a semver tag
-  like `v0.1.1`, let `.github/workflows/release.yml` build/sign/upload the APK
-  to GitHub Releases, and let the in-app Settings update checker compare the
-  installed version with the latest GitHub Release.
+- Viatica follows Ultreia's APK distribution model: keep the GitHub repo
+  public, push a semver tag like `v0.1.1`, let
+  `.github/workflows/release.yml` build/sign/upload the APK to GitHub Releases,
+  and let the in-app Settings update checker compare the installed version with
+  the latest GitHub Release.
+- Standard release command shape is the same as Ultreia:
+  `git tag v0.1.1 && git push origin v0.1.1`.
 - Bump `package.json` `version` before tagging. The in-app update checker reads
   this version through Vite's `__APP_VERSION__` define, so package version and
   tag version must stay aligned.
@@ -162,6 +165,23 @@ of copying training-specific behavior.
 - Wilf saying "推 APK" means: validate, bump version if needed, commit, push the
   tag, and let GitHub Actions create the signed release APK. Do not interpret it
   as only building a local debug APK.
+- Wilf saying a shorthand number such as "推 0111" means the same parsing rule
+  as Ultreia: `0111` -> `0.11.1`, `0110` -> `0.11.0`; if a number cannot be
+  split into one clear semver, stop and confirm before tagging.
+- Before pushing an APK tag, run the same local checks as Ultreia when the local
+  toolchain is available: `npm run test`, `npm run lint`, `npm run build`, and
+  `cd android && .\gradlew.bat :app:processReleaseMainManifest --no-daemon`
+  on Windows. If Java/Android SDK is missing, say exactly what could not be
+  verified, then inspect the GitHub Actions result after the tag.
+- APK release handoff matches Ultreia: once the version commit and `v*` tag push
+  are confirmed, the release can be handed off; do not wait for GitHub Actions
+  unless Wilf asks, the release flow was just changed, or the run needs
+  troubleshooting.
+- Versioning follows Ultreia's pre-1.0 rule: each tag is one release. PATCH +1
+  for fixes, copy/style/performance/docs-only changes without a new
+  user-visible feature; MINOR +1 and reset PATCH to 0 for a user-visible feature
+  or feature batch; do not skip numbers by feel. `1.0.0` is reserved for a
+  stable public-ready product.
 
 ## Git
 - After verified project changes, commit and push directly so work stays
