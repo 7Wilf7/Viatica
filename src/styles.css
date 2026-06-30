@@ -1005,7 +1005,7 @@ label span {
 }
 
 .account-form {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   padding: 8px;
   border: 1px solid var(--line);
@@ -1999,12 +1999,13 @@ input[type="datetime-local"] {
 }
 
 .asset-budget-list .budget-row {
-  min-height: 78px;
-  padding: 8px;
+  min-height: 58px;
+  gap: 7px;
+  padding: 7px;
 }
 
 .asset-budget-list .metric-row-head {
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 7px;
 }
 
@@ -2014,16 +2015,18 @@ input[type="datetime-local"] {
 
 .asset-budget-list .metric-copy span {
   overflow: hidden;
-  font-size: 11px;
+  font-size: 10.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .asset-budget-list .metric-amount {
-  grid-column: 2;
-  justify-self: start;
-  color: var(--ink-2);
-  font-size: 11px;
+  grid-column: auto;
+  align-self: center;
+  justify-self: end;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 820;
 }
 
 .metric-row-head {

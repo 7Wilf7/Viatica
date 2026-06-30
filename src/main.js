@@ -431,14 +431,14 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "“资产”先看资产概览；长按资产概览这一行可以编辑账户和初始资金，资产金额按初始资金加流水收支计算。",
+        "“资产”先看资产概览；长按资产概览这一行可以直接编辑资产初始金额，资产金额按初始金额加流水收支计算。",
         "收入可以只选主分类保存；红包、退款和其他收入的具体说明直接写在备注里。",
         "“设置 → 数据模式”可在个人 / Demo 之间切换。Demo 用于展示给朋友看，不暴露真实资产；在 Demo 下点加号会提醒先切回个人模式。",
         "“设置”里的 CSV 适合表格分析，JSON 是完整本地备份。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
-        "Assets leads with the Assets Overview row. Long-press that row to edit the account and opening balance; the overview combines opening balance with ledger flow.",
+        "Assets leads with the Assets Overview row. Long-press that row to edit the opening asset amount directly; the overview combines that amount with ledger flow.",
         "Income can be saved from the primary category alone; describe gifts, refunds, and other income in the note when needed.",
         "Settings → Data mode switches between Personal and Demo. Demo is for showing the app without exposing real assets; tapping Add in Demo reminds you to switch back to Personal first.",
         "CSV is for spreadsheet review. JSON is the full local backup.",
@@ -477,16 +477,18 @@ const CHANGELOG_ENTRIES = [
       zh: [
         "微调支出和收入的快捷分类：合并咖啡奶茶，新增共享单车，调整比赛/训练、健康和收入分类顺序。",
         "Add 页分类图标改为每行 4 个，并略微放大图标，提升手机点按稳定性。",
-        "支出细项统一放到全部主分类下面；红包、退款和其他收入不再要求选择细项。",
-        "资产页移除可见加号和 Total Assets 小标题，改为长按资产概览行编辑账户初始资金。",
-        "分类预算改为两列布局，减少资产页纵向滚动。",
+        "支出细项统一放到全部主分类下面，并修复切换交通、购物、运动装备等分类时细项消失的问题。",
+        "红包、退款和其他收入不再要求选择细项。",
+        "资产页移除可见加号和 Total Assets 小标题，改为长按资产概览行直接编辑初始金额。",
+        "分类预算改为两列紧凑布局，百分比和分类金额同排显示，减少资产页纵向滚动。",
       ],
       en: [
         "Refined expense and income capture details, including coffee/milk tea, shared bikes, training, health, and income categories.",
         "Changed Add category icons to four per row and made the icons slightly larger for more reliable mobile tapping.",
-        "Moved expense details under the full category grid, and removed required detail picks for gifts, refunds, and other income.",
-        "Removed the visible plus and Total Assets sublabel from Assets; long-press Assets Overview to edit opening assets.",
-        "Changed category budgets to a two-column layout to reduce vertical scrolling.",
+        "Moved expense details under the full category grid and fixed missing detail chips when switching to categories such as transport, shopping, or gear.",
+        "Removed required detail picks for gifts, refunds, and other income.",
+        "Removed the visible plus and Total Assets sublabel from Assets; long-press Assets Overview to edit the opening amount directly.",
+        "Changed category budgets to a tighter two-column layout with percent and budget amount on the same row.",
       ],
     },
   },
@@ -909,13 +911,13 @@ const MESSAGES = {
     "assets.categoryTitle": "分类预算",
     "assets.categoryHint": "实际支出对照每月目标。",
     "assets.accountName": "账户名称",
-    "assets.openingBalance": "初始资金",
-    "assets.addAccount": "添加账户",
-    "assets.editAssets": "长按编辑资产初始资金",
+    "assets.openingBalance": "初始资产",
+    "assets.addAccount": "确认",
+    "assets.editAssets": "长按编辑初始资产",
     "assets.deleteAccount": "删除账户",
-    "assets.accountSaved": "账户已保存。",
+    "assets.accountSaved": "资产已确认。",
     "assets.accountDeleted": "账户已删除。",
-    "assets.accountInvalid": "账户名称不能为空，初始资金必须是数字。",
+    "assets.accountInvalid": "初始资产必须是数字。",
     "assets.accountNetTitle": "账户净额",
     "assets.noAccount": "还没有账户。点击右上角加号添加。",
     "assets.noBudget": "暂无预算数据。",
@@ -1048,13 +1050,13 @@ const MESSAGES = {
     "assets.categoryTitle": "Category Budgets",
     "assets.categoryHint": "Actual spending against monthly targets.",
     "assets.accountName": "Account Name",
-    "assets.openingBalance": "Opening Balance",
-    "assets.addAccount": "Add Account",
+    "assets.openingBalance": "Opening Assets",
+    "assets.addAccount": "Confirm",
     "assets.editAssets": "Long-press to edit opening assets",
     "assets.deleteAccount": "Delete Account",
-    "assets.accountSaved": "Account saved.",
+    "assets.accountSaved": "Assets confirmed.",
     "assets.accountDeleted": "Account deleted.",
-    "assets.accountInvalid": "Account name is required and opening balance must be a number.",
+    "assets.accountInvalid": "Opening assets must be a number.",
     "assets.accountNetTitle": "Account Net",
     "assets.noAccount": "No accounts yet. Tap the plus button to add one.",
     "assets.noBudget": "No budget data yet.",
@@ -2366,10 +2368,7 @@ function renderAccountSetupForm(defaults = {}) {
   const openingBalance = defaults.openingBalance ?? 0;
   return `
     <form id="account-form" class="account-form asset-account-form" autocomplete="off">
-      <label>
-        <span>${escapeHtml(t("assets.accountName"))}</span>
-        <input name="name" value="${escapeHtml(accountName)}" required>
-      </label>
+      <input type="hidden" name="name" value="${escapeHtml(accountName)}">
       <label>
         <span>${escapeHtml(t("assets.openingBalance"))}</span>
         <input name="openingBalance" inputmode="decimal" type="number" step="0.01" value="${escapeHtml(openingBalance)}">
@@ -2571,6 +2570,7 @@ function pickFormField(button) {
   if (field === "category") {
     const title = form.elements.namedItem("title");
     if (title) title.value = "";
+    refreshCaptureCategoryBoard(form);
   }
   syncChoiceControl(form, field, value);
   syncChoiceGroup(form, field);
@@ -2913,7 +2913,7 @@ document.addEventListener("click", (event) => {
     if (guardDemoMutation()) return;
     state.accountFormOpen = !state.accountFormOpen;
     render();
-    if (state.accountFormOpen) requestAnimationFrame(() => document.querySelector("#account-form input[name=\"name\"]")?.focus());
+    if (state.accountFormOpen) requestAnimationFrame(() => document.querySelector("#account-form input[name=\"openingBalance\"]")?.focus());
   }
   if (action === "cancel-edit") {
     state.editingTransactionId = null;
