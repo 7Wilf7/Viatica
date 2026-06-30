@@ -51,22 +51,29 @@ a gamified finance app.
   amount in a single panel; long-pressing that row reveals a direct opening-asset
   amount editor with a Confirm action instead of an account form. Total assets
   equals opening balances plus ledger income/expense flow.
-- Settings should stay compact on mobile. The manual and changelog live together
-  in one second-level guide page following Ultreia's settings pattern. Budget
-  editing also opens as a second-level page.
+- Settings should stay compact on mobile. The top identity header uses the
+  shared Aevum account pattern from Ultreia, while manual/changelog and budget
+  editing open as second-level pages.
 - Requirement review first: before building new product requests, compare the
   idea with strong mobile accounting apps such as iCost, then adapt it to
   Wilf's personal needs instead of copying generic finance-app complexity.
 - Learn from iCost's clarity: compact ledgers, readable calendar cells,
   category-first rows, and friendly icon grouping. Keep Viatica dark, local,
   restrained, and purpose-built instead of copying iCost's light visual skin.
-- Local-first by default: no backend write path until sync rules are explicit.
+- Local-first by default: `viatica:v1` stays the app's real ledger source until
+  cloud sync rules are explicitly reviewed. The shared Aevum Supabase project
+  already has Viatica's future cloud tables (`viatica_accounts`,
+  `viatica_budgets`, `viatica_preferences`, and `viatica_transactions`), but
+  login is only the identity layer until migration/sync is built.
 - Data must be portable: CSV export and full JSON backup are baseline features.
 - Aevum integration is summary-based: private notes stay inside Viatica unless a
   reviewed event explicitly shares them.
 - Ultreia alignment is product-language alignment: reuse relevant mobile
   patterns and settings conventions, but keep Viatica's ledger workflow and data
   boundary independent.
+- Account naming is shared across products: say Aevum account, not Viatica
+  account. Deleting an account means deleting the whole Aevum account and all
+  product data; a future single-product reset must be named separately.
 - Serious product UI: dense, scannable, and quiet, with a neutral dark graphite
   base and restrained muted ledger-brass accent.
 - Brand presence is functional and restrained: the official Viatica logo appears

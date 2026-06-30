@@ -66,6 +66,13 @@ of copying training-specific behavior.
   the target.
 - Data is local-first under `localStorage` key `viatica:v1` until sync rules are
   explicitly designed.
+- Aevum account is the shared identity for Viatica, Ultreia, and Aevum. Do not
+  call it a Viatica account. Viatica may show/login to the Aevum account before
+  cloud ledger sync exists, but `viatica:v1` remains the local source of truth
+  until a separate migration/sync plan is reviewed.
+- The shared Aevum Supabase project owns Viatica's future cloud tables:
+  `viatica_accounts`, `viatica_budgets`, `viatica_preferences`, and
+  `viatica_transactions`.
 - Local account records and opening balances are part of the `viatica:v1` model.
   Account net should be calculated as opening balance plus ledger income/expense
   flow, without requiring a backend.

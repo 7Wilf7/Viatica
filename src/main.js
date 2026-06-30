@@ -16,6 +16,14 @@ import {
   DEMO_TRANSACTIONS,
   VIATICA_DEMO_DATA_ENABLED,
 } from "./core/demoData.js";
+import {
+  getCloudSession,
+  isCloudAuthConfigured,
+  onCloudAuthStateChange,
+  sendAevumPasswordReset,
+  signInToAevum,
+  signOutFromAevum,
+} from "./core/cloud.js";
 import { formatCurrency, formatDateTime, monthKey, todayKey, toDateInputValue } from "./core/format.js";
 import {
   filterTransactions,
@@ -33,6 +41,7 @@ const LOCALES = [
 ];
 const LEGACY_DEFAULT_ACCOUNTS = new Set(["现金", "信用卡"]);
 const PRODUCT_NAME = "Viatica";
+const cloudAuthConfigured = isCloudAuthConfigured();
 let bootSplashVisible = true;
 let bootSplashDismissTimer = 0;
 const storedState = loadState();
@@ -66,6 +75,18 @@ const state = {
   dashboardRange: "month",
   ledgerView: "flow",
   settingsContent: "home",
+  auth: {
+    accountOpen: false,
+    busy: false,
+    configured: cloudAuthConfigured,
+    error: "",
+    loginMode: "signin",
+    loginOpen: false,
+    notice: "",
+    ready: !cloudAuthConfigured,
+    session: null,
+    user: null,
+  },
 };
 
 state.budgets = { ...DEFAULT_BUDGETS, ...state.budgets };
@@ -921,6 +942,19 @@ const MESSAGES = {
     "assets.accountNetTitle": "账户净额",
     "assets.noAccount": "还没有账户。点击右上角加号添加。",
     "assets.noBudget": "暂无预算数据。",
+    "settings.accountTitle": "Aevum 账号",
+    "settings.accountLocal": "未登录 · 本机模式",
+    "settings.accountChecking": "正在检查账号状态...",
+    "settings.accountMissingConfig": "未配置 Supabase 环境变量",
+    "settings.accountSignedIn": "已登录",
+    "settings.accountSyncPending": "账本云同步下一步接入",
+    "settings.accountProfile": "账号资料",
+    "settings.accountProfileHint": "当前用于身份识别，本地账本仍保存在此设备。",
+    "settings.signIn": "登录 Aevum 账号",
+    "settings.signOut": "退出登录",
+    "settings.signingOut": "正在退出...",
+    "settings.resetPassword": "重置密码",
+    "settings.resetPasswordHint": "向当前邮箱发送重置邮件",
     "settings.languageTitle": "界面语言",
     "settings.brandLine": "本机优先的个人账本",
     "settings.languageHint": "只切换界面文案，不改已有流水、账本、分类和导出数据。",
@@ -952,6 +986,25 @@ const MESSAGES = {
     "settings.dataModePersonal": "个人",
     "settings.dataModeDemo": "Demo",
     "settings.back": "返回",
+    "login.title": "登录 Aevum 账号",
+    "login.desc": "先连接同一个 Aevum 身份；真实账本仍保留在本机，云同步会在下一步接入。",
+    "login.email": "邮箱",
+    "login.password": "密码",
+    "login.submit": "登录",
+    "login.submitting": "正在登录...",
+    "login.forgotPassword": "忘记密码？",
+    "login.resetTitle": "重置密码",
+    "login.resetDesc": "输入 Aevum 账号邮箱，我会让 Supabase 发送重置邮件。",
+    "login.sendReset": "发送重置邮件",
+    "login.sendingReset": "正在发送...",
+    "login.backToSignIn": "返回登录",
+    "login.close": "关闭",
+    "login.error": "登录失败，请检查邮箱和密码。",
+    "login.resetSent": "重置邮件已发送，请检查邮箱。",
+    "login.resetError": "重置邮件发送失败，请稍后再试。",
+    "toast.authMissingConfig": "还没有配置 Supabase 环境变量，暂时只能使用本机模式。",
+    "toast.authSignedIn": "已登录 Aevum 账号。",
+    "toast.authSignedOut": "已退出 Aevum 账号。",
     "manual.changelogHeading": "产品迭代过程",
     "filter.search": "搜索标题、商家、标签",
     "filter.allTypes": "全部类型",
@@ -1060,6 +1113,19 @@ const MESSAGES = {
     "assets.accountNetTitle": "Account Net",
     "assets.noAccount": "No accounts yet. Tap the plus button to add one.",
     "assets.noBudget": "No budget data yet.",
+    "settings.accountTitle": "Aevum Account",
+    "settings.accountLocal": "Signed out · Local mode",
+    "settings.accountChecking": "Checking account...",
+    "settings.accountMissingConfig": "Supabase environment variables are missing",
+    "settings.accountSignedIn": "Signed in",
+    "settings.accountSyncPending": "Cloud ledger sync is the next step",
+    "settings.accountProfile": "Account Profile",
+    "settings.accountProfileHint": "Used for identity now; this device still owns the local ledger.",
+    "settings.signIn": "Sign In To Aevum",
+    "settings.signOut": "Sign Out",
+    "settings.signingOut": "Signing out...",
+    "settings.resetPassword": "Reset Password",
+    "settings.resetPasswordHint": "Send a reset email to this account",
     "settings.languageTitle": "Interface Language",
     "settings.brandLine": "Local-First Personal Ledger",
     "settings.languageHint": "Switches interface copy only; existing entries, books, categories, and exports stay unchanged.",
@@ -1091,6 +1157,25 @@ const MESSAGES = {
     "settings.dataModePersonal": "Personal",
     "settings.dataModeDemo": "Demo",
     "settings.back": "Back",
+    "login.title": "Sign In To Aevum",
+    "login.desc": "Connect the shared Aevum identity first. Your real ledger still stays local until cloud sync is added next.",
+    "login.email": "Email",
+    "login.password": "Password",
+    "login.submit": "Sign In",
+    "login.submitting": "Signing in...",
+    "login.forgotPassword": "Forgot password?",
+    "login.resetTitle": "Reset Password",
+    "login.resetDesc": "Enter your Aevum account email and Supabase will send a reset link.",
+    "login.sendReset": "Send Reset Email",
+    "login.sendingReset": "Sending...",
+    "login.backToSignIn": "Back To Sign In",
+    "login.close": "Close",
+    "login.error": "Sign-in failed. Check your email and password.",
+    "login.resetSent": "Reset email sent. Check your inbox.",
+    "login.resetError": "Could not send reset email. Try again later.",
+    "toast.authMissingConfig": "Supabase environment variables are not configured yet. Local mode is still available.",
+    "toast.authSignedIn": "Signed in to Aevum.",
+    "toast.authSignedOut": "Signed out of Aevum.",
     "manual.changelogHeading": "Product History",
     "filter.search": "Search title, merchant, tags",
     "filter.allTypes": "All Types",
@@ -1229,6 +1314,122 @@ function guardDemoMutation() {
   if (!isDemoMode()) return false;
   warnDemoMode();
   return true;
+}
+
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function authUserEmail() {
+  return state.auth.user?.email || "";
+}
+
+function authUserName() {
+  const user = state.auth.user;
+  if (!user) return "";
+  const meta = user.user_metadata || {};
+  const displayName = meta.display_name || meta.full_name || meta.name;
+  if (displayName) return String(displayName);
+  const email = authUserEmail();
+  return email ? email.split("@")[0] : "";
+}
+
+function setCloudSession(session) {
+  state.auth.session = session;
+  state.auth.user = session?.user || null;
+  state.auth.ready = true;
+  if (!session) state.auth.accountOpen = false;
+}
+
+async function initCloudAuth() {
+  if (!state.auth.configured) return;
+  try {
+    setCloudSession(await getCloudSession());
+  } catch {
+    state.auth.ready = true;
+    state.auth.error = t("login.error");
+  }
+  render();
+  onCloudAuthStateChange((session) => {
+    setCloudSession(session);
+    render();
+  });
+}
+
+function openAuthDialog(mode = "signin") {
+  if (!state.auth.configured) {
+    toast(t("toast.authMissingConfig"));
+    return;
+  }
+  state.auth.loginMode = mode;
+  state.auth.loginOpen = true;
+  state.auth.error = "";
+  state.auth.notice = "";
+  render();
+  requestAnimationFrame(() => document.querySelector("#auth-email")?.focus());
+}
+
+function closeAuthDialog() {
+  if (state.auth.busy) return;
+  state.auth.loginOpen = false;
+  state.auth.error = "";
+  state.auth.notice = "";
+  render();
+}
+
+async function handleAuthLogin(form) {
+  if (state.auth.busy) return;
+  state.auth.busy = true;
+  state.auth.error = "";
+  state.auth.notice = "";
+  render();
+  try {
+    const email = normalizeEmail(form.elements.namedItem("email")?.value);
+    const password = String(form.elements.namedItem("password")?.value || "");
+    setCloudSession(await signInToAevum(email, password));
+    state.auth.loginOpen = false;
+    toast(t("toast.authSignedIn"));
+  } catch {
+    state.auth.error = t("login.error");
+  } finally {
+    state.auth.busy = false;
+    render();
+  }
+}
+
+async function handlePasswordReset(form) {
+  if (state.auth.busy) return;
+  state.auth.busy = true;
+  state.auth.error = "";
+  state.auth.notice = "";
+  render();
+  try {
+    const email = normalizeEmail(form.elements.namedItem("email")?.value);
+    await sendAevumPasswordReset(email);
+    state.auth.loginMode = "signin";
+    state.auth.notice = t("login.resetSent");
+  } catch {
+    state.auth.error = t("login.resetError");
+  } finally {
+    state.auth.busy = false;
+    render();
+  }
+}
+
+async function handleAuthSignOut() {
+  if (state.auth.busy) return;
+  state.auth.busy = true;
+  render();
+  try {
+    await signOutFromAevum();
+    setCloudSession(null);
+    toast(t("toast.authSignedOut"));
+  } catch {
+    toast(t("login.error"));
+  } finally {
+    state.auth.busy = false;
+    render();
+  }
 }
 
 function itemOptions(items) {
@@ -1557,6 +1758,7 @@ function render() {
         ${TABS.map(renderTabButton).join("")}
       </nav>
     </main>
+    ${state.auth.loginOpen ? renderAuthDialog() : ""}
     <input id="csv-import" type="file" accept=".csv,text/csv" hidden>
   `;
   scheduleBootSplashDismiss();
@@ -2050,7 +2252,7 @@ function renderSettingsTab() {
 
   return `
     <section class="settings-list">
-      ${renderSettingsBrand()}
+      ${renderSettingsAccountCard()}
 
       ${renderSettingsSection(t("settings.productSection"), [
         renderSettingsCell(t("settings.languageTitle"), "", renderLanguageSwitch()),
@@ -2078,14 +2280,94 @@ function renderSettingsTab() {
   `;
 }
 
-function renderSettingsBrand() {
+function renderSettingsAccountCard() {
+  const signedIn = Boolean(state.auth.user);
+  const title = signedIn ? authUserName() || t("settings.accountTitle") : t("settings.accountTitle");
+  const subtitle = !state.auth.configured
+    ? t("settings.accountMissingConfig")
+    : !state.auth.ready
+      ? t("settings.accountChecking")
+      : signedIn
+        ? authUserEmail() || t("settings.accountSignedIn")
+        : t("settings.accountLocal");
+  const action = signedIn ? "toggle-auth-panel" : "open-login";
   return `
-    <section class="settings-brand" aria-label="${escapeHtml(PRODUCT_NAME)}">
-      <img class="brand-logo settings-brand-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
-      <span class="settings-brand-copy">
-        <strong class="brand-wordmark settings-brand-wordmark">${escapeHtml(PRODUCT_NAME)}</strong>
-      </span>
+    <section class="settings-account" aria-label="${escapeHtml(t("settings.accountTitle"))}">
+      <button class="settings-account-head" type="button" data-action="${escapeHtml(action)}" ${state.auth.busy ? "disabled" : ""}>
+        <img class="brand-logo settings-account-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
+        <span class="settings-account-copy">
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(subtitle)}</span>
+        </span>
+        <span class="settings-chevron" aria-hidden="true">${signedIn ? state.auth.accountOpen ? "⌃" : "⌄" : "›"}</span>
+      </button>
+      ${signedIn && state.auth.accountOpen ? `
+        <div class="settings-account-panel">
+          <div class="settings-cell account-info-cell">
+            <span class="settings-cell-copy">
+              <strong>${escapeHtml(t("settings.accountProfile"))}</strong>
+              <span>${escapeHtml(t("settings.accountProfileHint"))}</span>
+            </span>
+          </div>
+          <button class="settings-cell" type="button" data-action="open-reset-password">
+            <span class="settings-cell-copy">
+              <strong>${escapeHtml(t("settings.resetPassword"))}</strong>
+              <span>${escapeHtml(t("settings.resetPasswordHint"))}</span>
+            </span>
+            <span class="settings-chevron">›</span>
+          </button>
+          <button class="settings-cell danger-cell" type="button" data-action="sign-out" ${state.auth.busy ? "disabled" : ""}>
+            <span class="settings-cell-copy">
+              <strong>${escapeHtml(state.auth.busy ? t("settings.signingOut") : t("settings.signOut"))}</strong>
+              <span>${escapeHtml(t("settings.accountSyncPending"))}</span>
+            </span>
+          </button>
+        </div>
+      ` : ""}
     </section>
+  `;
+}
+
+function renderAuthDialog() {
+  const resetMode = state.auth.loginMode === "reset";
+  const email = authUserEmail();
+  return `
+    <div class="auth-modal" role="presentation">
+      <section class="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+        <div class="auth-logo-row">
+          <span></span>
+          <img class="brand-logo auth-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
+          ${renderLanguageSwitch()}
+        </div>
+        <h2 id="auth-title">${escapeHtml(resetMode ? t("login.resetTitle") : t("login.title"))}</h2>
+        <p>${escapeHtml(resetMode ? t("login.resetDesc") : t("login.desc"))}</p>
+        <form id="${resetMode ? "auth-reset-form" : "auth-login-form"}" class="auth-form" autocomplete="on">
+          <label>
+            <span>${escapeHtml(t("login.email"))}</span>
+            <input id="auth-email" name="email" type="email" autocomplete="email" required value="${escapeHtml(email)}" ${state.auth.busy ? "disabled" : ""}>
+          </label>
+          ${resetMode ? "" : `
+            <label>
+              <span>${escapeHtml(t("login.password"))}</span>
+              <input name="password" type="password" autocomplete="current-password" required ${state.auth.busy ? "disabled" : ""}>
+            </label>
+          `}
+          ${state.auth.error ? `<div class="auth-message error">${escapeHtml(state.auth.error)}</div>` : ""}
+          ${state.auth.notice ? `<div class="auth-message notice">${escapeHtml(state.auth.notice)}</div>` : ""}
+          <button class="btn primary wide" type="submit" ${state.auth.busy ? "disabled" : ""}>
+            ${escapeHtml(state.auth.busy
+              ? resetMode ? t("login.sendingReset") : t("login.submitting")
+              : resetMode ? t("login.sendReset") : t("login.submit"))}
+          </button>
+        </form>
+        <div class="auth-foot">
+          <button type="button" data-action="${resetMode ? "auth-mode-signin" : "auth-mode-reset"}">
+            ${escapeHtml(resetMode ? t("login.backToSignIn") : t("login.forgotPassword"))}
+          </button>
+          <button type="button" data-action="close-login">${escapeHtml(t("login.close"))}</button>
+        </div>
+      </section>
+    </div>
   `;
 }
 
@@ -2713,6 +2995,14 @@ document.addEventListener("submit", (event) => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
   event.preventDefault();
+  if (form.getAttribute("id") === "auth-login-form") {
+    handleAuthLogin(form);
+    return;
+  }
+  if (form.getAttribute("id") === "auth-reset-form") {
+    handlePasswordReset(form);
+    return;
+  }
   if (form.getAttribute("id") === "budget-form") {
     if (guardDemoMutation()) return;
     beginRealDataMode();
@@ -2901,6 +3191,28 @@ document.addEventListener("click", (event) => {
     state.settingsContent = content;
     render();
   }
+  if (action === "open-login") {
+    openAuthDialog("signin");
+  }
+  if (action === "close-login") {
+    closeAuthDialog();
+  }
+  if (action === "auth-mode-reset") {
+    openAuthDialog("reset");
+  }
+  if (action === "auth-mode-signin") {
+    openAuthDialog("signin");
+  }
+  if (action === "toggle-auth-panel") {
+    state.auth.accountOpen = !state.auth.accountOpen;
+    render();
+  }
+  if (action === "open-reset-password") {
+    openAuthDialog("reset");
+  }
+  if (action === "sign-out") {
+    handleAuthSignOut();
+  }
   if (action === "reset-budgets") {
     if (guardDemoMutation()) return;
     beginRealDataMode();
@@ -3007,3 +3319,4 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
 }
 
 render();
+initCloudAuth();

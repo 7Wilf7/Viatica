@@ -74,8 +74,8 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   `src/assets/logo.js`; PWA launcher icons in `public/icons/` are generated
   copies of the same mark.
 - Brand exposure should stay product-native: a short boot splash with logo +
-  script-style Viatica wordmark, and a compact Settings brand header. Do not
-  turn the app into a landing page.
+  script-style Viatica wordmark, and a compact Settings Aevum account header.
+  Do not turn the app into a landing page.
 - Viatica owns a small custom monoline glyph set for bottom navigation,
   categories, accounts, and row actions. Category icons may use subtle
   differentiated colors, but they should stay soft and tool-like, not childish
@@ -104,16 +104,22 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   budgets compare actual spending with monthly targets and use a compact
   two-column mobile grid; the category, budget amount, and percent should share
   the row to reduce vertical scrolling.
-- Settings uses the Ultreia-style compact mobile list. The manual and changelog
-  are combined into one guide page so usage notes and product iteration history
-  live together. Long content such as the guide and category budget editor opens
-  as a second-level page, not inline on the Settings home.
+- Settings uses the Ultreia-style compact mobile list. The top identity block
+  follows Ultreia's mobile account header pattern, but the copy says Aevum
+  account because the identity is shared across Aevum / Ultreia / Viatica. The
+  manual and changelog are combined into one guide page so usage notes and
+  product iteration history live together. Long content such as the guide and
+  category budget editor opens as a second-level page, not inline on the
+  Settings home.
+- The login screen follows Ultreia's auth composition: centered product logo,
+  small 中 / EN language pill, restrained email/password form, and compact
+  secondary actions. Viatica must not store saved passwords in localStorage.
 - The Personal / Demo data mode switch belongs in Settings. It uses the same
   compact capsule vocabulary as the language switch. Demo mode is a display
   privacy layer, not a second data model: it shows bundled sample ledger data
   and blocks real-data actions with a clear toast reminder.
-- Settings owns local data actions, exports, imports, editable budgets, and
-  PWA/storage notes.
+- Settings owns local data actions, exports, imports, editable budgets,
+  Aevum account entry, and PWA/storage notes.
 - Budget rows and transaction rows use dense panels, not oversized cards.
   Transaction rows prioritize category icon, title, time/type context, amount,
   and account; edit/delete actions stay hidden until long press.
