@@ -58,10 +58,12 @@ test("summarizes current month and today totals", () => {
 test("normalizes income with income-only categories and legacy work income", () => {
   const salary = normalizeTransaction({ type: "income", amount: 500, category: "薪酬", title: "工资" });
   const legacy = normalizeTransaction({ type: "income", amount: 300, category: "工作", title: "旧收入" });
+  const transfer = normalizeTransaction({ type: "income", amount: 200, category: "转入", title: "旧转入" });
   const invalid = normalizeTransaction({ type: "income", amount: 100, category: "交通", title: "错误分类" });
 
   assert.equal(salary.category, "薪酬");
   assert.equal(legacy.category, "薪酬");
+  assert.equal(transfer.category, "其他收入");
   assert.equal(invalid.category, "其他收入");
 });
 

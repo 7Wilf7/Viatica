@@ -803,8 +803,8 @@ label span {
 }
 
 .asset-total-card {
-  min-height: 66px;
-  padding: 10px;
+  min-height: 58px;
+  padding: 11px 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   display: flex;
@@ -812,12 +812,16 @@ label span {
   justify-content: space-between;
   gap: 12px;
   background: var(--surface-raised);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
 }
 
 .asset-total-card span {
-  color: var(--ink-2);
-  font-size: 13px;
-  font-weight: 720;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 760;
+  line-height: 1;
 }
 
 .asset-total-card strong {
@@ -825,6 +829,12 @@ label span {
   font-size: 24px;
   line-height: 1;
   letter-spacing: -0.02em;
+}
+
+.asset-total-card:focus-visible {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 3px oklch(0.560 0.055 84 / 0.13);
+  outline: none;
 }
 
 .inline-section-title {
@@ -1102,14 +1112,14 @@ label span {
 
 .capture-category-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 
 .capture-category-button {
   min-width: 0;
-  min-height: 54px;
-  padding: 5px 3px;
+  min-height: 62px;
+  padding: 6px 3px;
   border: 1px solid transparent;
   border-radius: var(--r-sm);
   display: grid;
@@ -1139,6 +1149,12 @@ label span {
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.capture-category-button .icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
 }
 
 .capture-subcategory-grid {
@@ -1966,6 +1982,10 @@ input[type="datetime-local"] {
   gap: 8px;
 }
 
+.asset-budget-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .compact-list .txn-actions {
   display: none;
 }
@@ -1977,6 +1997,34 @@ input[type="datetime-local"] {
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   background: var(--surface-raised);
+}
+
+.asset-budget-list .budget-row {
+  min-height: 78px;
+  padding: 8px;
+}
+
+.asset-budget-list .metric-row-head {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px;
+}
+
+.asset-budget-list .metric-copy strong {
+  font-size: 12px;
+}
+
+.asset-budget-list .metric-copy span {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-budget-list .metric-amount {
+  grid-column: 2;
+  justify-self: start;
+  color: var(--ink-2);
+  font-size: 11px;
 }
 
 .metric-row-head {
@@ -2506,13 +2554,13 @@ input[type="datetime-local"] {
   }
 
   .capture-category-button {
-    min-height: 50px;
+    min-height: 60px;
   }
 
   .capture-category-button .icon-badge {
-    width: 30px;
-    height: 30px;
-    border-radius: 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
   }
 
   .amount-readout strong {

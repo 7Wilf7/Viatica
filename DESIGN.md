@@ -94,9 +94,9 @@ transaction rows, and data-first cards that feel useful rather than decorative.
 - Assets owns total assets, account creation, opening balances, account net,
   and category budgets. The default Assets screen should lead with total assets
   and category budgets, not a visible account-balance list. Account creation and
-  opening-balance entry stay behind the Assets overview plus action because
-  they are low-frequency controls. Category budgets compare actual spending
-  with monthly targets.
+  opening-balance entry stay behind a long-press on the Assets Overview row
+  because they are low-frequency controls. Category budgets compare actual
+  spending with monthly targets and can use a compact two-column mobile grid.
 - Settings uses the Ultreia-style compact mobile list. The manual and changelog
   are combined into one guide page so usage notes and product iteration history
   live together. Long content such as the guide and category budget editor opens

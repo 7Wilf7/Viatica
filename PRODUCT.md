@@ -44,9 +44,9 @@ a gamified finance app.
   summarize actual spending by category. Budgets compare actual spending against
   editable monthly category targets saved locally.
 - Assets owns local account setup, but it should not foreground account balance
-  rows by default. Accounts can be created locally from the Assets overview
-  plus action, opening balances are set there, and total assets equals opening
-  balances plus ledger income/expense flow.
+  rows by default. The default surface is one Assets Overview row with the total
+  amount; long-pressing that row reveals account/opening-balance editing. Total
+  assets equals opening balances plus ledger income/expense flow.
 - Settings should stay compact on mobile. The manual and changelog live together
   in one second-level guide page following Ultreia's settings pattern. Budget
   editing also opens as a second-level page.

@@ -42,7 +42,6 @@ export const EXPENSE_CATEGORIES = [
 export const INCOME_CATEGORIES = [
   "薪酬",
   "红包",
-  "转入",
   "退款",
   "其他收入",
 ];

@@ -333,12 +333,12 @@ const ACCOUNT_META = {
 };
 
 const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
-  { category: "餐饮", items: ["早餐", "午餐", "晚餐", "宵夜", "咖啡", "奶茶", "水果", "其他"] },
-  { category: "交通", items: ["地铁", "打车"] },
+  { category: "餐饮", items: ["早餐", "午餐", "晚餐", "宵夜", "咖啡奶茶", "水果", "其他"] },
+  { category: "交通", items: ["地铁", "打车", "共享单车"] },
   { category: "购物", items: ["日用品", "服饰", "数码", "家居"] },
   { category: "运动装备", items: ["装备", "补给"] },
-  { category: "比赛/训练", items: ["赛事", "训练课", "康复"] },
-  { category: "健康", items: ["医疗", "药品", "保险"] },
+  { category: "比赛/训练", items: ["康复", "训练课", "赛事报名"] },
+  { category: "健康", items: ["保险", "医疗", "药品"] },
   { category: "AI 工具", items: ["ChatGPT"] },
   { category: "订阅", items: ["App"] },
   { category: "学习", items: ["课程", "书籍", "资料", "工具"] },
@@ -348,10 +348,9 @@ const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
 ];
 
 const INCOME_CAPTURE_CATEGORY_GROUPS = [
-  { category: "薪酬", items: ["工资", "奖金", "项目款", "稿费"] },
-  { category: "红包", items: ["红包", "转账"] },
-  { category: "转入", items: ["账户转入", "家庭转入"] },
-  { category: "退款", items: ["退款", "退货"] },
+  { category: "薪酬", items: ["工资", "家教费"] },
+  { category: "红包", items: ["红包"] },
+  { category: "退款", items: ["退款"] },
   { category: "其他收入", items: ["其他"] },
 ];
 
@@ -432,13 +431,13 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "“资产”先看我的总资产；点账户金额右上角“+”新增账户和初始资金，账户金额按初始资金加流水收支计算，长按账户可以删除。",
+        "“资产”先看资产概览；长按资产概览这一行可以编辑账户和初始资金，资产金额按初始资金加流水收支计算。",
         "“设置 → 数据模式”可在个人 / Demo 之间切换。Demo 用于展示给朋友看，不暴露真实资产；在 Demo 下点加号会提醒先切回个人模式。",
         "“设置”里的 CSV 适合表格分析，JSON 是完整本地备份。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
-        "Assets leads with total assets. Tap the plus in Account balances to add an account and opening balance; balances combine opening balance with ledger flow, and accounts can be deleted by long press.",
+        "Assets leads with the Assets Overview row. Long-press that row to edit the account and opening balance; the overview combines opening balance with ledger flow.",
         "Settings → Data mode switches between Personal and Demo. Demo is for showing the app without exposing real assets; tapping Add in Demo reminds you to switch back to Personal first.",
         "CSV is for spreadsheet review. JSON is the full local backup.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
@@ -466,6 +465,27 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-06-30",
+    title: {
+      zh: "细化记账分类和资产概览",
+      en: "Refined capture categories and asset overview",
+    },
+    items: {
+      zh: [
+        "微调支出和收入的快捷分类：合并咖啡奶茶，新增共享单车，调整比赛/训练、健康和收入分类顺序。",
+        "Add 页分类图标改为每行 4 个，并略微放大图标，提升手机点按稳定性。",
+        "资产页移除可见加号和 Total Assets 小标题，改为长按资产概览行编辑账户初始资金。",
+        "分类预算改为两列布局，减少资产页纵向滚动。",
+      ],
+      en: [
+        "Refined expense and income capture details, including coffee/milk tea, shared bikes, training, health, and income categories.",
+        "Changed Add category icons to four per row and made the icons slightly larger for more reliable mobile tapping.",
+        "Removed the visible plus and Total Assets sublabel from Assets; long-press Assets Overview to edit opening assets.",
+        "Changed category budgets to a two-column layout to reduce vertical scrolling.",
+      ],
+    },
+  },
   {
     date: "2026-06-29",
     title: {
@@ -887,6 +907,7 @@ const MESSAGES = {
     "assets.accountName": "账户名称",
     "assets.openingBalance": "初始资金",
     "assets.addAccount": "添加账户",
+    "assets.editAssets": "长按编辑资产初始资金",
     "assets.deleteAccount": "删除账户",
     "assets.accountSaved": "账户已保存。",
     "assets.accountDeleted": "账户已删除。",
@@ -1015,7 +1036,7 @@ const MESSAGES = {
     "stats.categoryHint": "Based only on real entries, not budget targets.",
     "stats.noCategory": "No chartable data in this range yet.",
     "stats.other": "Other",
-    "assets.title": "Asset Overview",
+    "assets.title": "Assets Overview",
     "assets.totalAssets": "Total Assets",
     "assets.hint": "Starts from account net based on ledger entries.",
     "assets.accountTitle": "Account Balances",
@@ -1025,6 +1046,7 @@ const MESSAGES = {
     "assets.accountName": "Account Name",
     "assets.openingBalance": "Opening Balance",
     "assets.addAccount": "Add Account",
+    "assets.editAssets": "Long-press to edit opening assets",
     "assets.deleteAccount": "Delete Account",
     "assets.accountSaved": "Account saved.",
     "assets.accountDeleted": "Account deleted.",
@@ -1420,6 +1442,16 @@ function totalAccountNet(summary) {
   return accountNames().reduce((total, account) => total + Number(summary.accountNet[account] || 0), 0);
 }
 
+function assetSetupDefaults() {
+  const accounts = activeLedgerState().accounts;
+  const preferredName = defaultAccountName();
+  const existing = accounts.find((account) => account.name === preferredName) || accounts[0] || null;
+  return {
+    name: existing?.name || preferredName,
+    openingBalance: existing?.openingBalance ?? 0,
+  };
+}
+
 function transactionAmountClass(txn) {
   if (txn.type === "income") return "positive";
   return "negative";
@@ -1477,6 +1509,15 @@ function openActionRow(row) {
   if (!row) return;
   closeActionRows(row);
   row.classList.add("action-open");
+}
+
+function runLongPressAction(node) {
+  const action = node?.dataset?.longPressAction || "";
+  if (action === "toggle-account-form") {
+    state.accountFormOpen = true;
+    render();
+    requestAnimationFrame(() => document.querySelector("#account-form input[name=\"openingBalance\"]")?.focus());
+  }
 }
 
 function scheduleBootSplashDismiss() {
@@ -1972,21 +2013,14 @@ function renderCaptureTab(editingTransaction) {
 
 function renderAssetsTab(summary) {
   const assetTotal = totalAccountNet(summary);
+  const setupDefaults = assetSetupDefaults();
   return `
     <section class="panel">
-      <div class="section-title asset-overview-title">
-        <div>
-          <h2>${escapeHtml(t("assets.title"))}</h2>
-        </div>
-        <button class="icon-button account-add-button ${state.accountFormOpen ? "active" : ""}" type="button" data-action="toggle-account-form" aria-label="${escapeHtml(t("assets.addAccount"))}" aria-pressed="${state.accountFormOpen ? "true" : "false"}">
-          ${glyphSvg("plus")}
-        </button>
-      </div>
-      <div class="asset-total-card">
-        <span>${escapeHtml(t("assets.totalAssets"))}</span>
+      <div class="asset-total-card" data-long-press-action="toggle-account-form" role="button" tabindex="0" aria-label="${escapeHtml(t("assets.editAssets"))}">
+        <span>${escapeHtml(t("assets.title"))}</span>
         <strong class="amount ${assetTotal >= 0 ? "positive" : "negative"}">${escapeHtml(signedMoney(assetTotal))}</strong>
       </div>
-      ${state.accountFormOpen ? renderAccountSetupForm() : ""}
+      ${state.accountFormOpen ? renderAccountSetupForm(setupDefaults) : ""}
     </section>
 
     <div class="workspace budget-workspace">
@@ -1996,7 +2030,7 @@ function renderAssetsTab(summary) {
             <h2>${escapeHtml(t("assets.categoryTitle"))}</h2>
           </div>
         </div>
-        <div class="budget-list">
+        <div class="budget-list asset-budget-list">
           ${renderBudgetRows(summary, 12)}
         </div>
       </section>
@@ -2248,7 +2282,7 @@ function renderCaptureCategoryBoard(txn) {
   const selectedCategory = txn.category || defaultCategoryForType(txn.type);
   const selectedTitle = txn.title || "";
   const groups = captureGroupsForType(txn.type);
-  const rows = chunkList(groups, 5);
+  const rows = chunkList(groups, 4);
   return `
     <section class="capture-category-board" aria-label="${escapeHtml(t("capture.category"))}">
       ${rows.map((row) => `
@@ -2321,16 +2355,18 @@ function renderAmountKey(key, isEditing) {
   `;
 }
 
-function renderAccountSetupForm() {
+function renderAccountSetupForm(defaults = {}) {
+  const accountName = defaults.name || defaultAccountName();
+  const openingBalance = defaults.openingBalance ?? 0;
   return `
     <form id="account-form" class="account-form asset-account-form" autocomplete="off">
       <label>
         <span>${escapeHtml(t("assets.accountName"))}</span>
-        <input name="name" required>
+        <input name="name" value="${escapeHtml(accountName)}" required>
       </label>
       <label>
         <span>${escapeHtml(t("assets.openingBalance"))}</span>
-        <input name="openingBalance" inputmode="decimal" type="number" step="0.01" value="0">
+        <input name="openingBalance" inputmode="decimal" type="number" step="0.01" value="${escapeHtml(openingBalance)}">
       </label>
       <button class="btn secondary" type="submit">${escapeHtml(t("assets.addAccount"))}</button>
     </form>
@@ -2634,13 +2670,19 @@ function chooseOption(optionNode) {
 }
 
 document.addEventListener("pointerdown", (event) => {
+  const pressAction = event.target.closest("[data-long-press-action]");
   const row = event.target.closest("[data-long-press-actions]");
-  if (!row || event.target.closest("button, textarea, [data-choice]")) return;
+  const target = pressAction || row;
+  if (!target || event.target.closest("button, input, textarea, [data-choice]")) return;
   clearLongPress();
-  longPressTarget = row;
+  longPressTarget = target;
   longPressPoint = { x: event.clientX, y: event.clientY };
   longPressTimer = window.setTimeout(() => {
-    openActionRow(longPressTarget);
+    if (longPressTarget?.dataset?.longPressAction) {
+      runLongPressAction(longPressTarget);
+    } else {
+      openActionRow(longPressTarget);
+    }
     clearLongPress();
   }, 520);
 });
@@ -2652,6 +2694,13 @@ document.addEventListener("pointermove", (event) => {
   if (Math.abs(event.clientX - longPressPoint.x) > 10 || Math.abs(event.clientY - longPressPoint.y) > 10) {
     clearLongPress();
   }
+});
+
+document.addEventListener("keydown", (event) => {
+  const target = event.target.closest?.("[data-long-press-action]");
+  if (!target || !["Enter", " "].includes(event.key)) return;
+  event.preventDefault();
+  runLongPressAction(target);
 });
 
 document.addEventListener("submit", (event) => {
