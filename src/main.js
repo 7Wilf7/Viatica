@@ -1,4 +1,5 @@
 import "./styles.css";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { productLogoUrl } from "./assets/logo.js";
 import {
   ACCOUNTS,
@@ -41,6 +42,16 @@ const LOCALES = [
 ];
 const LEGACY_DEFAULT_ACCOUNTS = new Set(["现金", "信用卡"]);
 const PRODUCT_NAME = "Viatica";
+const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "0.1.0";
+const GITHUB_RELEASES_API = "https://api.github.com/repos/7Wilf7/Viatica/releases/latest";
+const SUPABASE_PUBLIC_URL = (import.meta.env?.VITE_SUPABASE_URL || "").replace(/\/+$/, "");
+const MIRROR_APK_URL = SUPABASE_PUBLIC_URL
+  ? `${SUPABASE_PUBLIC_URL}/storage/v1/object/public/releases/viatica-latest.apk`
+  : null;
+const AUTO_CHECK_CACHE_MS = 30 * 60 * 1000;
+const ApkInstaller = registerPlugin("ApkInstaller");
+const ApkDownloader = registerPlugin("ApkDownloader");
+let releaseCheckCache = null;
 const cloudAuthConfigured = isCloudAuthConfigured();
 let bootSplashVisible = true;
 let bootSplashDismissTimer = 0;
@@ -86,6 +97,16 @@ const state = {
     ready: !cloudAuthConfigured,
     session: null,
     user: null,
+  },
+  update: {
+    status: "idle",
+    release: null,
+    showNotes: false,
+    showRecentAction: false,
+    installState: "idle",
+    installMsg: "",
+    downloadPct: null,
+    autoCheckStarted: false,
   },
 };
 
@@ -488,6 +509,25 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-07-01",
+    title: {
+      zh: "对齐 Ultreia 的 APK 更新流程",
+      en: "Aligned APK update flow with Ultreia",
+    },
+    items: {
+      zh: [
+        "新增设置页检查更新入口，显示当前版本并从 GitHub Releases 检查最新 APK。",
+        "Android APK 内支持通过系统 DownloadManager 下载更新包，并调用系统安装器安装。",
+        "PWA 清缓存按钮只在 Web/PWA 环境显示，原生 APK 内改走应用更新流程。",
+      ],
+      en: [
+        "Added a Settings update checker that shows the current version and checks GitHub Releases for the latest APK.",
+        "Android APK builds can download updates through the system DownloadManager and open the system installer.",
+        "The PWA cache-clear action stays Web/PWA-only; native APK builds use the app update flow instead.",
+      ],
+    },
+  },
   {
     date: "2026-06-30",
     title: {
@@ -978,6 +1018,21 @@ const MESSAGES = {
     "settings.pwaHint": "更新后仍看到旧界面时使用；不会清除 viatica:v1 账本数据。",
     "settings.clearing": "正在清理...",
     "settings.clearCache": "清缓存并重载",
+    "settings.version": "版本",
+    "settings.viewRecent": "查看最近更新",
+    "settings.checkUpdate": "检查更新",
+    "settings.updateChecking": "检查中...",
+    "settings.updateLatest": "已是最新版本",
+    "settings.updateError": "无法检查更新",
+    "settings.updateDownload": "下载 APK",
+    "settings.updateInstall": "立即更新",
+    "settings.updateDownloading": "下载中...",
+    "settings.updateInstalling": "正在打开安装...",
+    "settings.updateInstallFailed": "应用内安装失败 —— 已改用浏览器下载。",
+    "settings.updateNetworkHint": "看起来是网络/DNS 问题，请检查网络后重试。",
+    "settings.updateHideRecent": "收起更新",
+    "settings.updateNewTitle": "新版本 v{v}",
+    "settings.updateRecentTitle": "最新版本 v{v}",
     "settings.guideTitle": "使用手册与更新日志",
     "settings.guideHint": "使用说明和产品变化",
     "settings.manualTitle": "使用手册",
@@ -1149,6 +1204,21 @@ const MESSAGES = {
     "settings.pwaHint": "Use this when the app still shows an old interface; viatica:v1 ledger data is kept.",
     "settings.clearing": "Clearing...",
     "settings.clearCache": "Clear Cache And Reload",
+    "settings.version": "Version",
+    "settings.viewRecent": "View Recent Updates",
+    "settings.checkUpdate": "Check Updates",
+    "settings.updateChecking": "Checking...",
+    "settings.updateLatest": "Up To Date",
+    "settings.updateError": "Could Not Check Updates",
+    "settings.updateDownload": "Download APK",
+    "settings.updateInstall": "Update Now",
+    "settings.updateDownloading": "Downloading...",
+    "settings.updateInstalling": "Opening Installer...",
+    "settings.updateInstallFailed": "In-app install failed. Downloading in the browser instead.",
+    "settings.updateNetworkHint": "This looks like a network/DNS issue. Check your connection and retry.",
+    "settings.updateHideRecent": "Hide Updates",
+    "settings.updateNewTitle": "New Version v{v}",
+    "settings.updateRecentTitle": "Latest Version v{v}",
     "settings.guideTitle": "Manual And Changelog",
     "settings.guideHint": "Usage Notes And Product Changes",
     "settings.manualTitle": "Manual",
@@ -1762,6 +1832,7 @@ function render() {
     <input id="csv-import" type="file" accept=".csv,text/csv" hidden>
   `;
   scheduleBootSplashDismiss();
+  maybeAutoCheckAppUpdate();
 }
 
 function renderBootSplash() {
@@ -2258,6 +2329,7 @@ function renderSettingsTab() {
         renderSettingsCell(t("settings.languageTitle"), "", renderLanguageSwitch()),
         renderSettingsCell(t("settings.dataModeTitle"), "", renderDataModeSwitch()),
         renderSettingsCell(t("settings.manualTitle"), "", "", "manual"),
+        renderAppUpdateChecker(),
       ])}
 
       ${renderSettingsSection(t("settings.dataSection"), [
@@ -2267,7 +2339,7 @@ function renderSettingsTab() {
         renderSettingsCell(t("settings.exportJson"), "", "", "export-json"),
       ])}
 
-      ${renderSettingsSection(t("settings.localSection"), [
+      ${isNativeApp() ? "" : renderSettingsSection(t("settings.localSection"), [
         renderSettingsCell(
           state.pwaRefreshInProgress ? t("settings.clearing") : t("settings.clearCache"),
           "",
@@ -2405,6 +2477,168 @@ function renderSettingsCell(primary, secondary = "", right = "", action = "", di
     <button class="settings-cell" data-action="${escapeHtml(action === "manual" || action === "budgets" ? "settings-content" : action)}" ${action === "manual" || action === "budgets" ? `data-content="${escapeHtml(action)}"` : ""} ${disabled ? "disabled aria-busy=\"true\"" : ""}>
       ${content}
     </button>
+  `;
+}
+
+function isNativeApp() {
+  return Capacitor.isNativePlatform?.() === true;
+}
+
+function stripVersionPrefix(tag) {
+  return String(tag || "").replace(/^v/i, "").trim();
+}
+
+function parseVersion(value) {
+  const [core, pre = ""] = String(value || "0.0.0").split("-");
+  return {
+    nums: core.split(".").map((part) => Number.parseInt(part, 10) || 0),
+    pre,
+  };
+}
+
+function compareVersions(a, b) {
+  const left = parseVersion(a);
+  const right = parseVersion(b);
+  const length = Math.max(left.nums.length, right.nums.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftPart = left.nums[index] || 0;
+    const rightPart = right.nums[index] || 0;
+    if (leftPart > rightPart) return 1;
+    if (leftPart < rightPart) return -1;
+  }
+  if (!left.pre && right.pre) return 1;
+  if (left.pre && !right.pre) return -1;
+  if (left.pre && right.pre) {
+    return Math.sign(left.pre.localeCompare(right.pre, undefined, { numeric: true }));
+  }
+  return 0;
+}
+
+function pickApkAsset(assets) {
+  if (!Array.isArray(assets)) return null;
+  return assets.find((asset) => /\.apk$/i.test(asset?.name || "")) || null;
+}
+
+function hasCjk(text) {
+  return /[\u3400-\u9fff]/.test(text);
+}
+
+function localizeReleaseNoteLine(line) {
+  const prefix = line.match(/^(\s*[-*]\s*)/)?.[1] || "";
+  let text = String(line || "").replace(/^\s*[-*]\s*/, "").trim();
+  if (!text || /^\s*full changelog\s*:/i.test(text)) return "";
+  text = text.replace(/^#+\s*/, "").replace(/\*\*/g, "").replace(/`/g, "").trim();
+  if (/^(bump|reset|release)\s+.*v?\d+\.\d+\.\d+$/i.test(text)) return "";
+  text = text
+    .replace(/[;,]?\s*(bump|reset)\s+(version\s+)?(to\s+)?v?\d+\.\d+\.\d+/gi, "")
+    .replace(/\bv?\d+\.\d+\.\d+\b/g, "")
+    .replace(/\s*\(\s*\)/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  if (!text) return "";
+  if (state.preferences.locale === "en" || hasCjk(text)) return `${prefix}${text}`;
+  const lower = text.toLowerCase();
+  if (/apk|android|capacitor|release workflow|installer/.test(lower)) return `${prefix}优化 Android APK 和安装包更新流程`;
+  if (/settings|update checker|check update/.test(lower)) return `${prefix}优化设置页检查更新体验`;
+  if (/pwa|cache/.test(lower)) return `${prefix}优化 PWA 刷新与缓存处理`;
+  if (/supabase|aevum account|auth|login/.test(lower)) return `${prefix}优化 Aevum 账号与云端配置`;
+  if (/ledger|capture|transaction|budget|asset/.test(lower)) return `${prefix}优化账本、预算和资产体验`;
+  if (/ui|style|layout|theme|icon|logo/.test(lower)) return `${prefix}优化界面、图标和品牌细节`;
+  if (/fix|repair|resolve/.test(lower)) return `${prefix}修复应用问题`;
+  if (/add|support|enable|new/.test(lower)) return `${prefix}新增应用能力`;
+  return `${prefix}${text}`;
+}
+
+function cleanReleaseNotes(notes) {
+  return String(notes || "")
+    .split("\n")
+    .map(localizeReleaseNoteLine)
+    .filter(Boolean)
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function renderReleaseNotes(notes, maxChars = 900) {
+  const cleaned = cleanReleaseNotes(notes).slice(0, maxChars);
+  if (!cleaned) return "";
+  return `
+    <div class="release-notes">
+      ${cleaned.split("\n").map((line, index) => {
+        const isBullet = /^[-*]\s+/.test(line);
+        const text = line.replace(/^[-*]\s+/, "");
+        return `
+          <div class="${isBullet ? "release-note-item" : "release-note-heading"}" data-note-index="${index}">
+            ${escapeHtml(isBullet ? `- ${text}` : text)}
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderAppUpdateChecker() {
+  const update = state.update;
+  const release = update.release;
+  const recentActionEnabled = update.status === "latest" && release && update.showRecentAction;
+  const primaryActionLabel = update.status === "checking"
+    ? t("settings.updateChecking")
+    : recentActionEnabled
+      ? update.showNotes ? t("settings.updateHideRecent") : t("settings.viewRecent")
+      : t("settings.checkUpdate");
+  const primaryAction = recentActionEnabled ? "toggle-update-notes" : "check-update";
+  const hasNewer = update.status === "newer" && release;
+  const installBusy = update.installState !== "idle";
+  return `
+    <div class="settings-cell app-update-cell">
+      <div class="app-update-head">
+        <span class="settings-cell-copy">
+          <strong>${escapeHtml(t("settings.version"))}</strong>
+          <span>v${escapeHtml(APP_VERSION)}</span>
+        </span>
+        ${update.status === "latest" && recentActionEnabled ? `<span class="app-update-latest">✓ ${escapeHtml(t("settings.updateLatest"))}</span>` : ""}
+        <button class="app-update-action" type="button" data-action="${escapeHtml(primaryAction)}" ${update.status === "checking" ? "disabled aria-busy=\"true\"" : ""}>
+          ${escapeHtml(primaryActionLabel)}
+          ${hasNewer ? `<span class="app-update-dot" aria-hidden="true"></span>` : ""}
+        </button>
+      </div>
+      ${update.status === "error" ? `<div class="app-update-message error">${escapeHtml(t("settings.updateError"))}</div>` : ""}
+      ${update.status === "latest" && update.showNotes && release ? `
+        <div class="app-update-panel">
+          <strong>${escapeHtml(t("settings.updateRecentTitle", { v: release.version }))}</strong>
+          ${renderReleaseNotes(release.notes, 1200) || `<div class="app-update-message ok">✓ ${escapeHtml(t("settings.updateLatest"))}</div>`}
+        </div>
+      ` : ""}
+      ${hasNewer ? `
+        <div class="app-update-panel">
+          <strong>${escapeHtml(t("settings.updateNewTitle", { v: release.version }))}</strong>
+          ${release.apkUrl ? `
+            <div class="app-update-actions">
+              ${isNativeApp() ? `
+                <button class="app-update-download" type="button" data-action="install-update" ${installBusy ? "disabled aria-busy=\"true\"" : ""}>
+                  ${escapeHtml(update.installState === "downloading"
+                    ? `${t("settings.updateDownloading")}${update.downloadPct != null ? ` ${update.downloadPct}%` : ""}`
+                    : update.installState === "installing"
+                      ? t("settings.updateInstalling")
+                      : `↓ ${t("settings.updateInstall")}`)}
+                </button>
+              ` : `
+                <a class="app-update-download" href="${escapeHtml(release.apkUrl)}" target="_blank" rel="noreferrer">
+                  ↓ ${escapeHtml(t("settings.updateDownload"))}
+                </a>
+              `}
+            </div>
+          ` : ""}
+          ${update.installState === "downloading" ? `
+            <div class="update-progress-track">
+              <div class="update-progress-fill ${update.downloadPct == null ? "indeterminate" : ""}" style="${update.downloadPct == null ? "" : `width: ${update.downloadPct}%`}"></div>
+            </div>
+          ` : ""}
+          ${update.installMsg ? `<div class="app-update-message warn">${escapeHtml(update.installMsg)}</div>` : ""}
+          ${renderReleaseNotes(release.notes, 800) || `<div class="app-update-message">v${escapeHtml(release.version)}</div>`}
+        </div>
+      ` : ""}
+    </div>
   `;
 }
 
@@ -2908,6 +3142,117 @@ async function clearPwaCacheAndReload() {
   window.location.replace(url.toString());
 }
 
+function maybeAutoCheckAppUpdate() {
+  if (state.activeTab !== "settings" || state.settingsContent !== "home") return;
+  if (state.update.autoCheckStarted) return;
+  state.update.autoCheckStarted = true;
+  window.setTimeout(() => {
+    checkForAppUpdate({ automatic: true });
+  }, 0);
+}
+
+async function checkForAppUpdate({ automatic = false } = {}) {
+  if (state.update.status === "checking") return;
+  if (automatic && releaseCheckCache && Date.now() - releaseCheckCache.at < AUTO_CHECK_CACHE_MS) {
+    state.update.status = releaseCheckCache.status;
+    state.update.release = releaseCheckCache.release;
+    render();
+    return;
+  }
+  if (!automatic) {
+    state.update.showNotes = false;
+    state.update.showRecentAction = false;
+  }
+  state.update.status = "checking";
+  state.update.installMsg = "";
+  render();
+  try {
+    const response = await fetch(GITHUB_RELEASES_API, {
+      headers: { Accept: "application/vnd.github+json" },
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    const remoteVersion = stripVersionPrefix(data.tag_name || "");
+    const release = {
+      version: remoteVersion,
+      url: data.html_url || "",
+      apkUrl: pickApkAsset(data.assets)?.browser_download_url || null,
+      notes: data.body || "",
+    };
+    const status = compareVersions(remoteVersion, APP_VERSION) > 0 ? "newer" : "latest";
+    state.update.status = status;
+    state.update.release = release;
+    state.update.showRecentAction = !automatic && status === "latest";
+    state.update.showNotes = false;
+    releaseCheckCache = { at: Date.now(), status, release };
+  } catch (err) {
+    console.warn("[update-check] failed:", err);
+    state.update.status = "error";
+    state.update.release = null;
+    state.update.showRecentAction = false;
+    if (!automatic) state.update.showNotes = false;
+  }
+  render();
+}
+
+async function downloadAndInstallUpdate(githubUrl) {
+  if (!githubUrl) return;
+  if (!isNativeApp()) {
+    window.open(githubUrl, "_blank", "noreferrer");
+    return;
+  }
+  state.update.installMsg = "";
+  state.update.downloadPct = null;
+  const candidates = [MIRROR_APK_URL, githubUrl].filter(Boolean);
+  let lastError = null;
+  for (const url of candidates) {
+    let poll = null;
+    try {
+      state.update.installState = "downloading";
+      state.update.downloadPct = null;
+      render();
+      poll = window.setInterval(async () => {
+        try {
+          const progress = await ApkDownloader.getProgress();
+          if (progress && progress.total > 0) {
+            const pct = Math.min(100, Math.round((progress.bytes / progress.total) * 100));
+            if (pct !== state.update.downloadPct) {
+              state.update.downloadPct = pct;
+              render();
+            }
+          }
+        } catch {
+          // The Android notification still shows progress; ignore transient poll errors.
+        }
+      }, 700);
+      const result = await ApkDownloader.download({ url, fileName: "viatica-update.apk" });
+      if (poll) window.clearInterval(poll);
+      poll = null;
+      const path = result?.path;
+      if (!path) throw new Error("download returned no path");
+      state.update.installState = "installing";
+      state.update.downloadPct = null;
+      render();
+      await ApkInstaller.install({ path });
+      state.update.installState = "idle";
+      state.update.downloadPct = null;
+      render();
+      return;
+    } catch (err) {
+      console.warn("[update-install] download attempt failed:", url, err);
+      lastError = err;
+      if (poll) window.clearInterval(poll);
+      state.update.downloadPct = null;
+    }
+  }
+  state.update.installState = "idle";
+  const reason = lastError?.message || String(lastError || "");
+  const isNetwork = /resolve host|No address|network|timeout|unable to|failed to connect/i.test(reason);
+  state.update.installMsg = `${t("settings.updateInstallFailed")}${reason ? ` (${reason})` : ""}${isNetwork ? ` ${t("settings.updateNetworkHint")}` : ""}`;
+  render();
+  window.open(githubUrl, "_blank", "noreferrer");
+}
+
 function closeChoiceMenus(except = null) {
   document.querySelectorAll(".choice-control.open").forEach((choice) => {
     if (choice === except) return;
@@ -3280,6 +3625,16 @@ document.addEventListener("click", (event) => {
   if (action === "clear-cache-reload") {
     clearPwaCacheAndReload();
   }
+  if (action === "check-update") {
+    checkForAppUpdate({ automatic: false });
+  }
+  if (action === "toggle-update-notes") {
+    state.update.showNotes = !state.update.showNotes;
+    render();
+  }
+  if (action === "install-update") {
+    downloadAndInstallUpdate(state.update.release?.apkUrl || "");
+  }
   if (action === "toggle-locale") {
     state.preferences.locale = state.preferences.locale === "en" ? "zh" : "en";
     persist();
@@ -3314,6 +3669,12 @@ document.addEventListener("click", (event) => {
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
+    if (isNativeApp()) {
+      navigator.serviceWorker.getRegistrations()
+        .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+        .catch(() => {});
+      return;
+    }
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });
 }

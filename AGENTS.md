@@ -132,10 +132,36 @@ of copying training-specific behavior.
 - Run `npm run test`, `npm run lint`, and `npm run build` before delivery.
 - For Android packaging changes, also run `npm run android:sync`; run
   `npm run apk:debug` when a JDK and Android SDK are available.
+- For APK release-flow or Android native changes, also run
+  `cd android && .\gradlew.bat :app:processReleaseMainManifest --no-daemon`
+  on Windows when the local JDK/Android SDK is available. If this cannot run,
+  say exactly which local dependency is missing.
 - If ledger behavior changes, add or update tests in `src/core/*.test.js`.
 - Do not overwrite user data files.
 - Browser data reset, destructive import, or storage migration must be an
   explicit user action with a clear backup path.
+
+## Android APK Release Flow
+- Viatica should follow Ultreia's APK distribution model: push a semver tag
+  like `v0.1.1`, let `.github/workflows/release.yml` build/sign/upload the APK
+  to GitHub Releases, and let the in-app Settings update checker compare the
+  installed version with the latest GitHub Release.
+- Bump `package.json` `version` before tagging. The in-app update checker reads
+  this version through Vite's `__APP_VERSION__` define, so package version and
+  tag version must stay aligned.
+- `ANDROID_VERSION_NAME` comes from the tag without the leading `v`.
+  `ANDROID_VERSION_CODE` comes from GitHub `run_number`, matching Ultreia's
+  monotonic Android upgrade rule.
+- Release signing reads GitHub Secrets:
+  `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+  and `ANDROID_KEY_PASSWORD`. Never commit keystores or passwords. Local signing
+  may use gitignored `android/keystore.properties`.
+- The workflow may mirror the latest APK to Supabase Storage as
+  `releases/viatica-latest.apk` using `SUPABASE_SERVICE_ROLE_KEY`; this mirror
+  is a download acceleration path only, not the source of version truth.
+- Wilf saying "推 APK" means: validate, bump version if needed, commit, push the
+  tag, and let GitHub Actions create the signed release APK. Do not interpret it
+  as only building a local debug APK.
 
 ## Git
 - After verified project changes, commit and push directly so work stays

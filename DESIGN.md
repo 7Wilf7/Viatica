@@ -111,6 +111,11 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   product iteration history live together. Long content such as the guide and
   category budget editor opens as a second-level page, not inline on the
   Settings home.
+- Settings includes an Ultreia-style app update row: show the installed version,
+  check GitHub Releases, expand recent release notes when current, and expose a
+  compact update/download action when a newer APK exists. Native APK builds use
+  Android's system DownloadManager and installer; Web/PWA builds keep the
+  separate cache-clear action for stale deployed assets.
 - The login screen follows Ultreia's auth composition: centered product logo,
   small 中 / EN language pill, restrained email/password form, and compact
   secondary actions. Viatica must not store saved passwords in localStorage.

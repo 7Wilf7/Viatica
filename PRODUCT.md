@@ -78,6 +78,11 @@ a gamified finance app.
   base and restrained muted ledger-brass accent.
 - Brand presence is functional and restrained: the official Viatica logo appears
   in the PWA icon, a short boot splash, and the Settings brand header.
+- Android distribution follows Ultreia's model: signed APK releases are built
+  from semver Git tags by GitHub Actions, published to GitHub Releases, mirrored
+  to Supabase Storage when available, and checked from the in-app Settings
+  update row. The Web/PWA cache refresh remains a separate Web-only maintenance
+  action.
 
 ## Current Milestone
 The active milestone is to make the PWA ready for real daily accounting by

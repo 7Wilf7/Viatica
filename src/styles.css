@@ -1789,6 +1789,160 @@ input[type="datetime-local"] {
   flex: 0 0 auto;
 }
 
+.app-update-cell {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-update-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-update-head .settings-cell-copy {
+  flex: 1;
+}
+
+.app-update-latest {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--accent-strong);
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-update-action {
+  position: relative;
+  flex: 0 0 auto;
+  max-width: 132px;
+  min-height: 34px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: oklch(0.122 0.006 95 / 0.92);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-update-action:disabled,
+.app-update-download:disabled {
+  cursor: wait;
+  opacity: 0.66;
+}
+
+.app-update-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--panel);
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.app-update-panel {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  display: grid;
+  gap: 8px;
+  background: oklch(0.122 0.006 95 / 0.72);
+}
+
+.app-update-panel > strong {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.app-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app-update-download {
+  min-height: 34px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.app-update-message {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.app-update-message.ok {
+  color: var(--accent-strong);
+}
+
+.app-update-message.warn,
+.app-update-message.error {
+  color: var(--danger);
+}
+
+.release-notes {
+  display: grid;
+  gap: 4px;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.release-note-heading {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.update-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: oklch(0.094 0.004 95 / 0.95);
+  overflow: hidden;
+}
+
+.update-progress-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-strong);
+  transition: width 180ms ease;
+}
+
+.update-progress-fill.indeterminate {
+  width: 40%;
+  animation: update-indeterminate 1.1s ease-in-out infinite;
+}
+
+@keyframes update-indeterminate {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
 .settings-chevron {
   flex: 0 0 auto;
   color: var(--ink-3);

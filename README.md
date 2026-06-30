@@ -78,6 +78,38 @@ npm run apk:debug
 bundle. It requires a local JDK and Android SDK, just like Ultreia's Android
 build.
 
+## Android APK Release Flow
+
+Viatica follows the same release shape as Ultreia:
+
+1. Bump `package.json` `version` to the APK version.
+2. Commit the version bump and any release changes.
+3. Push a tag such as `v0.1.1`.
+4. `.github/workflows/release.yml` builds with Node 22, JDK 21, and Android SDK,
+   syncs Capacitor, signs the release APK from GitHub Secrets, creates a GitHub
+   Release, and uploads `viatica-vX.Y.Z.apk`.
+5. The workflow also tries to mirror the latest APK to the public Supabase
+   Storage object `releases/viatica-latest.apk` for a faster China download
+   path. The app falls back to the GitHub Release asset if the mirror is absent.
+
+The in-app Settings update checker reads the local version from `package.json`
+via Vite's `__APP_VERSION__` define, checks
+`https://api.github.com/repos/7Wilf7/Viatica/releases/latest`, and in the
+Android APK uses the native `ApkDownloader` / `ApkInstaller` bridge to download
+and open the system installer. In Web/PWA mode it opens the APK asset link.
+
+Required GitHub Secrets match Ultreia's naming:
+
+| Secret | Purpose |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | Base64-encoded release keystore |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore password |
+| `ANDROID_KEY_ALIAS` | Release key alias |
+| `ANDROID_KEY_PASSWORD` | Release key password |
+| `VITE_SUPABASE_URL` | Build-time public Supabase URL; also used for APK mirror |
+| `VITE_SUPABASE_ANON_KEY` | Build-time public Supabase anon/publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Optional mirror upload to Supabase Storage |
+
 ## Deployment
 
 Production PWA:

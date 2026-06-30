@@ -1,0 +1,134 @@
+name: Release Android APK
+
+# Fires when a tag like v0.1.1 is pushed. Builds the Vite bundle, syncs it into
+# Capacitor's android/ project, signs the APK using GitHub Secrets, uploads the
+# APK to GitHub Releases, and mirrors the latest APK to Supabase Storage for a
+# faster mainland-China download path.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Vite bundle
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      - name: Diagnose dist/ output
+        run: |
+          ls -la dist/assets/
+          for s in "Viatica" "Aevum" "检查更新" "Check Updates"; do
+            n=$(grep -ac "$s" dist/assets/index-*.js || echo 0)
+            echo "  '$s': $n"
+          done
+
+      - name: Upload dist/ as artifact for inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+      - name: Sync Capacitor to android/
+        run: npx cap sync android
+
+      - name: Decode keystore from Secret
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: Derive versionName and versionCode from tag
+        run: |
+          echo "ANDROID_VERSION_NAME=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          echo "ANDROID_VERSION_CODE=${{ github.run_number }}" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK with version
+        run: |
+          mv android/app/build/outputs/apk/release/app-release.apk \
+             "viatica-${GITHUB_REF_NAME}.apk"
+
+      - name: Mirror APK to Supabase Storage
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SERVICE_ROLE" ]; then
+            echo "Supabase secrets missing — skipping mirror upload."
+            exit 0
+          fi
+          curl -fSL -X POST \
+            "$SUPABASE_URL/storage/v1/object/releases/viatica-latest.apk" \
+            -H "Authorization: Bearer $SERVICE_ROLE" \
+            -H "apikey: $SERVICE_ROLE" \
+            -H "x-upsert: true" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary @"viatica-${GITHUB_REF_NAME}.apk"
+          echo "Mirror upload done."
+
+      - name: Build release notes from commits since last tag
+        run: |
+          release_day=$(TZ=Asia/Shanghai date +%F)
+          prev=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          if [ -n "$prev" ]; then
+            notes=$(git log --no-merges --pretty='- %s' "$prev..${GITHUB_REF_NAME}")
+          else
+            notes=$(git log --no-merges --pretty='- %s' -n 20 "${GITHUB_REF_NAME}")
+          fi
+          {
+            echo 'RELEASE_NOTES<<__VEOF__'
+            echo "## $release_day"
+            echo
+            echo "$notes"
+            echo '__VEOF__'
+          } >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: viatica-${{ github.ref_name }}.apk
+          name: Viatica ${{ github.ref_name }}
+          generate_release_notes: false
+          fail_on_unmatched_files: true
+          body: ${{ env.RELEASE_NOTES }}
