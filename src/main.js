@@ -1024,6 +1024,7 @@ const MESSAGES = {
     "settings.updateChecking": "检查中...",
     "settings.updateLatest": "已是最新版本",
     "settings.updateError": "无法检查更新",
+    "settings.updateNoRelease": "还没有发布正式 APK。首次推 APK 后，这里会显示最新版本。",
     "settings.updateDownload": "下载 APK",
     "settings.updateInstall": "立即更新",
     "settings.updateDownloading": "下载中...",
@@ -1210,6 +1211,7 @@ const MESSAGES = {
     "settings.updateChecking": "Checking...",
     "settings.updateLatest": "Up To Date",
     "settings.updateError": "Could Not Check Updates",
+    "settings.updateNoRelease": "No release APK has been published yet. This will show the latest version after the first APK release.",
     "settings.updateDownload": "Download APK",
     "settings.updateInstall": "Update Now",
     "settings.updateDownloading": "Downloading...",
@@ -2603,6 +2605,7 @@ function renderAppUpdateChecker() {
         </button>
       </div>
       ${update.status === "error" ? `<div class="app-update-message error">${escapeHtml(t("settings.updateError"))}</div>` : ""}
+      ${update.status === "no-release" ? `<div class="app-update-message">${escapeHtml(t("settings.updateNoRelease"))}</div>` : ""}
       ${update.status === "latest" && update.showNotes && release ? `
         <div class="app-update-panel">
           <strong>${escapeHtml(t("settings.updateRecentTitle", { v: release.version }))}</strong>
@@ -3170,6 +3173,15 @@ async function checkForAppUpdate({ automatic = false } = {}) {
     const response = await fetch(GITHUB_RELEASES_API, {
       headers: { Accept: "application/vnd.github+json" },
     });
+    if (response.status === 404) {
+      state.update.status = "no-release";
+      state.update.release = null;
+      state.update.showRecentAction = false;
+      state.update.showNotes = false;
+      releaseCheckCache = { at: Date.now(), status: "no-release", release: null };
+      render();
+      return;
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     const remoteVersion = stripVersionPrefix(data.tag_name || "");
