@@ -28,8 +28,11 @@ a gamified finance app.
   amount keypad. On mobile, only the upper category/detail area should scroll;
   the amount and keypad area stays anchored so capture remains predictable.
   Account stays on the default payment account in the primary path; title falls
-  back to the chosen detail/category and notes stay optional. Book selection
-  stays out of the primary UI for now.
+  back to the chosen detail/category and notes stay optional. Expense detail
+  chips sit below the full primary-category grid so the category layout remains
+  stable; income categories such as gifts, refunds, and other income can be
+  saved from the primary category alone, with specifics written in notes. Book
+  selection stays out of the primary UI for now.
 - App shell first: mobile navigation uses five bottom tabs in this order:
   Ledger, Calendar, Add, Assets, and Settings. Add is the centered plus action.
 - Ledger first, not dashboard first: Ledger owns the top type filter and Flow /
@@ -45,8 +48,8 @@ a gamified finance app.
   editable monthly category targets saved locally.
 - Assets owns local account setup, but it should not foreground account balance
   rows by default. The default surface is one Assets Overview row with the total
-  amount; long-pressing that row reveals account/opening-balance editing. Total
-  assets equals opening balances plus ledger income/expense flow.
+  amount in a single panel; long-pressing that row reveals account/opening-balance
+  editing. Total assets equals opening balances plus ledger income/expense flow.
 - Settings should stay compact on mobile. The manual and changelog live together
   in one second-level guide page following Ultreia's settings pattern. Budget
   editing also opens as a second-level page.

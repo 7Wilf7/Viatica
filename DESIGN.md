@@ -61,10 +61,14 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   clarity, not its light visual skin: expense / income fills the full switch,
   expense and income use different category sets, category buttons reveal detail
   chips, and a built-in amount keypad keeps the system keyboard out of the main
-  path. On mobile, the amount readout and keypad stay pinned at the bottom of
-  the Add surface while the category/detail area scrolls independently, so long
-  detail rows do not push the keypad away. Do not show account chips in the
-  primary Add flow unless account switching becomes a real high-frequency need.
+  path. Expense detail chips render in one tray below the full primary-category
+  grid instead of between category rows, keeping the main category grid visually
+  stable. Income categories can be saved without a detail chip when the detail
+  would only repeat the category. On mobile, the amount readout and keypad stay
+  pinned at the bottom of the Add surface while the category/detail area scrolls
+  independently, so long detail rows do not push the keypad away. Do not show
+  account chips in the primary Add flow unless account switching becomes a real
+  high-frequency need.
 - The official Viatica logo source lives at `resources/brand/viatica-logo.png`.
   In-app brand surfaces use the resized display copy through
   `src/assets/logo.js`; PWA launcher icons in `public/icons/` are generated
@@ -93,8 +97,9 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   actual spending summaries and must not display budget targets.
 - Assets owns total assets, account creation, opening balances, account net,
   and category budgets. The default Assets screen should lead with total assets
-  and category budgets, not a visible account-balance list. Account creation and
-  opening-balance entry stay behind a long-press on the Assets Overview row
+  and category budgets, not a visible account-balance list. Assets Overview uses
+  one single panel instead of a nested card. Account creation and opening-balance
+  entry stay behind a long-press on the Assets Overview row
   because they are low-frequency controls. Category budgets compare actual
   spending with monthly targets and can use a compact two-column mobile grid.
 - Settings uses the Ultreia-style compact mobile list. The manual and changelog

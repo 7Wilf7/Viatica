@@ -802,19 +802,24 @@ label span {
   font-weight: 780;
 }
 
+.asset-overview-panel {
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.asset-overview-panel:focus-visible {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 3px oklch(0.560 0.055 84 / 0.13);
+  outline: none;
+}
+
 .asset-total-card {
-  min-height: 58px;
-  padding: 11px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  min-height: 38px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: var(--surface-raised);
-  cursor: pointer;
-  touch-action: manipulation;
-  user-select: none;
 }
 
 .asset-total-card span {
@@ -829,12 +834,6 @@ label span {
   font-size: 24px;
   line-height: 1;
   letter-spacing: -0.02em;
-}
-
-.asset-total-card:focus-visible {
-  border-color: var(--accent-strong);
-  box-shadow: 0 0 0 3px oklch(0.560 0.055 84 / 0.13);
-  outline: none;
 }
 
 .inline-section-title {
