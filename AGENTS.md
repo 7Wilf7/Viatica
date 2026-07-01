@@ -74,7 +74,9 @@ of copying training-specific behavior.
   until a separate migration/sync plan is reviewed.
 - The shared Aevum Supabase project owns Viatica's future cloud tables:
   `viatica_accounts`, `viatica_budgets`, `viatica_preferences`, and
-  `viatica_transactions`.
+  `viatica_transactions`. The existence of those tables does not mean APK,
+  mobile PWA, and desktop PWA data are already synced; each surface still has
+  separate localStorage until sync code is explicitly built.
 - Local account records and opening balances may remain inside the `viatica:v1`
   model for backwards compatibility, but the current UI should not foreground a
   user-facing account workflow. Treat Assets as one starting-assets value plus
@@ -119,7 +121,8 @@ of copying training-specific behavior.
 - Settings should follow Ultreia's compact mobile pattern: a short settings
   list first, with the manual and changelog combined into one second-level
   guide page. Budget editing and other long explanatory content also open as
-  second-level pages.
+  second-level pages. Do not foreground CSV import, CSV export, or JSON backup
+  on the Settings home while the active direction is Aevum account sync.
 - Viatica may provide a Personal / Demo data mode switch for safe demos. Demo
   mode must use bundled sample ledger data for display only, must not overwrite
   `viatica:v1`, and must block add/edit/delete/import/export-style real-data

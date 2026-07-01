@@ -13,9 +13,8 @@ import { exportTransactionsCsv, importTransactionsCsv } from "./core/csv.js";
 import {
   DEMO_ACCOUNTS,
   DEMO_BUDGETS,
-  DEMO_REFERENCE_DATE,
-  DEMO_TRANSACTIONS,
   VIATICA_DEMO_DATA_ENABLED,
+  demoTransactionsForMonth,
 } from "./core/demoData.js";
 import {
   getCloudSession,
@@ -60,8 +59,9 @@ const hasStoredDataMode = ["personal", "demo"].includes(storedState.preferences?
 const initialDataMode = hasStoredDataMode
   ? storedState.preferences.dataMode
   : (VIATICA_DEMO_DATA_ENABLED && storedState.transactions.length === 0 ? "demo" : "personal");
+const demoReferenceDate = new Date();
 const demoLedgerState = {
-  transactions: DEMO_TRANSACTIONS.map((txn) => normalizeTransaction(txn, new Date(DEMO_REFERENCE_DATE))),
+  transactions: demoTransactionsForMonth(demoReferenceDate).map((txn) => normalizeTransaction(txn, demoReferenceDate)),
   budgets: { ...DEMO_BUDGETS },
   accounts: DEMO_ACCOUNTS,
 };
@@ -484,14 +484,14 @@ const MANUAL_SECTIONS = [
         "“资产”先看资产概览；长按资产概览这一行可以直接编辑初始资金，资产金额按初始资金加流水收支计算。",
         "收入可以只选主分类保存；红包、退款和其他收入的具体说明直接写在备注里。",
         "“设置 → 数据模式”可在个人 / Demo 之间切换。Demo 用于展示给朋友看，不暴露真实资产；在 Demo 下点加号会提醒先切回个人模式。",
-        "“设置”里的 CSV 适合表格分析，JSON 是完整本地备份。",
+        "云同步接入前，真实流水仍只保存在当前 APP/PWA 的本地存储里；数据库建好不等于已经自动同步。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
         "Assets leads with the Assets Overview row. Long-press that row to edit the starting assets directly; the overview combines that amount with ledger flow.",
         "Income can be saved from the primary category alone; describe gifts, refunds, and other income in the note when needed.",
         "Settings → Data mode switches between Personal and Demo. Demo is for showing the app without exposing real assets; tapping Add in Demo reminds you to switch back to Personal first.",
-        "CSV is for spreadsheet review. JSON is the full local backup.",
+        "Before cloud sync is implemented, real entries still live only in the current APK/PWA local storage; having database tables does not mean automatic sync is active.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
       ],
     },
@@ -531,6 +531,8 @@ const CHANGELOG_ENTRIES = [
         "微调加一笔分类：交通把共享单车放在最前，其他只保留手续费。",
         "资产概览长按编辑改为自带数字键盘和右侧确认按钮，并统一文案为初始资金。",
         "流水行去掉账户名显示，图表补充分类占比图例并移除每日趋势说明灰字。",
+        "Demo 样本数据按当前月份展示，避免默认本月视图空白。",
+        "Settings 首页移除 CSV 导出、CSV 导入和 JSON 备份入口，减少本地维护按钮干扰。",
       ],
       en: [
         "Added a Settings update checker that shows the current version and checks GitHub Releases for the latest APK.",
@@ -539,6 +541,8 @@ const CHANGELOG_ENTRIES = [
         "Refined Add categories: shared bike is first under transport, and Other keeps only fees.",
         "Changed Assets Overview long-press editing to a built-in keypad with the Confirm button on the right, and renamed the label to starting assets.",
         "Removed account names from ledger rows, added a category-share legend, and removed the daily trend helper caption.",
+        "Demo sample data now shifts into the current month so the default monthly review is not empty.",
+        "Removed CSV export, CSV import, and JSON backup shortcuts from the Settings home to reduce local-maintenance clutter.",
       ],
     },
   },
@@ -2367,9 +2371,6 @@ function renderSettingsTab() {
 
       ${renderSettingsSection(t("settings.dataSection"), [
         renderSettingsCell(t("settings.budgetTitle"), "", "", "budgets"),
-        renderSettingsCell(t("settings.exportCsv"), "", "", "export-csv"),
-        renderSettingsCell(t("settings.importCsv"), "", "", "import-csv"),
-        renderSettingsCell(t("settings.exportJson"), "", "", "export-json"),
       ])}
 
       ${isNativeApp() ? "" : renderSettingsSection(t("settings.localSection"), [

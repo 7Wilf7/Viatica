@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Viatica">
-  <rect width="512" height="512" rx="112" fill="#101114"/>
+  <rect width="512" height="512" fill="#1A1A1A"/>
   <path d="M116 142h280L284 370h-56L116 142Z" fill="#e0ded7"/>
   <path d="M178 186h156l-78 160-78-160Z" fill="#746846"/>
   <path d="M204 222h104l-52 106-52-106Z" fill="#a99a70"/>

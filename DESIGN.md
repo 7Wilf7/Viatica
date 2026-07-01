@@ -124,9 +124,13 @@ transaction rows, and data-first cards that feel useful rather than decorative.
 - The Personal / Demo data mode switch belongs in Settings. It uses the same
   compact capsule vocabulary as the language switch. Demo mode is a display
   privacy layer, not a second data model: it shows bundled sample ledger data
-  and blocks real-data actions with a clear toast reminder.
-- Settings owns local data actions, exports, imports, editable budgets,
-  Aevum account entry, and PWA/storage notes.
+  in the current review month and blocks real-data actions with a clear toast
+  reminder.
+- Settings owns Aevum account entry, data mode, the guide/changelog, editable
+  budgets, app updates, and PWA/storage notes. Do not foreground CSV import,
+  CSV export, or JSON backup on the Settings home while the product direction
+  is Aevum account sync; keep backup-style actions as maintenance capabilities
+  unless Wilf asks to surface them again.
 - Budget rows and transaction rows use dense panels, not oversized cards.
   Transaction rows prioritize category icon, title, time/type context, and
   amount; account names stay hidden unless account switching is reintroduced.

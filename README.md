@@ -24,7 +24,8 @@ GitHub repository, not as a subfolder inside Aevum or Ultreia.
 - Books, legacy account compatibility, starting assets, categories, and editable
   category budgets.
 - Local browser persistence under `viatica:v1`.
-- CSV import/export for portability.
+- CSV import/export and JSON backup remain maintenance capabilities, but they
+  are no longer foregrounded on the Settings home.
 - Aevum overview snapshot export for later read-only integration.
 
 ## Product Decision Rule
@@ -39,7 +40,9 @@ software.
 Viatica's real ledger source is still the device's `localStorage` under
 `viatica:v1`. Aevum account login can identify the user through the shared
 Supabase project, and the future cloud tables already use the `viatica_*`
-prefix, but transaction upload/sync is a separate reviewed step.
+prefix, but transaction upload/sync is a separate reviewed step. Data entered
+in the APK, mobile PWA, and desktop PWA is therefore still isolated per
+installed surface until Viatica implements cloud sync.
 
 The local state includes transactions, category budgets, preferences, and legacy
 account records for compatibility. The current UI treats accounts as hidden
@@ -51,10 +54,13 @@ flow, and transaction rows do not show account names.
 Temporary demo data is currently enabled for pre-launch review. The seed lives
 in `src/core/demoData.js` behind `VIATICA_DEMO_DATA_ENABLED = true`.
 
-- It only appears when local `viatica:v1` has no real transactions.
+- It appears automatically for a fresh empty install and can also be selected
+  from Settings to hide personal data during demos.
 - It includes sample transactions, starting assets, and category budgets so
   Ledger, Calendar, Charts, Assets, and budget progress can be reviewed without
   manual entry.
+- Runtime Demo dates shift into the current month so the default monthly review
+  does not look empty when the calendar moves past the original seed month.
 - While demo mode is active, `persist()` does not write the demo transactions,
   demo budgets, or demo accounts into `viatica:v1`.
 - Explicit data-saving actions such as saving a transaction, importing CSV,

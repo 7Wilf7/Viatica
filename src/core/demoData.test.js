@@ -6,6 +6,7 @@ import {
   DEMO_REFERENCE_DATE,
   DEMO_TRANSACTIONS,
   VIATICA_DEMO_DATA_ENABLED,
+  demoTransactionsForMonth,
 } from "./demoData.js";
 import { normalizeAccounts, normalizeTransaction, summarizeLedger } from "./ledger.js";
 
@@ -28,4 +29,18 @@ test("temporary demo ledger data is valid and useful for chart review", () => {
   assert.ok(summary.categoryExpense["餐饮"] > 0);
   assert.ok(summary.budgets["运动装备"].ratio > 0);
   assert.ok(summary.accountNet["银行卡"] > 0);
+});
+
+test("demo ledger data can shift into the current review month", () => {
+  const now = new Date("2026-07-01T08:00:00+08:00");
+  const transactions = demoTransactionsForMonth(now).map((txn) => normalizeTransaction(txn, now));
+  const accounts = normalizeAccounts(DEMO_ACCOUNTS, [], now);
+  const summary = summarizeLedger(transactions, DEMO_BUDGETS, now, accounts);
+
+  assert.equal(summary.monthKey, "2026-07");
+  assert.ok(transactions.length > 35);
+  assert.ok(transactions.some((txn) => txn.occurredAt.startsWith("2026-06")));
+  assert.ok(transactions.filter((txn) => txn.occurredAt.startsWith("2026-07")).length > 35);
+  assert.ok(summary.monthExpense > 12000);
+  assert.ok(summary.monthIncome > 30000);
 });

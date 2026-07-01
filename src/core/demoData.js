@@ -1,6 +1,8 @@
 export const VIATICA_DEMO_DATA_ENABLED = true;
 
 export const DEMO_REFERENCE_DATE = "2026-06-25T18:00:00+08:00";
+const DEMO_REFERENCE_YEAR = 2026;
+const DEMO_REFERENCE_MONTH_INDEX = 5;
 
 export const DEMO_ACCOUNTS = [
   { id: "demo_account_wechat", name: "微信", openingBalance: 3600 },
@@ -559,3 +561,35 @@ export const DEMO_TRANSACTIONS = [
     tags: "previous-month",
   },
 ];
+
+function daysInMonth(year, monthIndex) {
+  return new Date(year, monthIndex + 1, 0).getDate();
+}
+
+function shiftDemoOccurredAt(value, anchor = new Date()) {
+  const target = anchor instanceof Date ? anchor : new Date(anchor);
+  if (Number.isNaN(target.getTime())) return value;
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})(T.*)$/);
+  if (!match) return value;
+
+  const sourceYear = Number(match[1]);
+  const sourceMonthIndex = Number(match[2]) - 1;
+  const sourceDay = Number(match[3]);
+  const monthOffset =
+    (sourceYear * 12 + sourceMonthIndex) -
+    (DEMO_REFERENCE_YEAR * 12 + DEMO_REFERENCE_MONTH_INDEX);
+  const targetMonthIndex = target.getFullYear() * 12 + target.getMonth() + monthOffset;
+  const shiftedYear = Math.floor(targetMonthIndex / 12);
+  const shiftedMonthIndex = targetMonthIndex % 12;
+  const shiftedDay = Math.min(sourceDay, daysInMonth(shiftedYear, shiftedMonthIndex));
+  const pad = (part) => String(part).padStart(2, "0");
+
+  return `${shiftedYear}-${pad(shiftedMonthIndex + 1)}-${pad(shiftedDay)}${match[4]}`;
+}
+
+export function demoTransactionsForMonth(anchor = new Date()) {
+  return DEMO_TRANSACTIONS.map((txn) => ({
+    ...txn,
+    occurredAt: shiftDemoOccurredAt(txn.occurredAt, anchor),
+  }));
+}

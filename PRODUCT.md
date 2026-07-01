@@ -66,8 +66,12 @@ a gamified finance app.
   cloud sync rules are explicitly reviewed. The shared Aevum Supabase project
   already has Viatica's future cloud tables (`viatica_accounts`,
   `viatica_budgets`, `viatica_preferences`, and `viatica_transactions`), but
-  login is only the identity layer until migration/sync is built.
-- Data must be portable: CSV export and full JSON backup are baseline features.
+  login is only the identity layer until migration/sync is built. Data entered
+  in the APK, mobile PWA, and desktop PWA stays in each surface's own
+  localStorage until that sync layer is implemented.
+- Data must remain portable, but CSV import/export and full JSON backup are
+  maintenance capabilities rather than default Settings-home actions while the
+  product moves toward Aevum account sync.
 - Aevum integration is summary-based: private notes stay inside Viatica unless a
   reviewed event explicitly shares them.
 - Ultreia alignment is product-language alignment: reuse relevant mobile
