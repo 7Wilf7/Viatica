@@ -24,6 +24,7 @@ import {
   signInToAevum,
   signOutFromAevum,
 } from "./core/cloud.js";
+import { deleteCloudTransaction, syncViaticaLedger } from "./core/cloudSync.js";
 import { formatCurrency, formatDateTime, monthKey, todayKey, toDateInputValue } from "./core/format.js";
 import {
   filterTransactions,
@@ -51,6 +52,7 @@ const AUTO_CHECK_CACHE_MS = 30 * 60 * 1000;
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
 let releaseCheckCache = null;
+let cloudSyncTimer = 0;
 const cloudAuthConfigured = isCloudAuthConfigured();
 let bootSplashVisible = true;
 let bootSplashDismissTimer = 0;
@@ -99,6 +101,11 @@ const state = {
     session: null,
     user: null,
   },
+  cloudSync: {
+    status: "idle",
+    lastSyncedAt: "",
+    error: "",
+  },
   update: {
     status: "idle",
     release: null,
@@ -120,6 +127,7 @@ state.preferences = {
   ...state.preferences,
 };
 if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
+if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
 state.accounts = visibleAccounts(normalizeAccounts(pruneLegacyDefaultAccounts(state.accounts)));
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
 if (!["personal", "demo"].includes(state.preferences.dataMode)) state.preferences.dataMode = initialDataMode;
@@ -465,12 +473,12 @@ const MANUAL_SECTIONS = [
       zh: [
         "分类统计只看当前数据模式下的流水：所选周期内每个分类实际花了多少钱，用来回答“钱花到哪里了”。",
         "分类预算是目标对照：实际支出 / 你设置的每月预算，用来回答“这个分类有没有接近上限”。",
-        "预算在“设置 → 分类预算”里改，初始值来自 Viatica 默认预算，保存后只写入本机 `viatica:v1`。",
+        "预算在“设置 → 分类预算”里改，初始值来自 Viatica 默认预算；登录 Aevum 账号后会随账本一起同步。",
       ],
       en: [
         "Category statistics read the current data mode: how much each category spent in the selected period.",
         "Category budgets compare actual spending against the monthly target you set.",
-        "Edit budgets in Settings → Category budgets. Defaults come from Viatica and saved values stay local in `viatica:v1`.",
+        "Edit budgets in Settings → Category budgets. Defaults come from Viatica; signed-in budgets sync with the Aevum account.",
       ],
     },
   },
@@ -484,14 +492,14 @@ const MANUAL_SECTIONS = [
         "“资产”先看资产概览；长按资产概览这一行可以直接编辑初始资金，资产金额按初始资金加流水收支计算。",
         "收入可以只选主分类保存；红包、退款和其他收入的具体说明直接写在备注里。",
         "“设置 → 数据模式”可在个人 / Demo 之间切换。Demo 用于展示给朋友看，不暴露真实资产；在 Demo 下点加号会提醒先切回个人模式。",
-        "云同步接入前，真实流水仍只保存在当前 APP/PWA 的本地存储里；数据库建好不等于已经自动同步。",
+        "登录 Aevum 账号后，真实流水、分类预算和初始资金会与 Supabase 云端合并同步；空设备不会覆盖已有数据。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
         "Assets leads with the Assets Overview row. Long-press that row to edit the starting assets directly; the overview combines that amount with ledger flow.",
         "Income can be saved from the primary category alone; describe gifts, refunds, and other income in the note when needed.",
         "Settings → Data mode switches between Personal and Demo. Demo is for showing the app without exposing real assets; tapping Add in Demo reminds you to switch back to Personal first.",
-        "Before cloud sync is implemented, real entries still live only in the current APK/PWA local storage; having database tables does not mean automatic sync is active.",
+        "After signing in to the Aevum account, real entries, category budgets, and starting assets merge with Supabase cloud data; an empty device will not overwrite existing data.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
       ],
     },
@@ -533,6 +541,7 @@ const CHANGELOG_ENTRIES = [
         "流水行去掉账户名显示，图表补充分类占比图例并移除每日趋势说明灰字。",
         "Demo 样本数据按当前月份展示，避免默认本月视图空白。",
         "Settings 首页移除 CSV 导出、CSV 导入和 JSON 备份入口，减少本地维护按钮干扰。",
+        "接入 Aevum 账号云同步：登录后自动合并本机与 Supabase 数据，Settings 可手动触发同步。",
       ],
       en: [
         "Added a Settings update checker that shows the current version and checks GitHub Releases for the latest APK.",
@@ -543,6 +552,7 @@ const CHANGELOG_ENTRIES = [
         "Removed account names from ledger rows, added a category-share legend, and removed the daily trend helper caption.",
         "Demo sample data now shifts into the current month so the default monthly review is not empty.",
         "Removed CSV export, CSV import, and JSON backup shortcuts from the Settings home to reduce local-maintenance clutter.",
+        "Connected Aevum account cloud sync: signing in merges local and Supabase data, with a manual sync action in Settings.",
       ],
     },
   },
@@ -1005,9 +1015,9 @@ const MESSAGES = {
     "settings.accountChecking": "正在检查账号状态...",
     "settings.accountMissingConfig": "未配置 Supabase 环境变量",
     "settings.accountSignedIn": "已登录",
-    "settings.accountSyncPending": "账本云同步下一步接入",
+    "settings.accountSyncPending": "退出前会保留本机账本",
     "settings.accountProfile": "账号资料",
-    "settings.accountProfileHint": "当前用于身份识别，本地账本仍保存在此设备。",
+    "settings.accountProfileHint": "已接入云同步；本机账本会与 Aevum 云端合并。",
     "settings.signIn": "登录 Aevum 账号",
     "settings.signOut": "退出登录",
     "settings.signingOut": "正在退出...",
@@ -1019,8 +1029,15 @@ const MESSAGES = {
     "settings.dataSection": "数据",
     "settings.productSection": "产品",
     "settings.localSection": "本机",
+    "settings.cloudSyncTitle": "云同步",
+    "settings.cloudSyncHint": "把本机账本和 Aevum 云端合并",
+    "settings.cloudSyncSignIn": "先登录",
+    "settings.cloudSyncIdle": "立即同步",
+    "settings.cloudSyncing": "同步中...",
+    "settings.cloudSynced": "已同步",
+    "settings.cloudSyncError": "同步失败",
     "settings.importExportTitle": "备份与迁移",
-    "settings.importExportHint": "云同步上线前，用于换设备、恢复数据或保留本地备份。",
+    "settings.importExportHint": "维护用途：用于手动迁移、恢复数据或保留离线备份。",
     "settings.exportCsv": "导出 CSV",
     "settings.importCsv": "导入 CSV",
     "settings.exportJson": "导出完整备份",
@@ -1061,7 +1078,7 @@ const MESSAGES = {
     "settings.dataModeDemo": "Demo",
     "settings.back": "返回",
     "login.title": "登录 Aevum 账号",
-    "login.desc": "先连接同一个 Aevum 身份；真实账本仍保留在本机，云同步会在下一步接入。",
+    "login.desc": "登录同一个 Aevum 账号后，本机账本会和云端合并同步。",
     "login.email": "邮箱",
     "login.password": "密码",
     "login.submit": "登录",
@@ -1079,6 +1096,9 @@ const MESSAGES = {
     "toast.authMissingConfig": "还没有配置 Supabase 环境变量，暂时只能使用本机模式。",
     "toast.authSignedIn": "已登录 Aevum 账号。",
     "toast.authSignedOut": "已退出 Aevum 账号。",
+    "toast.cloudSyncDone": "账本已同步。",
+    "toast.cloudSyncFailed": "云同步失败：{message}",
+    "toast.cloudSyncSignIn": "请先登录 Aevum 账号再同步。",
     "manual.changelogHeading": "产品迭代过程",
     "filter.search": "搜索标题、商家、标签",
     "filter.allTypes": "全部类型",
@@ -1192,9 +1212,9 @@ const MESSAGES = {
     "settings.accountChecking": "Checking account...",
     "settings.accountMissingConfig": "Supabase environment variables are missing",
     "settings.accountSignedIn": "Signed in",
-    "settings.accountSyncPending": "Cloud ledger sync is the next step",
+    "settings.accountSyncPending": "Local ledger stays on this device after sign-out",
     "settings.accountProfile": "Account Profile",
-    "settings.accountProfileHint": "Used for identity now; this device still owns the local ledger.",
+    "settings.accountProfileHint": "Cloud sync is connected; this device merges with Aevum cloud data.",
     "settings.signIn": "Sign In To Aevum",
     "settings.signOut": "Sign Out",
     "settings.signingOut": "Signing out...",
@@ -1206,8 +1226,15 @@ const MESSAGES = {
     "settings.dataSection": "Data",
     "settings.productSection": "Product",
     "settings.localSection": "Local",
+    "settings.cloudSyncTitle": "Cloud Sync",
+    "settings.cloudSyncHint": "Merge this ledger with Aevum cloud",
+    "settings.cloudSyncSignIn": "Sign In First",
+    "settings.cloudSyncIdle": "Sync Now",
+    "settings.cloudSyncing": "Syncing...",
+    "settings.cloudSynced": "Synced",
+    "settings.cloudSyncError": "Sync Failed",
     "settings.importExportTitle": "Backup and Migration",
-    "settings.importExportHint": "Use this to move devices, restore data, or keep a local backup until cloud sync is available.",
+    "settings.importExportHint": "Maintenance only: move devices manually, restore data, or keep an offline backup.",
     "settings.exportCsv": "Export CSV",
     "settings.importCsv": "Import CSV",
     "settings.exportJson": "Export Full Backup",
@@ -1248,7 +1275,7 @@ const MESSAGES = {
     "settings.dataModeDemo": "Demo",
     "settings.back": "Back",
     "login.title": "Sign In To Aevum",
-    "login.desc": "Connect the shared Aevum identity first. Your real ledger still stays local until cloud sync is added next.",
+    "login.desc": "Sign in to the same Aevum account to merge this local ledger with cloud data.",
     "login.email": "Email",
     "login.password": "Password",
     "login.submit": "Sign In",
@@ -1266,6 +1293,9 @@ const MESSAGES = {
     "toast.authMissingConfig": "Supabase environment variables are not configured yet. Local mode is still available.",
     "toast.authSignedIn": "Signed in to Aevum.",
     "toast.authSignedOut": "Signed out of Aevum.",
+    "toast.cloudSyncDone": "Ledger synced.",
+    "toast.cloudSyncFailed": "Cloud sync failed: {message}",
+    "toast.cloudSyncSignIn": "Sign in to Aevum before syncing.",
     "manual.changelogHeading": "Product History",
     "filter.search": "Search title, merchant, tags",
     "filter.allTypes": "All Types",
@@ -1375,13 +1405,85 @@ function activeLedgerState() {
   };
 }
 
-function persist() {
+function localLedgerSnapshot() {
+  return {
+    transactions: state.transactions,
+    budgets: state.budgets,
+    accounts: state.accounts,
+    preferences: state.preferences,
+  };
+}
+
+function persist({ sync = true } = {}) {
   saveState({
     transactions: state.transactions,
     budgets: state.budgets,
     accounts: state.accounts,
     preferences: state.preferences,
   });
+  if (sync) scheduleCloudSync();
+}
+
+function applySyncedLedgerState(nextState) {
+  state.transactions = Array.isArray(nextState.transactions) ? nextState.transactions : [];
+  state.budgets = { ...DEFAULT_BUDGETS, ...(nextState.budgets || {}) };
+  state.preferences = {
+    ...state.preferences,
+    ...(nextState.preferences || {}),
+    dataMode: state.preferences.dataMode,
+    locale: state.preferences.locale,
+  };
+  if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
+  if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
+  state.accounts = visibleAccounts(normalizeAccounts(pruneLegacyDefaultAccounts(nextState.accounts || [])));
+}
+
+function canCloudSync() {
+  return Boolean(state.auth.configured && state.auth.user);
+}
+
+function scheduleCloudSync(delay = 900) {
+  if (!canCloudSync()) return;
+  window.clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = window.setTimeout(() => {
+    syncCloudNow({ silent: true });
+  }, delay);
+}
+
+function cloudSyncLabel() {
+  if (!state.auth.configured || !state.auth.user) return t("settings.cloudSyncSignIn");
+  if (state.cloudSync.status === "syncing") return t("settings.cloudSyncing");
+  if (state.cloudSync.status === "error") return t("settings.cloudSyncError");
+  if (state.cloudSync.lastSyncedAt) return t("settings.cloudSynced");
+  return t("settings.cloudSyncIdle");
+}
+
+async function syncCloudNow({ silent = false } = {}) {
+  if (!state.auth.user) {
+    if (!silent) toast(t("toast.cloudSyncSignIn"));
+    return;
+  }
+  if (state.cloudSync.status === "syncing") return;
+
+  window.clearTimeout(cloudSyncTimer);
+  state.cloudSync.status = "syncing";
+  state.cloudSync.error = "";
+  if (!silent) render();
+
+  try {
+    const result = await syncViaticaLedger(localLedgerSnapshot());
+    applySyncedLedgerState(result.state);
+    state.cloudSync.status = "synced";
+    state.cloudSync.lastSyncedAt = new Date().toISOString();
+    persist({ sync: false });
+    if (!silent) toast(t("toast.cloudSyncDone"));
+  } catch (error) {
+    state.cloudSync.status = "error";
+    state.cloudSync.error = error?.message || "";
+    if (!silent) toast(t("toast.cloudSyncFailed", { message: state.cloudSync.error || t("settings.cloudSyncError") }));
+  } finally {
+    render();
+  }
 }
 
 function beginRealDataMode() {
@@ -1434,7 +1536,9 @@ function setCloudSession(session) {
 async function initCloudAuth() {
   if (!state.auth.configured) return;
   try {
-    setCloudSession(await getCloudSession());
+    const session = await getCloudSession();
+    setCloudSession(session);
+    if (session) scheduleCloudSync(250);
   } catch {
     state.auth.ready = true;
     state.auth.error = t("login.error");
@@ -1443,6 +1547,7 @@ async function initCloudAuth() {
   onCloudAuthStateChange((session) => {
     setCloudSession(session);
     render();
+    if (session) scheduleCloudSync(250);
   });
 }
 
@@ -1472,18 +1577,21 @@ async function handleAuthLogin(form) {
   state.auth.busy = true;
   state.auth.error = "";
   state.auth.notice = "";
+  let signedIn = false;
   render();
   try {
     const email = normalizeEmail(form.elements.namedItem("email")?.value);
     const password = String(form.elements.namedItem("password")?.value || "");
     setCloudSession(await signInToAevum(email, password));
     state.auth.loginOpen = false;
+    signedIn = true;
     toast(t("toast.authSignedIn"));
   } catch {
     state.auth.error = t("login.error");
   } finally {
     state.auth.busy = false;
     render();
+    if (signedIn) syncCloudNow({ silent: false });
   }
 }
 
@@ -1509,10 +1617,12 @@ async function handlePasswordReset(form) {
 async function handleAuthSignOut() {
   if (state.auth.busy) return;
   state.auth.busy = true;
+  window.clearTimeout(cloudSyncTimer);
   render();
   try {
     await signOutFromAevum();
     setCloudSession(null);
+    state.cloudSync.status = "idle";
     toast(t("toast.authSignedOut"));
   } catch {
     toast(t("login.error"));
@@ -2365,6 +2475,13 @@ function renderSettingsTab() {
       ${renderSettingsSection(t("settings.productSection"), [
         renderSettingsCell(t("settings.languageTitle"), "", renderLanguageSwitch()),
         renderSettingsCell(t("settings.dataModeTitle"), "", renderDataModeSwitch()),
+        renderSettingsCell(
+          t("settings.cloudSyncTitle"),
+          t("settings.cloudSyncHint"),
+          cloudSyncLabel(),
+          "sync-cloud",
+          !state.auth.user || state.cloudSync.status === "syncing",
+        ),
         renderSettingsCell(t("settings.manualTitle"), "", "", "manual"),
         renderAppUpdateChecker(),
       ])}
@@ -3503,7 +3620,13 @@ document.addEventListener("submit", (event) => {
     beginRealDataMode();
     const existing = data.id ? state.transactions.find((txn) => txn.id === data.id) : null;
     if (existing) {
-      const txn = normalizeTransaction({ ...existing, ...data, id: existing.id, createdAt: existing.createdAt });
+      const txn = normalizeTransaction({
+        ...existing,
+        ...data,
+        id: existing.id,
+        createdAt: existing.createdAt,
+        updatedAt: new Date().toISOString(),
+      });
       state.transactions = state.transactions.map((item) => item.id === txn.id ? txn : item);
       state.editingTransactionId = null;
       toast(t("toast.updated"));
@@ -3665,6 +3788,9 @@ document.addEventListener("click", (event) => {
   if (action === "sign-out") {
     handleAuthSignOut();
   }
+  if (action === "sync-cloud") {
+    syncCloudNow({ silent: false });
+  }
   if (action === "reset-budgets") {
     if (guardDemoMutation()) return;
     beginRealDataMode();
@@ -3693,8 +3819,14 @@ document.addEventListener("click", (event) => {
   if (action === "delete") {
     if (guardDemoMutation()) return;
     if (!confirm(t("confirm.delete"))) return;
-    state.transactions = state.transactions.filter((txn) => txn.id !== node.dataset.id);
+    const deletedId = node.dataset.id;
+    state.transactions = state.transactions.filter((txn) => txn.id !== deletedId);
+    state.preferences.deletedTransactionIds = uniqueItems([
+      ...(state.preferences.deletedTransactionIds || []),
+      deletedId,
+    ]);
     persist();
+    deleteCloudTransaction(deletedId).catch(() => {});
     render();
     toast(t("toast.deleted"));
   }

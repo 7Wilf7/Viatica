@@ -38,8 +38,9 @@ of copying training-specific behavior.
 - Capacitor Android for APK packaging.
 - Node's built-in test runner.
 - No framework until shared component complexity becomes real.
-- No backend writes, Supabase schema, cloud sync, OCR API, or paid API usage
-  without explicit review first.
+- No new Supabase schema, OCR API, or paid API usage without explicit review
+  first. Viatica cloud ledger sync is now an approved product path, but keep
+  sync changes conservative and data-preserving.
 
 ## Directory Rules
 - `src/` holds app source.
@@ -66,17 +67,16 @@ of copying training-specific behavior.
 - Mobile-first. The app must feel usable from a phone home screen.
 - Fast capture is the first workflow. Ten seconds for a normal transaction is
   the target.
-- Data is local-first under `localStorage` key `viatica:v1` until sync rules are
-  explicitly designed.
+- Data is local-first for offline/cache under `localStorage` key `viatica:v1`,
+  and cloud-backed through the shared Aevum Supabase project when signed in.
 - Aevum account is the shared identity for Viatica, Ultreia, and Aevum. Do not
-  call it a Viatica account. Viatica may show/login to the Aevum account before
-  cloud ledger sync exists, but `viatica:v1` remains the local source of truth
-  until a separate migration/sync plan is reviewed.
-- The shared Aevum Supabase project owns Viatica's future cloud tables:
+  call it a Viatica account. Viatica uses the Aevum account to merge local
+  ledger data with cloud data across APK, mobile PWA, and desktop PWA.
+- The shared Aevum Supabase project owns Viatica's cloud tables:
   `viatica_accounts`, `viatica_budgets`, `viatica_preferences`, and
-  `viatica_transactions`. The existence of those tables does not mean APK,
-  mobile PWA, and desktop PWA data are already synced; each surface still has
-  separate localStorage until sync code is explicitly built.
+  `viatica_transactions`. Sync must preserve local data: first pull cloud rows,
+  merge by transaction id, keep the newest `updatedAt` when ids match, then
+  upsert the merged state.
 - Local account records and opening balances may remain inside the `viatica:v1`
   model for backwards compatibility, but the current UI should not foreground a
   user-facing account workflow. Treat Assets as one starting-assets value plus

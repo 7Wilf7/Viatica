@@ -23,7 +23,8 @@ GitHub repository, not as a subfolder inside Aevum or Ultreia.
   as second-level pages.
 - Books, legacy account compatibility, starting assets, categories, and editable
   category budgets.
-- Local browser persistence under `viatica:v1`.
+- Local browser persistence under `viatica:v1`, with Aevum-account cloud sync
+  when signed in.
 - CSV import/export and JSON backup remain maintenance capabilities, but they
   are no longer foregrounded on the Settings home.
 - Aevum overview snapshot export for later read-only integration.
@@ -37,12 +38,15 @@ software.
 
 ## Data Model
 
-Viatica's real ledger source is still the device's `localStorage` under
-`viatica:v1`. Aevum account login can identify the user through the shared
-Supabase project, and the future cloud tables already use the `viatica_*`
-prefix, but transaction upload/sync is a separate reviewed step. Data entered
-in the APK, mobile PWA, and desktop PWA is therefore still isolated per
-installed surface until Viatica implements cloud sync.
+Viatica keeps an offline/device cache in `localStorage` under `viatica:v1`.
+When the user signs in with the shared Aevum account, the app syncs that local
+cache with the Aevum Supabase tables using the `viatica_*` prefix.
+
+The first sync is merge-first rather than overwrite-first: Viatica reads cloud
+transactions, budgets, and accounts, merges them with the current device, keeps
+the newest `updatedAt` when transaction ids match, saves the merged state back
+to `viatica:v1`, and upserts the merged state to Supabase. This protects an
+empty PWA from wiping an APK that already has data.
 
 The local state includes transactions, category budgets, preferences, and legacy
 account records for compatibility. The current UI treats accounts as hidden

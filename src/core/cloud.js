@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const VITE_ENV = import.meta.env || {};
+const SUPABASE_URL = VITE_ENV.VITE_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = VITE_ENV.VITE_SUPABASE_ANON_KEY || "";
 
 let client = null;
 
@@ -29,6 +30,14 @@ export async function getCloudSession() {
   const { data, error } = await supabase.auth.getSession();
   if (error) throw error;
   return data.session || null;
+}
+
+export async function getCloudUser() {
+  const supabase = getCloudClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  return data.user || null;
 }
 
 export function onCloudAuthStateChange(callback) {

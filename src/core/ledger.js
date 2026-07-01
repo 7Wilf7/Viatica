@@ -48,6 +48,7 @@ export function normalizeAccount(input = {}, now = new Date()) {
   if (!name) throw new Error("账户名称不能为空");
   const openingBalance = moneyValue(input.openingBalance ?? input.initialBalance ?? 0);
   const createdAt = input.createdAt || now.toISOString();
+  const updatedAt = input.updatedAt || now.toISOString();
 
   return {
     id: input.id || uid("acct"),
@@ -55,7 +56,7 @@ export function normalizeAccount(input = {}, now = new Date()) {
     openingBalance,
     isDefault: Boolean(input.isDefault),
     createdAt,
-    updatedAt: now.toISOString(),
+    updatedAt,
   };
 }
 
@@ -105,6 +106,7 @@ export function normalizeTransaction(input = {}, now = new Date()) {
   if (!title) throw new Error("标题不能为空");
 
   const createdAt = input.createdAt || now.toISOString();
+  const updatedAt = input.updatedAt || now.toISOString();
   return {
     id: input.id || uid("txn"),
     type,
@@ -121,7 +123,7 @@ export function normalizeTransaction(input = {}, now = new Date()) {
     reimbursable: parseBoolean(input.reimbursable),
     receiptDataUrl: String(input.receiptDataUrl || "").trim(),
     createdAt,
-    updatedAt: now.toISOString(),
+    updatedAt,
   };
 }
 

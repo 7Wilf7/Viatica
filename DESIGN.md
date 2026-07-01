@@ -127,10 +127,12 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   in the current review month and blocks real-data actions with a clear toast
   reminder.
 - Settings owns Aevum account entry, data mode, the guide/changelog, editable
-  budgets, app updates, and PWA/storage notes. Do not foreground CSV import,
-  CSV export, or JSON backup on the Settings home while the product direction
-  is Aevum account sync; keep backup-style actions as maintenance capabilities
-  unless Wilf asks to surface them again.
+  budgets, app updates, cloud sync, and PWA/storage notes. The cloud sync row
+  should be compact: show whether the user needs to sign in, is syncing, has
+  synced, or hit an error; tapping it runs a manual merge sync. Do not foreground
+  CSV import, CSV export, or JSON backup on the Settings home while the product
+  direction is Aevum account sync; keep backup-style actions as maintenance
+  capabilities unless Wilf asks to surface them again.
 - Budget rows and transaction rows use dense panels, not oversized cards.
   Transaction rows prioritize category icon, title, time/type context, and
   amount; account names stay hidden unless account switching is reintroduced.

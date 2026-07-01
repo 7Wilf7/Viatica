@@ -62,13 +62,12 @@ a gamified finance app.
 - Learn from iCost's clarity: compact ledgers, readable calendar cells,
   category-first rows, and friendly icon grouping. Keep Viatica dark, local,
   restrained, and purpose-built instead of copying iCost's light visual skin.
-- Local-first by default: `viatica:v1` stays the app's real ledger source until
-  cloud sync rules are explicitly reviewed. The shared Aevum Supabase project
-  already has Viatica's future cloud tables (`viatica_accounts`,
-  `viatica_budgets`, `viatica_preferences`, and `viatica_transactions`), but
-  login is only the identity layer until migration/sync is built. Data entered
-  in the APK, mobile PWA, and desktop PWA stays in each surface's own
-  localStorage until that sync layer is implemented.
+- Local-first cache plus cloud sync: `viatica:v1` remains the offline/device
+  cache, and the shared Aevum Supabase project stores signed-in ledger data in
+  `viatica_accounts`, `viatica_budgets`, `viatica_preferences`, and
+  `viatica_transactions`. On sign-in, Viatica merges device data with cloud
+  data instead of replacing either side. The APK, mobile PWA, and desktop PWA
+  should converge through the Aevum account.
 - Data must remain portable, but CSV import/export and full JSON backup are
   maintenance capabilities rather than default Settings-home actions while the
   product moves toward Aevum account sync.
