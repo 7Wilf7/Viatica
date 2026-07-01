@@ -81,6 +81,7 @@ const state = {
   },
   searchOpen: false,
   accountFormOpen: false,
+  budgetKeypadCategory: "",
   editingTransactionId: null,
   pwaRefreshInProgress: false,
   dashboardRange: "month",
@@ -376,7 +377,7 @@ const ACCOUNT_META = {
 
 const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
   { category: "餐饮", items: ["早餐", "午餐", "晚餐", "宵夜", "咖啡奶茶", "水果", "其他"] },
-  { category: "交通", items: ["地铁", "打车", "共享单车"] },
+  { category: "交通", items: ["共享单车", "地铁", "打车"] },
   { category: "购物", items: ["日用品", "服饰", "数码", "家居"] },
   { category: "运动装备", items: ["装备", "补给"] },
   { category: "比赛/训练", items: ["康复", "训练课", "赛事报名"] },
@@ -386,7 +387,14 @@ const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
   { category: "学习", items: ["课程", "书籍", "资料", "工具"] },
   { category: "娱乐", items: ["电影", "游戏", "餐饮", "其他"] },
   { category: "旅行", items: ["交通", "住宿", "餐饮", "门票"] },
-  { category: "其他", items: ["杂项", "临时", "待整理"] },
+  { category: "其他", items: ["手续费"] },
+];
+
+const ASSET_AMOUNT_KEY_ROWS = [
+  ["1", "2", "3", "backspace"],
+  ["4", "5", "6", "clear"],
+  ["7", "8", "9", "00"],
+  [".", "0"],
 ];
 
 const INCOME_CAPTURE_CATEGORY_GROUPS = [
@@ -420,12 +428,12 @@ const MANUAL_SECTIONS = [
     items: {
       zh: [
         "从底部中间的“+”开始，先点支出或收入，再点对应类型的分类、子项和金额。",
-        "新增流水默认使用内置金额键盘，尽量避免调出系统键盘；账户先走默认付款账户。",
+        "新增流水默认使用内置金额键盘，尽量避免调出系统金额键盘；账户不放在主流程里。",
         "支出和收入使用不同分类：收入不会出现交通、购物这类支出入口。",
       ],
       en: [
         "Start from the centered + tab. Pick expense or income, then the matching category, detail, and amount.",
-        "New entries use the built-in amount keypad first; the account stays on the default payment account.",
+        "New entries use the built-in amount keypad first; account switching stays out of the main flow.",
         "Expense and income use different categories, so income no longer shows spending categories like transport or shopping.",
       ],
     },
@@ -473,14 +481,14 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "“资产”先看资产概览；长按资产概览这一行可以直接编辑资产初始金额，资产金额按初始金额加流水收支计算。",
+        "“资产”先看资产概览；长按资产概览这一行可以直接编辑初始资金，资产金额按初始资金加流水收支计算。",
         "收入可以只选主分类保存；红包、退款和其他收入的具体说明直接写在备注里。",
         "“设置 → 数据模式”可在个人 / Demo 之间切换。Demo 用于展示给朋友看，不暴露真实资产；在 Demo 下点加号会提醒先切回个人模式。",
         "“设置”里的 CSV 适合表格分析，JSON 是完整本地备份。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
-        "Assets leads with the Assets Overview row. Long-press that row to edit the opening asset amount directly; the overview combines that amount with ledger flow.",
+        "Assets leads with the Assets Overview row. Long-press that row to edit the starting assets directly; the overview combines that amount with ledger flow.",
         "Income can be saved from the primary category alone; describe gifts, refunds, and other income in the note when needed.",
         "Settings → Data mode switches between Personal and Demo. Demo is for showing the app without exposing real assets; tapping Add in Demo reminds you to switch back to Personal first.",
         "CSV is for spreadsheet review. JSON is the full local backup.",
@@ -520,11 +528,17 @@ const CHANGELOG_ENTRIES = [
         "新增设置页检查更新入口，显示当前版本并从 GitHub Releases 检查最新 APK。",
         "Android APK 内支持通过系统 DownloadManager 下载更新包，并调用系统安装器安装。",
         "PWA 清缓存按钮只在 Web/PWA 环境显示，原生 APK 内改走应用更新流程。",
+        "微调加一笔分类：交通把共享单车放在最前，其他只保留手续费。",
+        "资产概览长按编辑改为自带数字键盘和右侧确认按钮，并统一文案为初始资金。",
+        "流水行去掉账户名显示，图表补充分类占比图例并移除每日趋势说明灰字。",
       ],
       en: [
         "Added a Settings update checker that shows the current version and checks GitHub Releases for the latest APK.",
         "Android APK builds can download updates through the system DownloadManager and open the system installer.",
         "The PWA cache-clear action stays Web/PWA-only; native APK builds use the app update flow instead.",
+        "Refined Add categories: shared bike is first under transport, and Other keeps only fees.",
+        "Changed Assets Overview long-press editing to a built-in keypad with the Confirm button on the right, and renamed the label to starting assets.",
+        "Removed account names from ledger rows, added a category-share legend, and removed the daily trend helper caption.",
       ],
     },
   },
@@ -959,7 +973,7 @@ const MESSAGES = {
     "stats.pieTitle": "分类占比",
     "stats.barTitle": "金额对比",
     "stats.lineTitle": "每日金额趋势",
-    "stats.lineMeta": "底部是日期 · 左侧是金额",
+    "stats.lineMeta": "",
     "stats.categoryTitle": "分类统计",
     "stats.categoryHint": "只按真实流水汇总，不看预算目标。",
     "stats.noCategory": "当前范围还没有可统计数据。",
@@ -972,13 +986,13 @@ const MESSAGES = {
     "assets.categoryTitle": "分类预算",
     "assets.categoryHint": "实际支出对照每月目标。",
     "assets.accountName": "账户名称",
-    "assets.openingBalance": "初始资产",
+    "assets.openingBalance": "初始资金",
     "assets.addAccount": "确认",
-    "assets.editAssets": "长按编辑初始资产",
+    "assets.editAssets": "长按编辑初始资金",
     "assets.deleteAccount": "删除账户",
     "assets.accountSaved": "资产已确认。",
     "assets.accountDeleted": "账户已删除。",
-    "assets.accountInvalid": "初始资产必须是数字。",
+    "assets.accountInvalid": "初始资金必须是数字。",
     "assets.accountNetTitle": "账户净额",
     "assets.noAccount": "还没有账户。点击右上角加号添加。",
     "assets.noBudget": "暂无预算数据。",
@@ -1146,7 +1160,7 @@ const MESSAGES = {
     "stats.pieTitle": "Category Share",
     "stats.barTitle": "Amount Comparison",
     "stats.lineTitle": "Daily Amount Trend",
-    "stats.lineMeta": "Date Across The Bottom / Amount Up The Left",
+    "stats.lineMeta": "",
     "stats.categoryTitle": "Category Statistics",
     "stats.categoryHint": "Based only on real entries, not budget targets.",
     "stats.noCategory": "No chartable data in this range yet.",
@@ -1159,13 +1173,13 @@ const MESSAGES = {
     "assets.categoryTitle": "Category Budgets",
     "assets.categoryHint": "Actual spending against monthly targets.",
     "assets.accountName": "Account Name",
-    "assets.openingBalance": "Opening Assets",
+    "assets.openingBalance": "Starting Assets",
     "assets.addAccount": "Confirm",
-    "assets.editAssets": "Long-press to edit opening assets",
+    "assets.editAssets": "Long-press to edit starting assets",
     "assets.deleteAccount": "Delete Account",
     "assets.accountSaved": "Assets confirmed.",
     "assets.accountDeleted": "Account deleted.",
-    "assets.accountInvalid": "Opening assets must be a number.",
+    "assets.accountInvalid": "Starting assets must be a number.",
     "assets.accountNetTitle": "Account Net",
     "assets.noAccount": "No accounts yet. Tap the plus button to add one.",
     "assets.noBudget": "No budget data yet.",
@@ -1793,9 +1807,9 @@ function openActionRow(row) {
 function runLongPressAction(node) {
   const action = node?.dataset?.longPressAction || "";
   if (action === "toggle-account-form") {
+    if (guardDemoMutation()) return;
     state.accountFormOpen = true;
     render();
-    requestAnimationFrame(() => document.querySelector("#account-form input[name=\"openingBalance\"]")?.focus());
   }
 }
 
@@ -2070,6 +2084,23 @@ function renderPieChart(entries, total) {
   `;
 }
 
+function renderPieLegend(entries, total) {
+  return `
+    <div class="pie-legend" aria-label="${escapeHtml(t("stats.pieTitle"))}">
+      ${entries.map(([category, amount], index) => {
+        const percent = total > 0 ? Math.round((amount / total) * 100) : 0;
+        return `
+          <div class="pie-legend-item">
+            <span class="pie-legend-dot" style="background: ${CHART_COLORS[index % CHART_COLORS.length]}"></span>
+            <span class="pie-legend-label">${escapeHtml(category)}</span>
+            <strong>${percent}%</strong>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
 function renderBarChart(entries) {
   const max = Math.max(...entries.map(([, amount]) => amount), 1);
   const chartWidth = 220;
@@ -2129,7 +2160,7 @@ function renderLineChart(transactions) {
       <text x="${right}" y="112" text-anchor="end">${escapeHtml(last)}</text>
     `;
   return `
-    <svg class="stats-chart-svg line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(`${t("stats.lineTitle")} ${t("stats.lineMeta")}`)}">
+    <svg class="stats-chart-svg line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(t("stats.lineTitle"))}">
       <path d="M${left} ${top} H${right}" class="chart-grid-line"></path>
       <path d="M${left} ${middle} H${right}" class="chart-grid-line"></path>
       <path d="M${left} ${bottom} H${right}" class="chart-axis"></path>
@@ -2162,6 +2193,7 @@ function renderStatsCharts(transactions, entries, total) {
           <span class="stats-chart-copy"><strong>${escapeHtml(t("stats.pieTitle"))}</strong></span>
         </div>
         ${renderPieChart(entries, total)}
+        ${renderPieLegend(entries, total)}
       </article>
       <article class="stats-chart-card">
         <div class="stats-chart-title">
@@ -2175,7 +2207,6 @@ function renderStatsCharts(transactions, entries, total) {
           ${glyphSvg("chartLine")}
           <span class="stats-chart-copy">
             <strong>${escapeHtml(t("stats.lineTitle"))}</strong>
-            <small>${escapeHtml(t("stats.lineMeta"))}</small>
           </span>
         </div>
         ${renderLineChart(transactions)}
@@ -2669,15 +2700,23 @@ function renderBudgetSettings() {
     <form id="budget-form" class="budget-form">
       <p class="settings-page-hint">${escapeHtml(t("settings.budgetPageHint"))}</p>
       <div class="budget-editor-list">
-        ${CATEGORIES.map((category) => `
-          <label class="budget-edit-row">
+        ${CATEGORIES.map((category) => {
+          const active = state.budgetKeypadCategory === category;
+          const value = budgets[category] ?? 0;
+          return `
+          <div class="budget-edit-row ${active ? "keypad-open" : ""}" data-budget-row data-budget-category="${escapeHtml(category)}">
             <span class="budget-edit-copy">
               ${renderIconBadge(category, "category", "small")}
               <span>${escapeHtml(category)}</span>
             </span>
-            <input name="${escapeHtml(category)}" inputmode="decimal" type="number" min="0" step="1" value="${escapeHtml(budgets[category] ?? 0)}">
-          </label>
-        `).join("")}
+            <input name="${escapeHtml(category)}" data-budget-input type="hidden" value="${escapeHtml(value)}">
+            <button class="budget-amount-button" type="button" data-action="activate-budget-keypad" data-category="${escapeHtml(category)}">
+              <span data-budget-amount-display>${escapeHtml(captureAmountDisplay(value))}</span>
+            </button>
+            ${active ? renderBudgetAmountKeypad() : ""}
+          </div>
+        `;
+        }).join("")}
       </div>
       <div class="budget-actions">
         <button class="btn secondary" type="button" data-action="reset-budgets">${escapeHtml(t("settings.budgetReset"))}</button>
@@ -2888,12 +2927,40 @@ function renderAccountSetupForm(defaults = {}) {
   return `
     <form id="account-form" class="account-form asset-account-form" autocomplete="off">
       <input type="hidden" name="name" value="${escapeHtml(accountName)}">
-      <label>
+      <input type="hidden" name="openingBalance" value="${escapeHtml(openingBalance)}">
+      <div class="asset-form-head">
         <span>${escapeHtml(t("assets.openingBalance"))}</span>
-        <input name="openingBalance" inputmode="decimal" type="number" step="0.01" value="${escapeHtml(openingBalance)}">
-      </label>
+        <strong data-asset-amount-display>${escapeHtml(captureAmountDisplay(openingBalance))}</strong>
+      </div>
       <button class="btn secondary" type="submit">${escapeHtml(t("assets.addAccount"))}</button>
+      ${renderAssetAmountKeypad()}
     </form>
+  `;
+}
+
+function renderAssetAmountKeypad() {
+  return `
+    <div class="amount-keypad asset-keypad" aria-label="${escapeHtml(t("capture.amountKeypad"))}">
+      ${ASSET_AMOUNT_KEY_ROWS.flatMap((row) => row).map(renderAssetAmountKey).join("")}
+    </div>
+  `;
+}
+
+function renderBudgetAmountKeypad() {
+  return `
+    <div class="amount-keypad budget-keypad" aria-label="${escapeHtml(t("capture.amountKeypad"))}">
+      ${ASSET_AMOUNT_KEY_ROWS.flatMap((row) => row).map(renderAssetAmountKey).join("")}
+    </div>
+  `;
+}
+
+function renderAssetAmountKey(key) {
+  const label = key === "backspace" ? "⌫" : key === "clear" ? "C" : key;
+  const aria = key === "backspace" ? t("capture.keypadBackspace") : key === "clear" ? t("capture.keypadClear") : key;
+  return `
+    <button class="amount-key ${key === "backspace" || key === "clear" ? "utility" : ""} ${key === "0" ? "zero-wide" : ""}" type="button" data-action="amount-key" data-key="${escapeHtml(key)}" aria-label="${escapeHtml(aria)}">
+      ${escapeHtml(label)}
+    </button>
   `;
 }
 
@@ -2966,7 +3033,6 @@ function renderTransactionRow(txn) {
         </div>
         <div class="txn-side">
           <div class="amount ${transactionAmountClass(txn)}">${signedAmount(txn)}</div>
-          <span>${escapeHtml(txn.account)}</span>
         </div>
         <div class="row-actions txn-actions">
           <button class="btn ghost row-action-button txn-action-button" data-action="edit" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.edit"))}">
@@ -3019,6 +3085,18 @@ function syncAmountDisplay(form) {
   const currency = form?.elements?.namedItem("currency")?.value || "CNY";
   const display = form?.querySelector("[data-amount-display]");
   if (display) display.textContent = captureAmountDisplay(amount, currency);
+}
+
+function syncAssetAmountDisplay(form) {
+  const amount = form?.elements?.namedItem("openingBalance")?.value || "";
+  const display = form?.querySelector("[data-asset-amount-display]");
+  if (display) display.textContent = captureAmountDisplay(amount);
+}
+
+function syncBudgetAmountDisplay(row) {
+  const amount = row?.querySelector("[data-budget-input]")?.value || "";
+  const display = row?.querySelector("[data-budget-amount-display]");
+  if (display) display.textContent = captureAmountDisplay(amount);
 }
 
 function syncPickButtons(form) {
@@ -3118,10 +3196,19 @@ function nextAmountValue(current, key) {
 
 function applyAmountKey(button) {
   const form = button.closest("form");
-  const input = form?.elements?.namedItem("amount");
+  const budgetRow = button.closest("[data-budget-row]");
+  const input = form?.elements?.namedItem("amount")
+    || form?.elements?.namedItem("openingBalance")
+    || budgetRow?.querySelector("[data-budget-input]");
   if (!form || !input) return;
   input.value = nextAmountValue(String(input.value || ""), button.dataset.key || "");
-  syncAmountDisplay(form);
+  if (input.name === "openingBalance") {
+    syncAssetAmountDisplay(form);
+  } else if (budgetRow) {
+    syncBudgetAmountDisplay(budgetRow);
+  } else {
+    syncAmountDisplay(form);
+  }
 }
 
 async function clearPwaCacheAndReload() {
@@ -3371,6 +3458,7 @@ document.addEventListener("submit", (event) => {
         nextBudgets[category] = Math.round(value * 100) / 100;
       }
       state.budgets = nextBudgets;
+      state.budgetKeypadCategory = "";
       persist();
       render();
       toast(t("settings.budgetSaved"));
@@ -3489,6 +3577,12 @@ document.addEventListener("click", (event) => {
   if (action === "amount-key") {
     applyAmountKey(node);
   }
+  if (action === "activate-budget-keypad") {
+    state.budgetKeypadCategory = state.budgetKeypadCategory === node.dataset.category
+      ? ""
+      : node.dataset.category || "";
+    render();
+  }
   if (action === "tab") {
     if ((node.dataset.tab || "") === "capture" && isDemoMode()) {
       warnDemoMode();
@@ -3574,6 +3668,7 @@ document.addEventListener("click", (event) => {
     if (guardDemoMutation()) return;
     beginRealDataMode();
     state.budgets = { ...DEFAULT_BUDGETS };
+    state.budgetKeypadCategory = "";
     persist();
     render();
     toast(t("settings.budgetResetDone"));
@@ -3582,7 +3677,6 @@ document.addEventListener("click", (event) => {
     if (guardDemoMutation()) return;
     state.accountFormOpen = !state.accountFormOpen;
     render();
-    if (state.accountFormOpen) requestAnimationFrame(() => document.querySelector("#account-form input[name=\"openingBalance\"]")?.focus());
   }
   if (action === "cancel-edit") {
     state.editingTransactionId = null;

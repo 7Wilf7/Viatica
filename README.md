@@ -21,8 +21,8 @@ GitHub repository, not as a subfolder inside Aevum or Ultreia.
   spending against editable monthly targets in Settings.
 - Settings uses compact list rows; Manual, Changelog, and Category budgets open
   as second-level pages.
-- Books, accounts, account opening balances, categories, and editable category
-  budgets.
+- Books, legacy account compatibility, starting assets, categories, and editable
+  category budgets.
 - Local browser persistence under `viatica:v1`.
 - CSV import/export for portability.
 - Aevum overview snapshot export for later read-only integration.
@@ -41,9 +41,10 @@ Viatica's real ledger source is still the device's `localStorage` under
 Supabase project, and the future cloud tables already use the `viatica_*`
 prefix, but transaction upload/sync is a separate reviewed step.
 
-The local state includes transactions, category budgets, preferences, and
-account records. Account net is calculated as each account's opening balance
-plus income minus expenses from ledger entries.
+The local state includes transactions, category budgets, preferences, and legacy
+account records for compatibility. The current UI treats accounts as hidden
+internals: Assets shows one starting-assets value plus ledger income/expense
+flow, and transaction rows do not show account names.
 
 ## Temporary Demo Data
 
@@ -51,7 +52,7 @@ Temporary demo data is currently enabled for pre-launch review. The seed lives
 in `src/core/demoData.js` behind `VIATICA_DEMO_DATA_ENABLED = true`.
 
 - It only appears when local `viatica:v1` has no real transactions.
-- It includes sample transactions, opening balances, and category budgets so
+- It includes sample transactions, starting assets, and category budgets so
   Ledger, Calendar, Charts, Assets, and budget progress can be reviewed without
   manual entry.
 - While demo mode is active, `persist()` does not write the demo transactions,

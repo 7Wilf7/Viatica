@@ -75,9 +75,11 @@ of copying training-specific behavior.
 - The shared Aevum Supabase project owns Viatica's future cloud tables:
   `viatica_accounts`, `viatica_budgets`, `viatica_preferences`, and
   `viatica_transactions`.
-- Local account records and opening balances are part of the `viatica:v1` model.
-  Account net should be calculated as opening balance plus ledger income/expense
-  flow, without requiring a backend.
+- Local account records and opening balances may remain inside the `viatica:v1`
+  model for backwards compatibility, but the current UI should not foreground a
+  user-facing account workflow. Treat Assets as one starting-assets value plus
+  ledger income/expense flow unless Wilf explicitly asks to bring account
+  switching back.
 - Transaction details stay private to Viatica unless an explicit reviewed event
   shares them with Aevum.
 - Aevum integration is overview-first and event-based. Do not let Aevum read or
@@ -122,9 +124,10 @@ of copying training-specific behavior.
   mode must use bundled sample ledger data for display only, must not overwrite
   `viatica:v1`, and must block add/edit/delete/import/export-style real-data
   actions with a clear reminder to switch back to Personal mode first.
-- Assets owns total assets, account creation, opening-balance editing, account
-  net, and category budgets. Account creation and opening-balance entry should
-  stay behind the small plus action instead of occupying the default view.
+- Assets owns total assets, the hidden starting-assets value, legacy account
+  compatibility, and category budgets. Starting-assets editing stays behind a
+  long-press on Assets Overview, uses Viatica's built-in amount keypad, and
+  should not expose account internals in the primary UI.
 - Avoid decorative copy, oversized hero blocks, nested cards, and UI text that
   explains obvious controls.
 

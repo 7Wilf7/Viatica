@@ -27,8 +27,9 @@ a gamified finance app.
   income, then use type-specific category/detail buttons and the built-in
   amount keypad. On mobile, only the upper category/detail area should scroll;
   the amount and keypad area stays anchored so capture remains predictable.
-  Account stays on the default payment account in the primary path; title falls
-  back to the chosen detail/category and notes stay optional. Expense detail
+  Ledger account selection stays out of the primary path; Viatica keeps a
+  hidden default account only for old data compatibility and total-assets math.
+  Title falls back to the chosen detail/category and notes stay optional. Expense detail
   chips sit below the full primary-category grid so the category layout remains
   stable; income categories such as gifts, refunds, and other income can be
   saved from the primary category alone, with specifics written in notes. Book
@@ -46,11 +47,12 @@ a gamified finance app.
 - Category statistics and category budgets are different concepts. Statistics
   summarize actual spending by category. Budgets compare actual spending against
   editable monthly category targets saved locally.
-- Assets owns local account setup, but it should not foreground account balance
-  rows by default. The default surface is one Assets Overview row with the total
-  amount in a single panel; long-pressing that row reveals a direct opening-asset
-  amount editor with a Confirm action instead of an account form. Total assets
-  equals opening balances plus ledger income/expense flow.
+- Assets does not foreground a user-facing account workflow. The default
+  surface is one Assets Overview row with the total amount in a single panel;
+  long-pressing that row reveals a compact starting-assets editor with a
+  built-in keypad and a Confirm action. Internally, total assets can still use
+  the legacy account/opening-balance field for compatibility, but the UI should
+  read as "starting assets plus ledger income/expense flow."
 - Settings should stay compact on mobile. The top identity header uses the
   shared Aevum account pattern from Ultreia, while manual/changelog and budget
   editing open as second-level pages.

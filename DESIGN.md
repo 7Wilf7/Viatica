@@ -68,7 +68,7 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   pinned at the bottom of the Add surface while the category/detail area scrolls
   independently, so long detail rows do not push the keypad away. Do not show
   account chips in the primary Add flow unless account switching becomes a real
-  high-frequency need.
+  high-frequency need again.
 - The official Viatica logo source lives at `resources/brand/viatica-logo.png`.
   In-app brand surfaces use the resized display copy through
   `src/assets/logo.js`; PWA launcher icons in `public/icons/` are generated
@@ -95,15 +95,17 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   cell can later hold daily income/expense details.
 - Charts under Ledger own actual statistics only. Category statistics are
   actual spending summaries and must not display budget targets.
-- Assets owns total assets, account creation, opening balances, account net,
-  and category budgets. The default Assets screen should lead with total assets
-  and category budgets, not a visible account-balance list. Assets Overview uses
-  one single panel instead of a nested card. Opening-asset editing stays behind
-  a long-press on the Assets Overview row and should expose only the amount plus
-  a Confirm action, keeping account internals out of the primary UI. Category
-  budgets compare actual spending with monthly targets and use a compact
-  two-column mobile grid; the category, budget amount, and percent should share
-  the row to reduce vertical scrolling.
+- Assets owns total assets, the hidden starting-assets value, legacy account
+  compatibility, and category budgets. The default Assets screen should lead
+  with total assets and category budgets, not a visible account-balance list.
+  Assets Overview uses one single panel instead of a nested card. Starting-assets
+  editing stays behind a long-press on the Assets Overview row and should expose
+  only the amount, a built-in numeric keypad, and a right-side Confirm action,
+  keeping account internals out of the primary UI. Category budgets compare
+  actual spending with monthly targets and use a compact two-column mobile grid;
+  the category, budget amount, and percent should share the row to reduce
+  vertical scrolling. Budget amount editing should also avoid system numeric
+  keyboards by using Viatica's built-in keypad.
 - Settings uses the Ultreia-style compact mobile list. The top identity block
   follows Ultreia's mobile account header pattern, but the copy says Aevum
   account because the identity is shared across Aevum / Ultreia / Viatica. The
@@ -126,8 +128,9 @@ transaction rows, and data-first cards that feel useful rather than decorative.
 - Settings owns local data actions, exports, imports, editable budgets,
   Aevum account entry, and PWA/storage notes.
 - Budget rows and transaction rows use dense panels, not oversized cards.
-  Transaction rows prioritize category icon, title, time/type context, amount,
-  and account; edit/delete actions stay hidden until long press.
+  Transaction rows prioritize category icon, title, time/type context, and
+  amount; account names stay hidden unless account switching is reintroduced.
+  Edit/delete actions stay hidden until long press.
 - Buttons and form controls follow one shape vocabulary with visible focus.
 - Empty states tell Wilf the next practical action.
 
