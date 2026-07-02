@@ -6,13 +6,14 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function createMemorySupabase(initial = {}) {
+function createMemorySupabase(initial = {}, options = {}) {
   const tables = {
     viatica_transactions: clone(initial.viatica_transactions || []),
     viatica_budgets: clone(initial.viatica_budgets || []),
     viatica_accounts: clone(initial.viatica_accounts || []),
   };
   const operations = [];
+  let hiddenAccountSelects = options.hideExistingAccountsOnce ? 1 : 0;
 
   function matches(row, filters, inFilters) {
     return filters.every(([column, value]) => row[column] === value)
@@ -22,6 +23,10 @@ function createMemorySupabase(initial = {}) {
   function execute(table, state) {
     const rows = tables[table] || [];
     if (state.kind === "select") {
+      if (table === "viatica_accounts" && hiddenAccountSelects > 0) {
+        hiddenAccountSelects -= 1;
+        return Promise.resolve({ data: [], error: null });
+      }
       return Promise.resolve({
         data: rows.filter((row) => matches(row, state.filters, state.inFilters)).map(clone),
         error: null,
@@ -76,6 +81,18 @@ function createMemorySupabase(initial = {}) {
         },
         insert(row) {
           operations.push({ type: "insert", table, row: clone(row) });
+          if (table === "viatica_accounts") {
+            const conflict = tables[table].some((existing) => existing.user_id === row.user_id && existing.name === row.name);
+            if (conflict) {
+              return Promise.resolve({
+                data: null,
+                error: {
+                  code: "23505",
+                  message: 'duplicate key value violates unique constraint "viatica_accounts_user_id_name_key"',
+                },
+              });
+            }
+          }
           tables[table].push(clone(row));
           return Promise.resolve({ data: null, error: null });
         },
@@ -244,4 +261,28 @@ test("pushes cloud state without requiring database conflict constraints", async
   assert.equal(supabase.tables.viatica_accounts.length, 1);
   assert.equal(supabase.tables.viatica_accounts[0].opening_balance, 150);
   assert.equal(supabase.operations.some((operation) => operation.type === "upsert"), false);
+});
+
+test("updates existing account when insert hits the cloud user name constraint", async () => {
+  const supabase = createMemorySupabase({
+    viatica_accounts: [{
+      user_id: "user_1",
+      name: "其他",
+      opening_balance: 100,
+      client_id: "acct_cloud",
+      is_default: true,
+    }],
+  }, { hideExistingAccountsOnce: true });
+
+  await pushCloudState(supabase, "user_1", {
+    transactions: [],
+    budgets: {},
+    accounts: [{ id: "acct_local", name: "其他", openingBalance: 250, isDefault: true }],
+    preferences: {},
+  });
+
+  assert.equal(supabase.tables.viatica_accounts.length, 1);
+  assert.equal(supabase.tables.viatica_accounts[0].opening_balance, 250);
+  assert.equal(supabase.operations.some((operation) => operation.type === "insert" && operation.table === "viatica_accounts"), true);
+  assert.equal(supabase.operations.some((operation) => operation.type === "update" && operation.table === "viatica_accounts"), true);
 });

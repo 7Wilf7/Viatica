@@ -12,6 +12,11 @@ function isSchemaFallbackError(error) {
   return /column|schema cache|does not exist|invalid input syntax for type uuid|there is no unique or exclusion constraint|violates not-null constraint/.test(message);
 }
 
+function isDuplicateKeyError(error) {
+  const message = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`.toLowerCase();
+  return /23505|duplicate key value|violates unique constraint/.test(message);
+}
+
 function asIso(value, fallback = new Date()) {
   const date = value ? new Date(value) : fallback;
   return Number.isNaN(date.getTime()) ? fallback.toISOString() : date.toISOString();
@@ -321,8 +326,14 @@ async function upsertAccounts(supabase, userId, accounts = []) {
     if (existing) {
       await updateRowByFilters(supabase, TABLES.accounts, rows, [["user_id", userId], ["name", account.name]]);
     } else {
-      await insertRow(supabase, TABLES.accounts, rows);
+      try {
+        await insertRow(supabase, TABLES.accounts, rows);
+      } catch (error) {
+        if (!isDuplicateKeyError(error)) throw error;
+        await updateRowByFilters(supabase, TABLES.accounts, rows, [["user_id", userId], ["name", account.name]]);
+      }
     }
+    existingByName.set(account.name, { name: account.name, user_id: userId });
   }
 }
 

@@ -408,12 +408,12 @@ const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
   { category: "运动装备", items: ["装备", "补给"] },
   { category: "比赛/训练", items: ["康复", "训练课", "赛事报名"] },
   { category: "健康", items: ["保险", "医疗", "药品"] },
-  { category: "AI 工具", items: ["ChatGPT"] },
+  { category: "AI 工具", items: ["ChatGPT", "Aevum"] },
   { category: "订阅", items: ["App"] },
   { category: "学习", items: ["课程", "书籍", "资料", "工具"] },
   { category: "娱乐", items: ["电影", "游戏", "餐饮", "其他"] },
   { category: "旅行", items: ["交通", "住宿", "餐饮", "门票"] },
-  { category: "其他", items: ["手续费"] },
+  { category: "其他", items: ["提现手续费", "其他"] },
 ];
 
 const ASSET_AMOUNT_KEY_ROWS = [
