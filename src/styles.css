@@ -604,13 +604,29 @@ label span {
 }
 
 .ledger-period-switch {
+  position: relative;
+  z-index: 6;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   min-height: 38px;
+  touch-action: manipulation;
 }
 
 .ledger-period-switch button {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ledger-refresh-status {
+  min-height: 26px;
+  border: 1px solid oklch(0.700 0.052 86 / 0.18);
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  background: oklch(0.700 0.052 86 / 0.08);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 760;
 }
 
 .ledger-metric-grid {
@@ -741,17 +757,26 @@ label span {
   overflow: visible;
 }
 
+.pie-chart-layout {
+  min-height: 134px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(138px, 0.72fr);
+  gap: 10px;
+  align-items: center;
+}
+
 .pie-chart {
-  width: min(100%, 128px);
-  height: 96px;
-  justify-self: center;
+  width: min(100%, 156px);
+  height: 126px;
+  justify-self: end;
 }
 
 .pie-legend {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px 8px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
   align-self: stretch;
+  align-content: center;
 }
 
 .pie-legend-item {
@@ -1786,6 +1811,42 @@ input[type="datetime-local"] {
   background: oklch(0.135 0.006 95 / 0.72);
 }
 
+.profile-mini-grid {
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.profile-mini-item {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  display: grid;
+  gap: 4px;
+  background: oklch(0.122 0.006 95 / 0.72);
+}
+
+.profile-mini-item span {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-mini-item strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .account-info-cell {
   cursor: default;
 }
@@ -2061,7 +2122,8 @@ input[type="datetime-local"] {
 }
 
 .settings-page .reading-list,
-.budget-form {
+.budget-form,
+.profile-form {
   padding: 10px;
 }
 
@@ -2134,6 +2196,46 @@ input[type="datetime-local"] {
 .budget-form {
   display: grid;
   gap: 10px;
+}
+
+.profile-form {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-form label,
+.profile-choice-field {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.profile-form label > span,
+.profile-choice-field > span {
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.profile-form input {
+  width: 100%;
+  min-height: var(--tap);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 9px 12px;
+  background: oklch(0.145 0.006 95 / 0.74);
+  color: var(--ink);
+  font: inherit;
+}
+
+.profile-form input:focus {
+  outline: none;
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 3px oklch(0.560 0.055 84 / 0.13);
+}
+
+.profile-gender-choice {
+  z-index: 5;
 }
 
 .budget-editor-list {
@@ -2373,6 +2475,54 @@ input[type="datetime-local"] {
   z-index: 1;
   display: grid;
   gap: 8px;
+}
+
+.budget-section-title {
+  grid-template-columns: minmax(0, 1fr) minmax(118px, 0.72fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.budget-total-progress {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  justify-items: stretch;
+}
+
+.budget-total-progress span,
+.budget-total-progress strong {
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.budget-total-progress span {
+  color: var(--ink-3);
+  font-size: 9.5px;
+  font-weight: 760;
+}
+
+.budget-total-progress strong {
+  color: var(--ink);
+  font-size: 10.5px;
+  line-height: 1.1;
+  font-weight: 780;
+}
+
+.budget-total-track {
+  height: 5px;
+  border-radius: 999px;
+  background: oklch(0.110 0.006 95 / 0.9);
+  overflow: hidden;
+}
+
+.budget-total-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
 }
 
 .asset-budget-list {

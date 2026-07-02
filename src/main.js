@@ -27,6 +27,11 @@ import {
 import { deleteCloudTransaction, syncViaticaLedger } from "./core/cloudSync.js";
 import { formatCurrency, formatDateTime, monthKey, todayKey, toDateInputValue } from "./core/format.js";
 import {
+  EMPTY_AEVUM_PROFILE,
+  fetchAevumProfile,
+  saveAevumProfile,
+} from "./core/profileSync.js";
+import {
   filterTransactions,
   normalizeAccount,
   normalizeAccounts,
@@ -53,6 +58,7 @@ const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
 let releaseCheckCache = null;
 let cloudSyncTimer = 0;
+let lastTabTap = { tab: "", at: 0 };
 const cloudAuthConfigured = isCloudAuthConfigured();
 let bootSplashVisible = true;
 let bootSplashDismissTimer = 0;
@@ -101,6 +107,12 @@ const state = {
     session: null,
     user: null,
   },
+  profile: {
+    data: { ...EMPTY_AEVUM_PROFILE },
+    draft: { ...EMPTY_AEVUM_PROFILE },
+    status: "idle",
+    error: "",
+  },
   cloudSync: {
     status: "idle",
     lastSyncedAt: "",
@@ -144,10 +156,16 @@ const TABS = [
 ];
 
 const DASHBOARD_RANGES = [
-  { id: "all", labelKey: "range.all" },
-  { id: "week", labelKey: "range.week" },
   { id: "month", labelKey: "range.month" },
+  { id: "week", labelKey: "range.week" },
   { id: "year", labelKey: "range.year" },
+  { id: "all", labelKey: "range.all" },
+];
+
+const PROFILE_GENDERS = [
+  { id: "male", labelKey: "profile.genderMale" },
+  { id: "female", labelKey: "profile.genderFemale" },
+  { id: "other", labelKey: "profile.genderOther" },
 ];
 
 const CHART_COLORS = [
@@ -979,6 +997,7 @@ const MESSAGES = {
     "ledger.monthIncome": "收入",
     "ledger.flow": "流水",
     "ledger.chart": "图表",
+    "ledger.period": "时间周期",
     "ledger.matchCount": "{count} 条匹配记录。",
     "ledger.empty": "还没有匹配流水。先记录一笔，或调整筛选条件。",
     "ledger.typeFilter": "流水类型",
@@ -997,8 +1016,9 @@ const MESSAGES = {
     "assets.hint": "先基于流水汇总账户净额。",
     "assets.accountTitle": "账户金额",
     "assets.accountHint": "收入记正数，支出记负数。",
-    "assets.categoryTitle": "分类预算",
+    "assets.categoryTitle": "预算",
     "assets.categoryHint": "实际支出对照每月目标。",
+    "assets.totalBudget": "总预算",
     "assets.accountName": "账户名称",
     "assets.openingBalance": "初始资金",
     "assets.addAccount": "确认",
@@ -1017,7 +1037,7 @@ const MESSAGES = {
     "settings.accountSignedIn": "已登录",
     "settings.accountSyncPending": "退出前会保留本机账本",
     "settings.accountProfile": "账号资料",
-    "settings.accountProfileHint": "已接入云同步；本机账本会与 Aevum 云端合并。",
+    "settings.accountProfileHint": "显示名、出生日期和性别会同步到 Aevum / Ultreia。",
     "settings.signIn": "登录 Aevum 账号",
     "settings.signOut": "退出登录",
     "settings.signingOut": "正在退出...",
@@ -1032,7 +1052,7 @@ const MESSAGES = {
     "settings.cloudSyncTitle": "云同步",
     "settings.cloudSyncHint": "把本机账本和 Aevum 云端合并",
     "settings.cloudSyncSignIn": "先登录",
-    "settings.cloudSyncIdle": "立即同步",
+    "settings.cloudSyncIdle": "自动同步已开启",
     "settings.cloudSyncing": "同步中...",
     "settings.cloudSynced": "已同步",
     "settings.cloudSyncError": "同步失败",
@@ -1041,7 +1061,7 @@ const MESSAGES = {
     "settings.exportCsv": "导出 CSV",
     "settings.importCsv": "导入 CSV",
     "settings.exportJson": "导出完整备份",
-    "settings.budgetTitle": "分类预算",
+    "settings.budgetTitle": "预算",
     "settings.budgetHint": "设置每月分类目标",
     "settings.budgetPageHint": "预算是目标，不是流水；资产页会用这里的金额计算执行进度。",
     "settings.budgetSave": "保存预算",
@@ -1077,6 +1097,20 @@ const MESSAGES = {
     "settings.dataModePersonal": "个人",
     "settings.dataModeDemo": "Demo",
     "settings.back": "返回",
+    "profile.title": "个人资料",
+    "profile.hint": "这些是 Aevum 账号的通用资料；在 Viatica、Ultreia 任意一边修改后都会从云端同步。",
+    "profile.displayName": "显示名",
+    "profile.birthDate": "出生日期",
+    "profile.gender": "性别",
+    "profile.genderMale": "男",
+    "profile.genderFemale": "女",
+    "profile.genderOther": "其他 / 不愿透露",
+    "profile.notSet": "未设置",
+    "profile.save": "保存资料",
+    "profile.saving": "正在保存...",
+    "profile.saved": "资料已同步。",
+    "profile.saveFailed": "资料保存失败。",
+    "profile.loadFailed": "资料读取失败，稍后再试。",
     "login.title": "登录 Aevum 账号",
     "login.desc": "登录同一个 Aevum 账号后，本机账本会和云端合并同步。",
     "login.email": "邮箱",
@@ -1176,6 +1210,7 @@ const MESSAGES = {
     "ledger.monthIncome": "Income",
     "ledger.flow": "Flow",
     "ledger.chart": "Charts",
+    "ledger.period": "Time Period",
     "ledger.matchCount": "{count} matching entries.",
     "ledger.empty": "No matching entries yet. Record one or adjust filters.",
     "ledger.typeFilter": "Entry Type",
@@ -1194,8 +1229,9 @@ const MESSAGES = {
     "assets.hint": "Starts from account net based on ledger entries.",
     "assets.accountTitle": "Account Balances",
     "assets.accountHint": "Income is positive and expense is negative.",
-    "assets.categoryTitle": "Category Budgets",
+    "assets.categoryTitle": "Budget",
     "assets.categoryHint": "Actual spending against monthly targets.",
+    "assets.totalBudget": "Total Budget",
     "assets.accountName": "Account Name",
     "assets.openingBalance": "Starting Assets",
     "assets.addAccount": "Confirm",
@@ -1214,7 +1250,7 @@ const MESSAGES = {
     "settings.accountSignedIn": "Signed in",
     "settings.accountSyncPending": "Local ledger stays on this device after sign-out",
     "settings.accountProfile": "Account Profile",
-    "settings.accountProfileHint": "Cloud sync is connected; this device merges with Aevum cloud data.",
+    "settings.accountProfileHint": "Display Name, Birth Date, And Gender Sync With Aevum / Ultreia.",
     "settings.signIn": "Sign In To Aevum",
     "settings.signOut": "Sign Out",
     "settings.signingOut": "Signing out...",
@@ -1229,7 +1265,7 @@ const MESSAGES = {
     "settings.cloudSyncTitle": "Cloud Sync",
     "settings.cloudSyncHint": "Merge this ledger with Aevum cloud",
     "settings.cloudSyncSignIn": "Sign In First",
-    "settings.cloudSyncIdle": "Sync Now",
+    "settings.cloudSyncIdle": "Auto Sync Ready",
     "settings.cloudSyncing": "Syncing...",
     "settings.cloudSynced": "Synced",
     "settings.cloudSyncError": "Sync Failed",
@@ -1238,7 +1274,7 @@ const MESSAGES = {
     "settings.exportCsv": "Export CSV",
     "settings.importCsv": "Import CSV",
     "settings.exportJson": "Export Full Backup",
-    "settings.budgetTitle": "Category Budgets",
+    "settings.budgetTitle": "Budget",
     "settings.budgetHint": "Set Monthly Category Targets",
     "settings.budgetPageHint": "Budgets are targets, not entries. Assets uses these values for budget progress.",
     "settings.budgetSave": "Save Budgets",
@@ -1274,6 +1310,20 @@ const MESSAGES = {
     "settings.dataModePersonal": "Personal",
     "settings.dataModeDemo": "Demo",
     "settings.back": "Back",
+    "profile.title": "Personal Profile",
+    "profile.hint": "These are shared Aevum account fields. Changes made in Viatica or Ultreia sync through the cloud.",
+    "profile.displayName": "Display Name",
+    "profile.birthDate": "Birth Date",
+    "profile.gender": "Gender",
+    "profile.genderMale": "Male",
+    "profile.genderFemale": "Female",
+    "profile.genderOther": "Other / Prefer Not To Say",
+    "profile.notSet": "Not Set",
+    "profile.save": "Save Profile",
+    "profile.saving": "Saving...",
+    "profile.saved": "Profile synced.",
+    "profile.saveFailed": "Could Not Save Profile.",
+    "profile.loadFailed": "Could Not Load Profile. Try Again Later.",
     "login.title": "Sign In To Aevum",
     "login.desc": "Sign in to the same Aevum account to merge this local ledger with cloud data.",
     "login.email": "Email",
@@ -1486,6 +1536,25 @@ async function syncCloudNow({ silent = false } = {}) {
   }
 }
 
+function tabStageScrollTop() {
+  const stage = document.querySelector(".tab-stage");
+  return Math.max(stage?.scrollTop || 0, window.scrollY || document.documentElement.scrollTop || 0);
+}
+
+function scrollTabStageToTop() {
+  const stage = document.querySelector(".tab-stage");
+  if (stage?.scrollTo) stage.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function refreshLedgerFromTab() {
+  if (tabStageScrollTop() > 4) {
+    scrollTabStageToTop();
+    return;
+  }
+  syncCloudNow({ silent: false });
+}
+
 function beginRealDataMode() {
   if (!isDemoMode()) return;
   state.preferences.dataMode = "personal";
@@ -1526,11 +1595,96 @@ function authUserName() {
   return email ? email.split("@")[0] : "";
 }
 
+function accountDisplayName() {
+  return state.profile.data.displayName || authUserName();
+}
+
+function profileGenderOptions(includeBlank = false) {
+  const options = PROFILE_GENDERS.map((item) => ({ value: item.id, label: t(item.labelKey) }));
+  return includeBlank ? [{ value: "", label: t("profile.notSet") }, ...options] : options;
+}
+
+function profileGenderLabel(value) {
+  return profileGenderOptions(true).find((item) => item.value === value)?.label || t("profile.notSet");
+}
+
+function profileValue(value) {
+  return String(value || "").trim() || t("profile.notSet");
+}
+
+function resetProfileState() {
+  state.profile.data = { ...EMPTY_AEVUM_PROFILE };
+  state.profile.draft = { ...EMPTY_AEVUM_PROFILE };
+  state.profile.status = "idle";
+  state.profile.error = "";
+}
+
+async function loadSharedProfile({ silent = false } = {}) {
+  if (!state.auth.user) {
+    resetProfileState();
+    return;
+  }
+  state.profile.status = "loading";
+  state.profile.error = "";
+  if (!silent) render();
+  try {
+    const profile = await fetchAevumProfile();
+    state.profile.data = profile;
+    state.profile.draft = { ...profile };
+    state.profile.status = "ready";
+  } catch (error) {
+    state.profile.status = "error";
+    state.profile.error = error?.message || "";
+  } finally {
+    render();
+  }
+}
+
+function openProfileSettings() {
+  if (!state.auth.user) {
+    openAuthDialog("signin");
+    return;
+  }
+  state.profile.draft = { ...state.profile.data };
+  state.settingsContent = "profile";
+  render();
+}
+
+async function handleProfileSave(form) {
+  if (!state.auth.user || state.profile.status === "saving") return;
+  const data = Object.fromEntries(new FormData(form).entries());
+  const nextProfile = {
+    displayName: String(data.displayName || "").trim(),
+    birthDate: String(data.birthDate || "").trim(),
+    gender: String(data.gender || "").trim(),
+  };
+  state.profile.status = "saving";
+  state.profile.error = "";
+  render();
+  try {
+    const profile = await saveAevumProfile(nextProfile);
+    state.profile.data = profile;
+    state.profile.draft = { ...profile };
+    state.profile.status = "ready";
+    toast(t("profile.saved"));
+  } catch (error) {
+    state.profile.status = "error";
+    state.profile.error = error?.message || "";
+    toast(t("profile.saveFailed"));
+  } finally {
+    render();
+  }
+}
+
 function setCloudSession(session) {
   state.auth.session = session;
   state.auth.user = session?.user || null;
   state.auth.ready = true;
-  if (!session) state.auth.accountOpen = false;
+  if (!session) {
+    state.auth.accountOpen = false;
+    if (state.settingsContent === "profile") state.settingsContent = "home";
+    resetProfileState();
+  }
 }
 
 async function initCloudAuth() {
@@ -1538,7 +1692,10 @@ async function initCloudAuth() {
   try {
     const session = await getCloudSession();
     setCloudSession(session);
-    if (session) scheduleCloudSync(250);
+    if (session) {
+      void loadSharedProfile({ silent: true });
+      scheduleCloudSync(250);
+    }
   } catch {
     state.auth.ready = true;
     state.auth.error = t("login.error");
@@ -1547,7 +1704,10 @@ async function initCloudAuth() {
   onCloudAuthStateChange((session) => {
     setCloudSession(session);
     render();
-    if (session) scheduleCloudSync(250);
+    if (session) {
+      void loadSharedProfile({ silent: true });
+      scheduleCloudSync(250);
+    }
   });
 }
 
@@ -1585,6 +1745,7 @@ async function handleAuthLogin(form) {
     setCloudSession(await signInToAevum(email, password));
     state.auth.loginOpen = false;
     signedIn = true;
+    void loadSharedProfile({ silent: true });
     toast(t("toast.authSignedIn"));
   } catch {
     state.auth.error = t("login.error");
@@ -2054,9 +2215,9 @@ function renderLedgerTopbar() {
 
 function renderLedgerPeriodSwitch() {
   return `
-    <section class="time-switch ledger-period-switch" aria-label="Time range">
+    <section class="time-switch ledger-period-switch" aria-label="${escapeHtml(t("ledger.period"))}">
       ${DASHBOARD_RANGES.map((item) => `
-        <button class="${state.dashboardRange === item.id ? "active" : ""}" data-action="dashboard-range" data-range="${escapeHtml(item.id)}">${escapeHtml(t(item.labelKey))}</button>
+        <button type="button" class="${state.dashboardRange === item.id ? "active" : ""}" data-action="dashboard-range" data-range="${escapeHtml(item.id)}" aria-pressed="${state.dashboardRange === item.id ? "true" : "false"}">${escapeHtml(t(item.labelKey))}</button>
       `).join("")}
     </section>
   `;
@@ -2066,6 +2227,7 @@ function renderLedgerTab(filteredTransactions, summary, chartTransactions) {
   return `
     ${renderLedgerTopbar()}
     ${renderLedgerPeriodSwitch()}
+    ${state.cloudSync.status === "syncing" ? `<div class="ledger-refresh-status">${escapeHtml(t("settings.cloudSyncing"))}</div>` : ""}
     ${renderLedgerOverview(summary)}
     ${state.ledgerView === "chart" ? renderLedgerStats(summary, chartTransactions) : renderLedgerFlow(filteredTransactions)}
   `;
@@ -2182,18 +2344,18 @@ function pieSlicePath(cx, cy, radius, start, end) {
 function renderPieChart(entries, total) {
   let cursor = 0;
   const slices = entries.length === 1
-    ? `<circle cx="44" cy="44" r="34" fill="${CHART_COLORS[0]}"></circle>`
+    ? `<circle cx="58" cy="58" r="47" fill="${CHART_COLORS[0]}"></circle>`
     : entries.map(([, amount], index) => {
       const start = cursor;
       const share = amount / total;
       cursor += share;
-      return `<path d="${pieSlicePath(44, 44, 34, start, cursor)}" fill="${CHART_COLORS[index % CHART_COLORS.length]}"></path>`;
+      return `<path d="${pieSlicePath(58, 58, 47, start, cursor)}" fill="${CHART_COLORS[index % CHART_COLORS.length]}"></path>`;
     }).join("");
   return `
-    <svg class="stats-chart-svg pie-chart" viewBox="0 0 88 88" role="img" aria-label="${escapeHtml(t("stats.pieTitle"))}">
-      <circle cx="44" cy="44" r="34" fill="oklch(0.145 0.006 95)"></circle>
+    <svg class="stats-chart-svg pie-chart" viewBox="0 0 116 116" role="img" aria-label="${escapeHtml(t("stats.pieTitle"))}">
+      <circle cx="58" cy="58" r="47" fill="oklch(0.145 0.006 95)"></circle>
       ${slices}
-      <circle cx="44" cy="44" r="17" fill="oklch(0.130 0.006 95 / 0.92)"></circle>
+      <circle cx="58" cy="58" r="21" fill="oklch(0.130 0.006 95 / 0.92)"></circle>
     </svg>
   `;
 }
@@ -2306,8 +2468,10 @@ function renderStatsCharts(transactions, entries, total) {
           ${glyphSvg("chartPie")}
           <span class="stats-chart-copy"><strong>${escapeHtml(t("stats.pieTitle"))}</strong></span>
         </div>
-        ${renderPieChart(entries, total)}
-        ${renderPieLegend(entries, total)}
+        <div class="pie-chart-layout">
+          ${renderPieLegend(entries, total)}
+          ${renderPieChart(entries, total)}
+        </div>
       </article>
       <article class="stats-chart-card">
         <div class="stats-chart-title">
@@ -2451,10 +2615,11 @@ function renderAssetsTab(summary) {
 
     <div class="workspace budget-workspace">
       <section class="panel">
-        <div class="section-title">
+        <div class="section-title budget-section-title">
           <div>
             <h2>${escapeHtml(t("assets.categoryTitle"))}</h2>
           </div>
+          ${renderBudgetTotalProgress(summary)}
         </div>
         <div class="budget-list asset-budget-list">
           ${renderBudgetRows(summary, 12)}
@@ -2464,30 +2629,47 @@ function renderAssetsTab(summary) {
   `;
 }
 
+function budgetTotals(summary) {
+  const rows = Object.values(summary.budgets || {});
+  const budget = rows.reduce((total, item) => total + Number(item.budget || 0), 0);
+  const spent = rows.reduce((total, item) => total + Number(item.spent || 0), 0);
+  return {
+    budget,
+    spent,
+    ratio: budget > 0 ? Math.min(spent / budget, 1) : 0,
+  };
+}
+
+function renderBudgetTotalProgress(summary) {
+  const total = budgetTotals(summary);
+  if (!(total.budget > 0)) return "";
+  const percent = Math.round(total.ratio * 100);
+  return `
+    <div class="budget-total-progress" aria-label="${escapeHtml(t("assets.totalBudget"))}">
+      <span>${escapeHtml(t("assets.totalBudget"))}</span>
+      <strong>${escapeHtml(formatMoney(total.spent))} / ${escapeHtml(formatMoney(total.budget))}</strong>
+      <div class="budget-total-track" aria-hidden="true">
+        <span style="width: ${percent}%"></span>
+      </div>
+    </div>
+  `;
+}
+
 function renderSettingsTab() {
   if (state.settingsContent === "manual") return renderSettingsPage(t("settings.manualTitle"), renderManual());
   if (state.settingsContent === "budgets") return renderSettingsPage(t("settings.budgetTitle"), renderBudgetSettings());
+  if (state.settingsContent === "profile") return renderSettingsPage(t("profile.title"), renderProfileSettings());
 
   return `
     <section class="settings-list">
       ${renderSettingsAccountCard()}
 
       ${renderSettingsSection(t("settings.productSection"), [
+        renderSettingsCell(t("settings.budgetTitle"), t("settings.budgetHint"), "", "budgets"),
         renderSettingsCell(t("settings.languageTitle"), "", renderLanguageSwitch()),
         renderSettingsCell(t("settings.dataModeTitle"), "", renderDataModeSwitch()),
-        renderSettingsCell(
-          t("settings.cloudSyncTitle"),
-          t("settings.cloudSyncHint"),
-          cloudSyncLabel(),
-          "sync-cloud",
-          !state.auth.user || state.cloudSync.status === "syncing",
-        ),
         renderSettingsCell(t("settings.manualTitle"), "", "", "manual"),
         renderAppUpdateChecker(),
-      ])}
-
-      ${renderSettingsSection(t("settings.dataSection"), [
-        renderSettingsCell(t("settings.budgetTitle"), "", "", "budgets"),
       ])}
 
       ${isNativeApp() ? "" : renderSettingsSection(t("settings.localSection"), [
@@ -2505,7 +2687,7 @@ function renderSettingsTab() {
 
 function renderSettingsAccountCard() {
   const signedIn = Boolean(state.auth.user);
-  const title = signedIn ? authUserName() || t("settings.accountTitle") : t("settings.accountTitle");
+  const title = signedIn ? accountDisplayName() || t("settings.accountTitle") : t("settings.accountTitle");
   const subtitle = !state.auth.configured
     ? t("settings.accountMissingConfig")
     : !state.auth.ready
@@ -2526,10 +2708,22 @@ function renderSettingsAccountCard() {
       </button>
       ${signedIn && state.auth.accountOpen ? `
         <div class="settings-account-panel">
-          <div class="settings-cell account-info-cell">
+          <div class="profile-mini-grid">
+            ${renderProfileMiniItem(t("profile.displayName"), profileValue(state.profile.data.displayName))}
+            ${renderProfileMiniItem(t("profile.birthDate"), profileValue(state.profile.data.birthDate))}
+            ${renderProfileMiniItem(t("profile.gender"), profileGenderLabel(state.profile.data.gender))}
+          </div>
+          <button class="settings-cell" type="button" data-action="settings-content" data-content="profile">
             <span class="settings-cell-copy">
               <strong>${escapeHtml(t("settings.accountProfile"))}</strong>
-              <span>${escapeHtml(t("settings.accountProfileHint"))}</span>
+              <span>${escapeHtml(state.profile.status === "error" ? t("profile.loadFailed") : t("settings.accountProfileHint"))}</span>
+            </span>
+            <span class="settings-chevron">›</span>
+          </button>
+          <div class="settings-cell account-info-cell">
+            <span class="settings-cell-copy">
+              <strong>${escapeHtml(t("settings.cloudSyncTitle"))}</strong>
+              <span>${escapeHtml(cloudSyncLabel())}</span>
             </span>
           </div>
           <button class="settings-cell" type="button" data-action="open-reset-password">
@@ -2548,6 +2742,15 @@ function renderSettingsAccountCard() {
         </div>
       ` : ""}
     </section>
+  `;
+}
+
+function renderProfileMiniItem(label, value) {
+  return `
+    <span class="profile-mini-item">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </span>
   `;
 }
 
@@ -2606,6 +2809,53 @@ function renderSettingsPage(title, body) {
   `;
 }
 
+function renderProfileSettings() {
+  const draft = state.profile.draft || state.profile.data || EMPTY_AEVUM_PROFILE;
+  const busy = state.profile.status === "saving";
+  return `
+    <form id="profile-form" class="profile-form">
+      <p class="settings-page-hint">${escapeHtml(t("profile.hint"))}</p>
+      ${state.profile.status === "error" && state.profile.error ? `<div class="auth-message error">${escapeHtml(state.profile.error)}</div>` : ""}
+      <label>
+        <span>${escapeHtml(t("profile.displayName"))}</span>
+        <input name="displayName" data-profile-field="displayName" type="text" autocomplete="name" value="${escapeHtml(draft.displayName)}" ${busy ? "disabled" : ""}>
+      </label>
+      <label>
+        <span>${escapeHtml(t("profile.birthDate"))}</span>
+        <input name="birthDate" data-profile-field="birthDate" type="date" value="${escapeHtml(draft.birthDate)}" ${busy ? "disabled" : ""}>
+      </label>
+      <div class="profile-choice-field">
+        <span>${escapeHtml(t("profile.gender"))}</span>
+        ${renderProfileGenderChoice(draft.gender)}
+      </div>
+      <button class="btn primary wide" type="submit" ${busy ? "disabled aria-busy=\"true\"" : ""}>
+        ${escapeHtml(busy ? t("profile.saving") : t("profile.save"))}
+      </button>
+    </form>
+  `;
+}
+
+function renderProfileGenderChoice(value) {
+  const options = profileGenderOptions(true);
+  const selected = options.find((option) => option.value === value) || options[0];
+  return `
+    <div class="choice-control profile-gender-choice" data-choice data-profile-choice="gender">
+      <input type="hidden" name="gender" value="${escapeHtml(selected.value)}">
+      <button class="choice-trigger" type="button" data-action="toggle-choice" aria-expanded="false">
+        <span>${escapeHtml(selected.label)}</span>
+        <span class="choice-chevron" aria-hidden="true">▼</span>
+      </button>
+      <div class="choice-menu">
+        ${options.map((option) => `
+          <button class="choice-option ${option.value === selected.value ? "active" : ""}" type="button" data-action="choose-profile-option" data-choice-value="${escapeHtml(option.value)}">
+            ${escapeHtml(option.label)}
+          </button>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
 function renderSettingsSection(title, cells) {
   return `
     <section class="settings-group" aria-label="${escapeHtml(title)}">
@@ -2624,8 +2874,9 @@ function renderSettingsCell(primary, secondary = "", right = "", action = "", di
     ${right ? `<span class="settings-cell-right">${right}</span>` : isButton ? `<span class="settings-chevron">›</span>` : ""}
   `;
   if (!isButton) return `<div class="settings-cell">${content}</div>`;
+  const isSettingsContent = ["manual", "budgets", "profile"].includes(action);
   return `
-    <button class="settings-cell" data-action="${escapeHtml(action === "manual" || action === "budgets" ? "settings-content" : action)}" ${action === "manual" || action === "budgets" ? `data-content="${escapeHtml(action)}"` : ""} ${disabled ? "disabled aria-busy=\"true\"" : ""}>
+    <button class="settings-cell" data-action="${escapeHtml(isSettingsContent ? "settings-content" : action)}" ${isSettingsContent ? `data-content="${escapeHtml(action)}"` : ""} ${disabled ? "disabled aria-busy=\"true\"" : ""}>
       ${content}
     </button>
   `;
@@ -3585,6 +3836,10 @@ document.addEventListener("submit", (event) => {
     }
     return;
   }
+  if (form.getAttribute("id") === "profile-form") {
+    handleProfileSave(form);
+    return;
+  }
   if (form.getAttribute("id") === "account-form") {
     if (guardDemoMutation()) return;
     beginRealDataMode();
@@ -3644,6 +3899,15 @@ document.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("input", (event) => {
+  const profileField = event.target?.dataset?.profileField;
+  if (profileField) {
+    state.profile.draft = {
+      ...state.profile.draft,
+      [profileField]: event.target.value,
+    };
+    return;
+  }
+
   const key = event.target?.dataset?.filter;
   if (!key) return;
   state.filters[key] = event.target.value;
@@ -3692,6 +3956,21 @@ document.addEventListener("click", (event) => {
   if (action === "choose-option") {
     chooseOption(node);
   }
+  if (action === "choose-profile-option") {
+    const choice = node.closest("[data-choice]");
+    const value = node.dataset.choiceValue || "";
+    state.profile.draft = {
+      ...state.profile.draft,
+      gender: value,
+    };
+    const input = choice?.querySelector("input[type=\"hidden\"]");
+    if (input) input.value = value;
+    choice?.querySelector(".choice-trigger span:first-child")?.replaceChildren(document.createTextNode(node.textContent.trim()));
+    choice?.querySelectorAll(".choice-option").forEach((option) => {
+      option.classList.toggle("active", option === node);
+    });
+    closeChoiceMenus();
+  }
   if (action === "pick-field") {
     pickFormField(node);
   }
@@ -3712,7 +3991,21 @@ document.addEventListener("click", (event) => {
       warnDemoMode();
       return;
     }
-    state.activeTab = node.dataset.tab || "ledger";
+    const nextTab = node.dataset.tab || "ledger";
+    const now = event.timeStamp || performance.now();
+    const doubleTap = state.activeTab === nextTab
+      && lastTabTap.tab === nextTab
+      && now - lastTabTap.at < 320;
+    lastTabTap = { tab: nextTab, at: now };
+    if (doubleTap) {
+      if (nextTab === "ledger") {
+        refreshLedgerFromTab();
+      } else {
+        scrollTabStageToTop();
+      }
+      return;
+    }
+    state.activeTab = nextTab;
     if (state.activeTab === "settings") state.settingsContent = "home";
     render();
   }
@@ -3762,7 +4055,11 @@ document.addEventListener("click", (event) => {
   }
   if (action === "settings-content") {
     const content = node.dataset.content || "home";
-    if (!["home", "manual", "budgets"].includes(content)) return;
+    if (!["home", "manual", "budgets", "profile"].includes(content)) return;
+    if (content === "profile") {
+      openProfileSettings();
+      return;
+    }
     state.settingsContent = content;
     render();
   }
@@ -3787,9 +4084,6 @@ document.addEventListener("click", (event) => {
   }
   if (action === "sign-out") {
     handleAuthSignOut();
-  }
-  if (action === "sync-cloud") {
-    syncCloudNow({ silent: false });
   }
   if (action === "reset-budgets") {
     if (guardDemoMutation()) return;
@@ -3917,6 +4211,12 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && state.auth.user && state.settingsContent !== "profile") {
+    void loadSharedProfile({ silent: true });
+  }
+});
 
 render();
 initCloudAuth();
