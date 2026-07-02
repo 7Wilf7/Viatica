@@ -9,7 +9,7 @@ const TABLES = {
 
 function isSchemaFallbackError(error) {
   const message = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`.toLowerCase();
-  return /column|schema cache|does not exist|invalid input syntax for type uuid|constraint/.test(message);
+  return /column|schema cache|does not exist|invalid input syntax for type uuid|there is no unique or exclusion constraint|violates not-null constraint/.test(message);
 }
 
 function asIso(value, fallback = new Date()) {
@@ -78,6 +78,7 @@ function toTransactionRow(txn, userId, mode = "client_id") {
     receipt_data_url: txn.receiptDataUrl || "",
   };
   if (mode === "client_id") row.client_id = txn.id;
+  if (mode === "local_id") row.local_id = txn.id;
   if (mode === "id") row.id = txn.id;
   return row;
 }
@@ -185,90 +186,169 @@ async function fetchCloudState(supabase, userId) {
   };
 }
 
+function uniqueKeys(values = []) {
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
+function indexRows(rows = [], getKeys) {
+  const index = new Map();
+  for (const row of rows) {
+    for (const key of uniqueKeys(getKeys(row))) {
+      if (!index.has(key)) index.set(key, row);
+    }
+  }
+  return index;
+}
+
+function applyFilters(query, filters = []) {
+  return filters.reduce((nextQuery, [column, value]) => nextQuery.eq(column, value), query);
+}
+
+function transactionRowKeys(row = {}) {
+  return [row.client_id, row.local_id, row.id];
+}
+
+function transactionKeys(txn = {}) {
+  return [txn.id];
+}
+
+function transactionRows(txn, userId) {
+  return [
+    toTransactionRow(txn, userId, "client_id"),
+    toTransactionRow(txn, userId, "local_id"),
+    toTransactionRow(txn, userId, "id"),
+  ];
+}
+
+function transactionUpdateRows(txn, userId) {
+  return [
+    toTransactionRow(txn, userId, "client_id"),
+    toTransactionRow(txn, userId, "local_id"),
+    toTransactionRow(txn, userId, "none"),
+  ];
+}
+
+function budgetRows(category, amount, userId) {
+  return [
+    toBudgetRow(category, amount, userId, "amount"),
+    toBudgetRow(category, amount, userId, "budget"),
+    toBudgetRow(category, amount, userId, "monthly_budget"),
+  ];
+}
+
+function accountRows(account, userId) {
+  return [
+    toAccountRow(account, userId, "full"),
+    toAccountRow(account, userId, "minimal"),
+  ];
+}
+
+async function trySchemaVariants(variants) {
+  let lastError = null;
+  for (const variant of variants) {
+    const result = await variant();
+    if (!result?.error) return result;
+    if (!isSchemaFallbackError(result.error)) throw result.error;
+    lastError = result.error;
+  }
+  if (lastError) throw lastError;
+  return { data: null, error: null };
+}
+
+async function updateRowByFilters(supabase, table, rows, filters) {
+  return trySchemaVariants(rows.map((row) => () => {
+    const query = supabase.from(table).update(row);
+    return applyFilters(query, filters);
+  }));
+}
+
+async function insertRow(supabase, table, rows) {
+  return trySchemaVariants(rows.map((row) => () => supabase.from(table).insert(row)));
+}
+
+function existingIdFilters(existing, userId) {
+  return existing?.id ? [["user_id", userId], ["id", existing.id]] : [];
+}
+
+function existingClientIdFilters(existing, userId) {
+  if (existing?.client_id) return [["user_id", userId], ["client_id", existing.client_id]];
+  if (existing?.local_id) return [["user_id", userId], ["local_id", existing.local_id]];
+  return [];
+}
+
 async function upsertTransactions(supabase, userId, transactions) {
   if (!transactions.length) return;
-  const clientIdRows = transactions.map((txn) => toTransactionRow(txn, userId, "client_id"));
-  const clientIdResult = await supabase
-    .from(TABLES.transactions)
-    .upsert(clientIdRows, { onConflict: "user_id,client_id" });
-  if (!clientIdResult.error) return;
-  if (!isSchemaFallbackError(clientIdResult.error)) throw clientIdResult.error;
-
-  const clientIdOnlyResult = await supabase
-    .from(TABLES.transactions)
-    .upsert(clientIdRows, { onConflict: "client_id" });
-  if (!clientIdOnlyResult.error) return;
-  if (!isSchemaFallbackError(clientIdOnlyResult.error)) throw clientIdOnlyResult.error;
-
-  const idRows = transactions.map((txn) => toTransactionRow(txn, userId, "id"));
-  const idResult = await supabase
-    .from(TABLES.transactions)
-    .upsert(idRows, { onConflict: "id" });
-  if (idResult.error) throw idResult.error;
+  const existingRows = await selectRows(supabase, TABLES.transactions, userId, null);
+  const existingByKey = indexRows(existingRows, transactionRowKeys);
+  for (const txn of transactions) {
+    const existing = transactionKeys(txn).map((key) => existingByKey.get(key)).find(Boolean);
+    if (existing) {
+      const idFilters = existingIdFilters(existing, userId);
+      const filters = idFilters.length ? idFilters : existingClientIdFilters(existing, userId);
+      if (filters.length) {
+        await updateRowByFilters(supabase, TABLES.transactions, transactionUpdateRows(txn, userId), filters);
+        continue;
+      }
+    }
+    await insertRow(supabase, TABLES.transactions, transactionRows(txn, userId));
+  }
 }
 
 async function upsertBudgets(supabase, userId, budgets = {}) {
   const entries = Object.entries(budgets || {});
   if (!entries.length) return;
-  const amountRows = entries.map(([category, amount]) => toBudgetRow(category, amount, userId, "amount"));
-  const amountResult = await supabase
-    .from(TABLES.budgets)
-    .upsert(amountRows, { onConflict: "user_id,category" });
-  if (!amountResult.error) return;
-  if (!isSchemaFallbackError(amountResult.error)) throw amountResult.error;
-
-  const budgetRows = entries.map(([category, amount]) => toBudgetRow(category, amount, userId, "budget"));
-  const budgetResult = await supabase
-    .from(TABLES.budgets)
-    .upsert(budgetRows, { onConflict: "user_id,category" });
-  if (!budgetResult.error) return;
-  if (!isSchemaFallbackError(budgetResult.error)) throw budgetResult.error;
-
-  const monthlyRows = entries.map(([category, amount]) => toBudgetRow(category, amount, userId, "monthly_budget"));
-  const monthlyResult = await supabase
-    .from(TABLES.budgets)
-    .upsert(monthlyRows, { onConflict: "user_id,category" });
-  if (monthlyResult.error) throw monthlyResult.error;
+  const existingRows = await selectRows(supabase, TABLES.budgets, userId, null);
+  const existingByCategory = indexRows(existingRows, (row) => [row.category]);
+  for (const [category, amount] of entries) {
+    const rows = budgetRows(category, amount, userId);
+    const existing = existingByCategory.get(category);
+    if (existing) {
+      await updateRowByFilters(supabase, TABLES.budgets, rows, [["user_id", userId], ["category", category]]);
+    } else {
+      await insertRow(supabase, TABLES.budgets, rows);
+    }
+  }
 }
 
 async function upsertAccounts(supabase, userId, accounts = []) {
   const normalizedAccounts = normalizeAccounts(accounts, []);
   if (!normalizedAccounts.length) return;
-  const fullRows = normalizedAccounts.map((account) => toAccountRow(account, userId, "full"));
-  const fullResult = await supabase
-    .from(TABLES.accounts)
-    .upsert(fullRows, { onConflict: "user_id,name" });
-  if (!fullResult.error) return;
-  if (!isSchemaFallbackError(fullResult.error)) throw fullResult.error;
-
-  const minimalRows = normalizedAccounts.map((account) => toAccountRow(account, userId, "minimal"));
-  const minimalResult = await supabase
-    .from(TABLES.accounts)
-    .upsert(minimalRows, { onConflict: "user_id,name" });
-  if (minimalResult.error) throw minimalResult.error;
+  const existingRows = await selectRows(supabase, TABLES.accounts, userId, null);
+  const existingByName = indexRows(existingRows, (row) => [row.name]);
+  for (const account of normalizedAccounts) {
+    const rows = accountRows(account, userId);
+    const existing = existingByName.get(account.name);
+    if (existing) {
+      await updateRowByFilters(supabase, TABLES.accounts, rows, [["user_id", userId], ["name", account.name]]);
+    } else {
+      await insertRow(supabase, TABLES.accounts, rows);
+    }
+  }
 }
 
 async function deleteCloudTransactionsByIds(supabase, userId, ids = []) {
   const uniqueIds = [...new Set(ids.map(String).filter(Boolean))];
   if (!uniqueIds.length) return;
 
-  const clientIdResult = await supabase
-    .from(TABLES.transactions)
-    .delete()
-    .eq("user_id", userId)
-    .in("client_id", uniqueIds);
-  if (!clientIdResult.error) return;
-  if (!isSchemaFallbackError(clientIdResult.error)) throw clientIdResult.error;
-
-  const idResult = await supabase
-    .from(TABLES.transactions)
-    .delete()
-    .eq("user_id", userId)
-    .in("id", uniqueIds);
-  if (idResult.error) throw idResult.error;
+  let supportedColumn = false;
+  let lastSchemaError = null;
+  for (const column of ["client_id", "local_id", "id"]) {
+    const result = await supabase
+      .from(TABLES.transactions)
+      .delete()
+      .eq("user_id", userId)
+      .in(column, uniqueIds);
+    if (!result.error) {
+      supportedColumn = true;
+      continue;
+    }
+    if (!isSchemaFallbackError(result.error)) throw result.error;
+    lastSchemaError = result.error;
+  }
+  if (!supportedColumn && lastSchemaError) throw lastSchemaError;
 }
 
-async function pushCloudState(supabase, userId, state) {
+export async function pushCloudState(supabase, userId, state) {
   const deletedTransactionIds = uniqueDeletedIds(state.preferences);
   await deleteCloudTransactionsByIds(supabase, userId, deletedTransactionIds);
   await upsertTransactions(supabase, userId, state.transactions || []);
