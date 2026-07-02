@@ -54,6 +54,7 @@ const MIRROR_APK_URL = SUPABASE_PUBLIC_URL
   ? `${SUPABASE_PUBLIC_URL}/storage/v1/object/public/releases/viatica-latest.apk`
   : null;
 const AUTO_CHECK_CACHE_MS = 30 * 60 * 1000;
+const BOOT_REVEAL_MS = 3600;
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
 let releaseCheckCache = null;
@@ -2090,11 +2091,24 @@ function runLongPressAction(node) {
 
 function scheduleBootSplashDismiss() {
   if (!bootSplashVisible || bootSplashDismissTimer) return;
+  if (bootSplashFrameMs() !== null) return;
   bootSplashDismissTimer = window.setTimeout(() => {
     bootSplashVisible = false;
     bootSplashDismissTimer = 0;
     render();
-  }, 1300);
+  }, BOOT_REVEAL_MS);
+}
+
+function bootSplashFrameMs() {
+  try {
+    const value = new URLSearchParams(window.location.search).get("boot_t");
+    if (value === null) return null;
+    const frameMs = Number(value);
+    if (!Number.isFinite(frameMs)) return null;
+    return Math.max(0, Math.min(BOOT_REVEAL_MS, frameMs));
+  } catch {
+    return null;
+  }
 }
 
 function render() {
@@ -2127,10 +2141,30 @@ function render() {
 }
 
 function renderBootSplash() {
+  const frameMs = bootSplashFrameMs();
+  const qaFrameClass = frameMs === null ? "" : " boot-splash-qa";
+  const qaFrameStyle = frameMs === null ? "" : ` style="--boot-delay: -${frameMs}ms"`;
   return `
-    <section class="boot-splash" aria-label="${escapeHtml(t("splash.label"))}">
-      <img class="brand-logo boot-splash-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
-      <div class="brand-wordmark boot-wordmark">${escapeHtml(PRODUCT_NAME)}</div>
+    <section class="boot-splash${qaFrameClass}"${qaFrameStyle} aria-label="${escapeHtml(t("splash.label"))}">
+      <div class="boot-splash-stack" aria-busy="true">
+        <div class="boot-logo-stage">
+          <svg class="boot-logo-build" viewBox="0 0 512 512" aria-hidden="true">
+            <rect class="boot-logo-tile" x="30" y="30" width="452" height="452" rx="88" pathLength="1" />
+            <path class="boot-logo-circuit" pathLength="1" d="M56 168 H156 C188 168 190 124 222 124 H316 C350 124 360 82 400 82 H458" />
+            <path class="boot-logo-circuit" pathLength="1" d="M54 284 H142 C174 284 184 236 224 236 H306 C342 236 348 194 390 194 H458" />
+            <path class="boot-logo-circuit boot-logo-circuit-late" pathLength="1" d="M122 454 V354 C122 316 164 312 164 274 V170 C164 128 210 126 210 86" />
+            <path class="boot-logo-circuit boot-logo-circuit-late" pathLength="1" d="M290 458 V338 C290 300 246 292 246 252 V156 C246 116 288 108 288 58" />
+            <path class="boot-logo-mark boot-logo-mark-left" pathLength="1" d="M164 180 L250 132 L250 238 L164 286 Z" />
+            <path class="boot-logo-mark boot-logo-mark-right" pathLength="1" d="M276 150 L364 198 L364 298 L276 250 Z" />
+            <path class="boot-logo-mark boot-logo-mark-bottom" pathLength="1" d="M260 266 L326 302 L260 348 Z" />
+          </svg>
+          <img class="brand-logo boot-splash-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
+          <svg class="boot-logo-frame" viewBox="0 0 512 512" aria-hidden="true">
+            <rect class="boot-logo-frame-rect" x="30" y="30" width="452" height="452" rx="88" pathLength="1" />
+          </svg>
+        </div>
+        <div class="brand-wordmark boot-wordmark">${escapeHtml(PRODUCT_NAME)}</div>
+      </div>
     </section>
   `;
 }

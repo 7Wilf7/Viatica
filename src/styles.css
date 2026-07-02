@@ -95,24 +95,12 @@ body::after {
 
 @keyframes boot-splash-presence {
   0%,
-  78% {
+  86% {
     opacity: 1;
   }
 
   100% {
     opacity: 0;
-  }
-}
-
-@keyframes boot-splash-mark {
-  0% {
-    opacity: 0;
-    transform: translateY(5px) scale(0.985);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
@@ -228,34 +216,280 @@ label span {
   inset: 0;
   z-index: 120;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 43%, oklch(0.700 0.052 86 / 0.105), transparent 245px),
+    linear-gradient(180deg, oklch(0.130 0.007 95), var(--bg));
+  pointer-events: none;
+  animation: boot-splash-presence 3600ms var(--ease-out) forwards;
+  overflow: hidden;
+  isolation: isolate;
+  --boot-duration: 3600ms;
+}
+
+.boot-splash-stack {
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: min(4.6vmin, 22px);
-  padding: 24px;
-  background:
-    radial-gradient(circle at 50% 43%, oklch(0.700 0.052 86 / 0.12), transparent 235px),
-    linear-gradient(180deg, oklch(0.130 0.007 95), var(--bg));
+  gap: min(2.8vmin, 16px);
+  text-align: center;
+  transform: translateY(-2.8vmin);
+}
+
+.boot-logo-stage {
+  position: relative;
+  width: min(31vmin, 152px);
+  height: min(31vmin, 152px);
+}
+
+.boot-logo-build,
+.boot-logo-frame,
+.boot-splash-logo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.boot-logo-build {
+  overflow: visible;
+}
+
+.boot-logo-frame {
+  overflow: visible;
+  z-index: 2;
   pointer-events: none;
-  animation: boot-splash-presence 1300ms var(--ease-out) forwards;
 }
 
 .boot-splash-logo {
-  width: min(31vmin, 152px);
-  height: min(31vmin, 152px);
   border-radius: 22px;
-  animation: boot-splash-mark 360ms var(--ease-out) both;
+  object-fit: contain;
+  transform-origin: center;
+  z-index: 1;
+}
+
+.boot-logo-tile,
+.boot-logo-frame-rect {
+  fill: oklch(0.112 0.007 95);
+  stroke: oklch(0.760 0.038 86 / 0.70);
+  stroke-width: 3.4;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 8px oklch(0.700 0.052 86 / 0.18));
+}
+
+.boot-logo-frame-rect {
+  fill: none;
+  stroke: oklch(0.790 0.026 86 / 0.50);
+  stroke-width: 2.1;
+  filter: drop-shadow(0 0 4px oklch(0.700 0.052 86 / 0.12));
+}
+
+.boot-logo-circuit {
+  fill: none;
+  stroke: oklch(0.690 0.032 88 / 0.38);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.boot-logo-mark {
+  fill: oklch(0.735 0.054 86 / 0.08);
+  stroke: oklch(0.840 0.064 86 / 0.86);
+  stroke-width: 4;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 10px oklch(0.700 0.060 86 / 0.34));
+}
+
+.boot-logo-mark-left,
+.boot-logo-mark-right,
+.boot-logo-mark-bottom {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 .boot-wordmark {
   font-family: TSSign, "Segoe Script", cursive;
   color: var(--ink);
-  font-size: min(12vmin, 62px);
+  font-size: min(12.5vmin, 52px);
   font-weight: 400;
   letter-spacing: 0;
   line-height: 1;
   text-rendering: geometricPrecision;
-  animation: boot-splash-mark 420ms 80ms var(--ease-out) both;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .boot-logo-stage,
+  .boot-logo-build,
+  .boot-logo-frame,
+  .boot-splash-logo,
+  .boot-logo-tile,
+  .boot-logo-frame-rect,
+  .boot-logo-circuit,
+  .boot-logo-mark,
+  .boot-wordmark {
+    animation-duration: var(--boot-duration);
+    animation-delay: var(--boot-delay, 0ms);
+    animation-fill-mode: both;
+    animation-timing-function: linear;
+  }
+
+  .boot-logo-stage {
+    animation-name: viaticaLogoStage;
+    will-change: transform, opacity;
+  }
+
+  .boot-logo-build {
+    animation-name: viaticaBuildLayer;
+  }
+
+  .boot-splash-logo {
+    animation-name: viaticaFinalLogo;
+    will-change: transform, opacity, filter;
+  }
+
+  .boot-logo-tile {
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 1;
+    animation-name: viaticaTileDraw;
+  }
+
+  .boot-logo-frame-rect {
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 1;
+    animation-name: viaticaFrameHold;
+  }
+
+  .boot-logo-circuit {
+    stroke-dasharray: 1 1.12;
+    stroke-dashoffset: 1.08;
+    animation-name: viaticaCircuitDraw;
+  }
+
+  .boot-logo-circuit-late {
+    animation-name: viaticaCircuitDrawLate;
+  }
+
+  .boot-logo-mark {
+    stroke-dasharray: 1 1.14;
+    stroke-dashoffset: 1.1;
+    animation-name: viaticaMarkBuild;
+  }
+
+  .boot-logo-mark-right {
+    animation-name: viaticaMarkBuildRight;
+  }
+
+  .boot-logo-mark-bottom {
+    animation-name: viaticaMarkBuildBottom;
+  }
+
+  .boot-wordmark {
+    animation-name: viaticaWordReveal;
+    will-change: clip-path, opacity, transform;
+  }
+}
+
+.boot-splash-qa {
+  animation: none;
+}
+
+.boot-splash-qa,
+.boot-splash-qa * {
+  animation-play-state: paused !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-logo-build {
+    display: none;
+  }
+
+  .boot-logo-frame,
+  .boot-splash-logo,
+  .boot-wordmark {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    clip-path: none;
+  }
+}
+
+@keyframes viaticaLogoStage {
+  0% { opacity: 0; transform: translateY(14px) scale(0.86); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  8% { opacity: 1; transform: translateY(14px) scale(0.84); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  42% { opacity: 1; transform: translateY(-1px) scale(1.02); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  62% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes viaticaTileDraw {
+  0%, 7% { opacity: 0; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  25% { opacity: 1; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  100% { opacity: 1; stroke-dashoffset: 0; }
+}
+
+@keyframes viaticaFrameHold {
+  0%, 7% { opacity: 0; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  25% { opacity: 1; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  100% { opacity: 1; stroke-dashoffset: 0; }
+}
+
+@keyframes viaticaCircuitDraw {
+  0%, 14% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  46% { opacity: 0.82; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  76% { opacity: 0.38; stroke-dashoffset: 0; }
+  100% { opacity: 0.24; stroke-dashoffset: 0; }
+}
+
+@keyframes viaticaCircuitDrawLate {
+  0%, 22% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  54% { opacity: 0.72; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  80% { opacity: 0.34; stroke-dashoffset: 0; }
+  100% { opacity: 0.22; stroke-dashoffset: 0; }
+}
+
+@keyframes viaticaMarkBuild {
+  0%, 26% { opacity: 0; fill-opacity: 0; stroke-dashoffset: 1.1; transform: translate3d(-8px, 4px, 0) scale(0.96); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  58% { opacity: 0.92; fill-opacity: 0.28; stroke-dashoffset: 0; transform: translate3d(0, 0, 0) scale(1.02); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  76% { opacity: 0.42; fill-opacity: 0.12; stroke-dashoffset: 0; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 0; fill-opacity: 0; stroke-dashoffset: 0; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes viaticaMarkBuildRight {
+  0%, 32% { opacity: 0; fill-opacity: 0; stroke-dashoffset: 1.1; transform: translate3d(8px, 4px, 0) scale(0.96); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  62% { opacity: 0.92; fill-opacity: 0.28; stroke-dashoffset: 0; transform: translate3d(0, 0, 0) scale(1.02); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  78% { opacity: 0.42; fill-opacity: 0.12; stroke-dashoffset: 0; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 0; fill-opacity: 0; stroke-dashoffset: 0; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes viaticaMarkBuildBottom {
+  0%, 38% { opacity: 0; fill-opacity: 0; stroke-dashoffset: 1.1; transform: translate3d(0, 10px, 0) scale(0.94); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  66% { opacity: 0.9; fill-opacity: 0.26; stroke-dashoffset: 0; transform: translate3d(0, 0, 0) scale(1.018); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  80% { opacity: 0.4; fill-opacity: 0.12; stroke-dashoffset: 0; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 0; fill-opacity: 0; stroke-dashoffset: 0; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes viaticaBuildLayer {
+  0%, 70% { opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  88%, 100% { opacity: 0; }
+}
+
+@keyframes viaticaFinalLogo {
+  0%, 58% { opacity: 0; transform: scale(0.965); filter: blur(5px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  76% { opacity: 1; transform: scale(1.012); filter: blur(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+@keyframes viaticaWordReveal {
+  0%, 14% { opacity: 0; clip-path: inset(0 100% 0 0); transform: translate3d(-8px, 0, 0); animation-timing-function: cubic-bezier(0.33, 0, 0.24, 1); }
+  24% { opacity: 1; clip-path: inset(0 80% 0 0); transform: translate3d(-4px, 0, 0); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+  86% { opacity: 1; clip-path: inset(0 0 0 0); transform: translate3d(0, 0, 0); animation-timing-function: linear; }
+  100% { opacity: 1; clip-path: inset(0 0 0 0); transform: translate3d(0, 0, 0); }
 }
 
 .tab-stage {
