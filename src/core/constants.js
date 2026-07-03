@@ -28,8 +28,8 @@ export const EXPENSE_CATEGORIES = [
   "餐饮",
   "交通",
   "购物",
-  "运动装备",
-  "比赛/训练",
+  "运动",
+  "生活",
   "健康",
   "AI 工具",
   "订阅",
@@ -48,12 +48,17 @@ export const INCOME_CATEGORIES = [
 
 export const CATEGORIES = EXPENSE_CATEGORIES;
 
+export const EXPENSE_CATEGORY_ALIASES = {
+  "运动装备": "运动",
+  "比赛/训练": "运动",
+};
+
 export const DEFAULT_BUDGETS = {
   "餐饮": 2500,
   "交通": 600,
   "购物": 1200,
-  "运动装备": 1000,
-  "比赛/训练": 800,
+  "运动": 1800,
+  "生活": 7500,
   "健康": 600,
   "AI 工具": 500,
   "订阅": 300,

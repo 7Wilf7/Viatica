@@ -5,6 +5,7 @@ import {
   filterTransactions,
   normalizeAccount,
   normalizeAccounts,
+  normalizeBudgets,
   normalizeTransaction,
   summarizeLedger,
 } from "./ledger.js";
@@ -44,15 +45,15 @@ test("summarizes current month and today totals", () => {
   const txns = [
     normalizeTransaction({ amount: 30, category: "餐饮", account: "微信", title: "早餐", occurredAt: "2026-06-24T08:00" }),
     normalizeTransaction({ type: "income", amount: 1000, category: "退款", account: "银行卡", title: "退款", occurredAt: "2026-06-24T09:00" }),
-    normalizeTransaction({ amount: 899, category: "运动装备", account: "支付宝", title: "越野鞋", occurredAt: "2026-06-23T09:00" }),
+    normalizeTransaction({ amount: 899, category: "运动", account: "支付宝", title: "越野鞋", occurredAt: "2026-06-23T09:00" }),
   ];
-  const summary = summarizeLedger(txns, { "运动装备": 1000 }, new Date("2026-06-24T12:00"));
+  const summary = summarizeLedger(txns, { "运动": 1000 }, new Date("2026-06-24T12:00"));
 
   assert.equal(summary.todayExpense, 30);
   assert.equal(summary.todayIncome, 1000);
   assert.equal(summary.monthExpense, 929);
   assert.equal(summary.monthBalance, 71);
-  assert.equal(summary.budgets["运动装备"].remaining, 101);
+  assert.equal(summary.budgets["运动"].remaining, 101);
 });
 
 test("normalizes income with income-only categories and legacy work income", () => {
@@ -70,6 +71,20 @@ test("normalizes income with income-only categories and legacy work income", () 
   assert.equal(invalid.category, "其他收入");
 });
 
+test("normalizes legacy sports expense categories", () => {
+  const gear = normalizeTransaction({ amount: 899, category: "运动装备", account: "银行卡", title: "越野跑鞋" });
+  const training = normalizeTransaction({ amount: 168, category: "比赛/训练", account: "微信", title: "训练课" });
+  const summary = summarizeLedger([gear, training], { "运动": 1200 }, new Date());
+  const budgets = normalizeBudgets({ "运动装备": 1000, "比赛/训练": 800 }, { defaults: {} });
+
+  assert.equal(gear.category, "运动");
+  assert.equal(training.category, "运动");
+  assert.equal(summary.categoryExpense["运动"], 1067);
+  assert.equal(budgets["运动"], 1800);
+  assert.equal("运动装备" in budgets, false);
+  assert.equal("比赛/训练" in budgets, false);
+});
+
 test("filters transactions by book and query", () => {
   const txns = [
     normalizeTransaction({ amount: 20, category: "餐饮", account: "微信", title: "咖啡", book: "日常账本" }),
@@ -84,7 +99,7 @@ test("filters reimbursable and receipt-backed transactions", () => {
   const txns = [
     normalizeTransaction({ amount: 20, category: "餐饮", account: "微信", title: "咖啡" }),
     normalizeTransaction({ amount: 168, category: "交通", account: "支付宝", title: "高铁", reimbursable: true }),
-    normalizeTransaction({ amount: 899, category: "运动装备", account: "银行卡", title: "越野鞋", receiptDataUrl: "data:image/png;base64,test" }),
+    normalizeTransaction({ amount: 899, category: "运动", account: "银行卡", title: "越野鞋", receiptDataUrl: "data:image/png;base64,test" }),
   ];
 
   assert.equal(filterTransactions(txns, { reimbursable: "yes" }).length, 1);
@@ -95,7 +110,7 @@ test("filters reimbursable and receipt-backed transactions", () => {
 test("csv export and import round trips ledger rows", () => {
   const txns = [
     normalizeTransaction({ amount: 20, category: "餐饮", account: "微信", title: "咖啡", tags: "work" }),
-    normalizeTransaction({ amount: 899, category: "运动装备", account: "支付宝", title: "新越野鞋", tags: "trail_shoes gear" }),
+    normalizeTransaction({ amount: 899, category: "运动", account: "支付宝", title: "新越野鞋", tags: "trail_shoes gear" }),
   ];
   const csv = exportTransactionsCsv(txns);
   const imported = importTransactionsCsv(csv, new Date("2026-06-24T08:00:00"));

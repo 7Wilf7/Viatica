@@ -1,5 +1,5 @@
 import { getCloudClient, getCloudUser } from "./cloud.js";
-import { normalizeAccount, normalizeAccounts, normalizeTransaction } from "./ledger.js";
+import { normalizeAccount, normalizeAccounts, normalizeBudgets, normalizeTransaction } from "./ledger.js";
 
 const TABLES = {
   transactions: "viatica_transactions",
@@ -144,10 +144,10 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
   const remoteBudgets = remoteState.budgets && Object.keys(remoteState.budgets).length
     ? remoteState.budgets
     : {};
-  const budgets = {
+  const budgets = normalizeBudgets({
     ...(localState.budgets || {}),
     ...remoteBudgets,
-  };
+  });
 
   const accountMap = new Map();
   for (const account of normalizeAccounts(localState.accounts || [], [], now)) {

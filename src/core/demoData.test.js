@@ -27,7 +27,9 @@ test("temporary demo ledger data is valid and useful for chart review", () => {
   assert.ok(summary.monthExpense > 12000);
   assert.ok(summary.monthIncome > 30000);
   assert.ok(summary.categoryExpense["餐饮"] > 0);
-  assert.ok(summary.budgets["运动装备"].ratio > 0);
+  assert.ok(summary.categoryExpense["生活"] > 0);
+  assert.ok(summary.budgets["运动"].ratio > 0);
+  assert.ok(summary.budgets["生活"].ratio > 0);
   assert.ok(summary.accountNet["银行卡"] > 0);
 });
 

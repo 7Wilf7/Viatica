@@ -160,6 +160,22 @@ test("merges local and cloud transactions without dropping either side", () => {
   assert.deepEqual(merged.accounts.map((account) => account.name).sort(), ["其他", "微信"]);
 });
 
+test("merges legacy sports budgets into the unified sports budget", () => {
+  const now = new Date("2026-07-01T12:00:00+08:00");
+  const merged = mergeLedgerStates({
+    transactions: [],
+    budgets: { "运动装备": 1000 },
+    preferences: {},
+  }, {
+    transactions: [],
+    budgets: { "比赛/训练": 800 },
+  }, now);
+
+  assert.equal(merged.budgets["运动"], 1800);
+  assert.equal("运动装备" in merged.budgets, false);
+  assert.equal("比赛/训练" in merged.budgets, false);
+});
+
 test("keeps the newest transaction when local and cloud share an id", () => {
   const now = new Date("2026-07-01T12:00:00+08:00");
   const merged = mergeLedgerStates({

@@ -5,6 +5,7 @@ import {
   ACCOUNTS,
   CATEGORIES,
   DEFAULT_BUDGETS,
+  EXPENSE_CATEGORY_ALIASES,
   EXPENSE_CATEGORIES,
   INCOME_CATEGORIES,
   TRANSACTION_TYPES,
@@ -35,6 +36,7 @@ import {
   filterTransactions,
   normalizeAccount,
   normalizeAccounts,
+  normalizeBudgets,
   normalizeTransaction,
   summarizeLedger,
 } from "./core/ledger.js";
@@ -64,10 +66,11 @@ const cloudAuthConfigured = isCloudAuthConfigured();
 let bootSplashVisible = true;
 let bootSplashDismissTimer = 0;
 const storedState = loadState();
+const storedTransactions = normalizeTransactionList(storedState.transactions);
 const hasStoredDataMode = ["personal", "demo"].includes(storedState.preferences?.dataMode);
 const initialDataMode = hasStoredDataMode
   ? storedState.preferences.dataMode
-  : (VIATICA_DEMO_DATA_ENABLED && storedState.transactions.length === 0 ? "demo" : "personal");
+  : (VIATICA_DEMO_DATA_ENABLED && storedTransactions.length === 0 ? "demo" : "personal");
 const demoReferenceDate = new Date();
 const demoLedgerState = {
   transactions: demoTransactionsForMonth(demoReferenceDate).map((txn) => normalizeTransaction(txn, demoReferenceDate)),
@@ -76,7 +79,7 @@ const demoLedgerState = {
 };
 const state = {
   ...storedState,
-  transactions: storedState.transactions,
+  transactions: storedTransactions,
   budgets: storedState.budgets,
   accounts: storedState.accounts,
   activeTab: "ledger",
@@ -131,7 +134,7 @@ const state = {
   },
 };
 
-state.budgets = { ...DEFAULT_BUDGETS, ...state.budgets };
+state.budgets = normalizeBudgets(state.budgets);
 state.preferences = {
   activeBook: "日常账本",
   locale: "zh",
@@ -376,8 +379,8 @@ const CATEGORY_META = {
   "餐饮": { icon: "food", fg: "oklch(0.70 0.11 50)", bg: "oklch(0.70 0.11 50 / 0.16)" },
   "交通": { icon: "transport", fg: "oklch(0.68 0.11 230)", bg: "oklch(0.68 0.11 230 / 0.15)" },
   "购物": { icon: "shopping", fg: "oklch(0.72 0.10 330)", bg: "oklch(0.72 0.10 330 / 0.15)" },
-  "运动装备": { icon: "gear", fg: "oklch(0.72 0.10 145)", bg: "oklch(0.72 0.10 145 / 0.15)" },
-  "比赛/训练": { icon: "training", fg: "oklch(0.70 0.09 160)", bg: "oklch(0.70 0.09 160 / 0.15)" },
+  "运动": { icon: "training", fg: "oklch(0.70 0.09 160)", bg: "oklch(0.70 0.09 160 / 0.15)" },
+  "生活": { icon: "work", fg: "oklch(0.74 0.07 72)", bg: "oklch(0.74 0.07 72 / 0.15)" },
   "健康": { icon: "health", fg: "oklch(0.72 0.13 24)", bg: "oklch(0.72 0.13 24 / 0.15)" },
   "AI 工具": { icon: "ai", fg: "oklch(0.73 0.10 275)", bg: "oklch(0.73 0.10 275 / 0.15)" },
   "订阅": { icon: "subscription", fg: "oklch(0.72 0.10 85)", bg: "oklch(0.72 0.10 85 / 0.16)" },
@@ -406,8 +409,8 @@ const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
   { category: "餐饮", items: ["早餐", "午餐", "晚餐", "宵夜", "咖啡奶茶", "水果", "其他"] },
   { category: "交通", items: ["共享单车", "地铁", "打车"] },
   { category: "购物", items: ["日用品", "服饰", "数码", "家居"] },
-  { category: "运动装备", items: ["装备", "补给"] },
-  { category: "比赛/训练", items: ["康复", "训练课", "赛事报名"] },
+  { category: "运动", items: ["装备", "补给", "康复", "训练课", "赛事报名"] },
+  { category: "生活", items: ["房租", "理发"] },
   { category: "健康", items: ["保险", "医疗", "药品"] },
   { category: "AI 工具", items: ["ChatGPT", "Aevum"] },
   { category: "订阅", items: ["App"] },
@@ -544,6 +547,23 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-07-03",
+    title: {
+      zh: "合并运动分类并新增生活分类",
+      en: "Consolidated Sports and Added Lifestyle",
+    },
+    items: {
+      zh: [
+        "将比赛/训练和运动装备统一为运动大类，装备、补给、康复、训练课和赛事报名都放在运动下面。",
+        "新增生活大类，先放入房租和理发；旧运动类记录和预算会自动归并到运动统计。",
+      ],
+      en: [
+        "Merged Race/Training and Sports Gear into Sports, with gear, supplies, recovery, training classes, and race registration underneath.",
+        "Added Lifestyle with rent and haircut, while legacy sports records and budgets automatically roll into Sports statistics.",
+      ],
+    },
+  },
   {
     date: "2026-07-01",
     title: {
@@ -1465,6 +1485,16 @@ function localLedgerSnapshot() {
   };
 }
 
+function normalizeTransactionList(transactions = [], now = new Date()) {
+  return (Array.isArray(transactions) ? transactions : []).flatMap((txn) => {
+    try {
+      return [normalizeTransaction(txn, now)];
+    } catch {
+      return [];
+    }
+  });
+}
+
 function persist({ sync = true } = {}) {
   saveState({
     transactions: state.transactions,
@@ -1476,8 +1506,8 @@ function persist({ sync = true } = {}) {
 }
 
 function applySyncedLedgerState(nextState) {
-  state.transactions = Array.isArray(nextState.transactions) ? nextState.transactions : [];
-  state.budgets = { ...DEFAULT_BUDGETS, ...(nextState.budgets || {}) };
+  state.transactions = normalizeTransactionList(nextState.transactions);
+  state.budgets = normalizeBudgets(nextState.budgets);
   state.preferences = {
     ...state.preferences,
     ...(nextState.preferences || {}),
@@ -1849,8 +1879,9 @@ function captureGroupsForType(type = "expense") {
 
 function sanitizeCategoryForType(type, category) {
   if (type === "income" && category === "工作") return "薪酬";
+  const normalized = type === "income" ? category : (EXPENSE_CATEGORY_ALIASES[category] || category);
   const options = categoriesForType(type);
-  return options.includes(category) ? category : defaultCategoryForType(type);
+  return options.includes(normalized) ? normalized : defaultCategoryForType(type);
 }
 
 function typeOptions(includeAll = false) {
@@ -1913,6 +1944,7 @@ function transactionInDashboardRange(txn, range, now = new Date()) {
 }
 
 function summarizeLedgerPeriod(transactions = [], budgets = DEFAULT_BUDGETS) {
+  const normalizedBudgets = normalizeBudgets(budgets);
   const summary = {
     monthKey: t(DASHBOARD_RANGES.find((item) => item.id === state.dashboardRange)?.labelKey || "range.month"),
     todayExpense: 0,
@@ -1931,8 +1963,9 @@ function summarizeLedgerPeriod(transactions = [], budgets = DEFAULT_BUDGETS) {
   for (const txn of transactions) {
     const amount = Number(txn.amount || 0);
     if (txn.type === "expense") {
+      const category = EXPENSE_CATEGORY_ALIASES[txn.category] || txn.category;
       summary.monthExpense += amount;
-      summary.categoryExpense[txn.category] = (summary.categoryExpense[txn.category] || 0) + amount;
+      summary.categoryExpense[category] = (summary.categoryExpense[category] || 0) + amount;
       summary.bookExpense[txn.book || "日常账本"] = (summary.bookExpense[txn.book || "日常账本"] || 0) + amount;
       if (txn.reimbursable) summary.reimbursableExpense += amount;
     }
@@ -1941,7 +1974,7 @@ function summarizeLedgerPeriod(transactions = [], budgets = DEFAULT_BUDGETS) {
 
   summary.monthBalance = summary.monthIncome - summary.monthExpense;
 
-  for (const [category, budget] of Object.entries(budgets || {})) {
+  for (const [category, budget] of Object.entries(normalizedBudgets)) {
     const spent = summary.categoryExpense[category] || 0;
     summary.budgets[category] = {
       budget,
@@ -2335,7 +2368,8 @@ function categoryChartEntries(transactions = [], limit = 5) {
     if (txn.type !== sourceType) continue;
     const amount = Number(txn.amount || 0);
     if (!(amount > 0)) continue;
-    totals.set(txn.category, (totals.get(txn.category) || 0) + amount);
+    const category = sourceType === "expense" ? (EXPENSE_CATEGORY_ALIASES[txn.category] || txn.category) : txn.category;
+    totals.set(category, (totals.get(category) || 0) + amount);
   }
   const entries = [...totals.entries()].sort((a, b) => b[1] - a[1]);
   if (entries.length <= limit) return entries;

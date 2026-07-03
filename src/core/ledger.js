@@ -4,6 +4,7 @@ import {
   CATEGORIES,
   CURRENCIES,
   DEFAULT_BUDGETS,
+  EXPENSE_CATEGORY_ALIASES,
   INCOME_CATEGORIES,
 } from "./constants.js";
 import { monthKey, todayKey, transactionSign } from "./format.js";
@@ -34,13 +35,45 @@ function moneyValue(input) {
   return Math.round(value * 100) / 100;
 }
 
+export function normalizeExpenseCategory(input) {
+  const category = String(input || "").trim();
+  return EXPENSE_CATEGORY_ALIASES[category] || category;
+}
+
+export function normalizeBudgets(budgets = {}, { defaults = DEFAULT_BUDGETS } = {}) {
+  const direct = {};
+  const legacy = {};
+
+  for (const [category, amountInput] of Object.entries(budgets || {})) {
+    const amount = Number(amountInput);
+    if (!Number.isFinite(amount) || amount < 0) continue;
+    const normalized = normalizeExpenseCategory(category);
+    if (!CATEGORIES.includes(normalized)) continue;
+    const value = Math.round(amount * 100) / 100;
+    if (normalized === category) {
+      direct[normalized] = value;
+    } else {
+      legacy[normalized] = (legacy[normalized] || 0) + value;
+    }
+  }
+
+  const normalized = {};
+  for (const category of CATEGORIES) {
+    if (direct[category] !== undefined) normalized[category] = direct[category];
+    else if (legacy[category] !== undefined) normalized[category] = Math.round(legacy[category] * 100) / 100;
+    else if (defaults && defaults[category] !== undefined) normalized[category] = defaults[category];
+  }
+  return normalized;
+}
+
 function normalizeCategory(type, input) {
   const category = String(input || "").trim();
   if (type === "income") {
     if (category === "工作") return "薪酬";
     return INCOME_CATEGORIES.includes(category) ? category : "其他收入";
   }
-  return CATEGORIES.includes(category) ? category : "其他";
+  const normalized = normalizeExpenseCategory(category);
+  return CATEGORIES.includes(normalized) ? normalized : "其他";
 }
 
 export function normalizeAccount(input = {}, now = new Date()) {
@@ -168,8 +201,9 @@ export function summarizeLedger(transactions = [], budgets = DEFAULT_BUDGETS, no
 
     if (txMonth === currentMonth) {
       if (txn.type === "expense") {
+        const category = normalizeExpenseCategory(txn.category);
         summary.monthExpense += amount;
-        summary.categoryExpense[txn.category] = (summary.categoryExpense[txn.category] || 0) + amount;
+        summary.categoryExpense[category] = (summary.categoryExpense[category] || 0) + amount;
         summary.bookExpense[book] = (summary.bookExpense[book] || 0) + amount;
         if (txn.reimbursable) summary.reimbursableExpense += amount;
       }
@@ -204,7 +238,8 @@ export function filterTransactions(transactions = [], filters = {}) {
 
   return transactions.filter((txn) => {
     if (type !== "all" && txn.type !== type) return false;
-    if (category !== "all" && txn.category !== category) return false;
+    const txnCategory = txn.type === "expense" ? normalizeExpenseCategory(txn.category) : txn.category;
+    if (category !== "all" && txnCategory !== category) return false;
     if (account !== "all" && txn.account !== account) return false;
     if (book !== "all" && (txn.book || "日常账本") !== book) return false;
     if (reimbursable !== "all" && Boolean(txn.reimbursable) !== (reimbursable === "yes")) return false;
