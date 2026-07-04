@@ -19,6 +19,7 @@ import {
 } from "./core/demoData.js";
 import {
   getCloudSession,
+  isCloudTimeoutError,
   isCloudAuthConfigured,
   onCloudAuthStateChange,
   sendAevumPasswordReset,
@@ -59,12 +60,19 @@ const MIRROR_APK_URL = SUPABASE_PUBLIC_URL
   ? `${SUPABASE_PUBLIC_URL}/storage/v1/object/public/releases/viatica-latest.apk`
   : null;
 const AUTO_CHECK_CACHE_MS = 30 * 60 * 1000;
-const FOREGROUND_SYNC_MIN_MS = 12 * 1000;
-const BOOT_REVEAL_MS = 3600;
+const CLOUD_MUTATION_SYNC_DELAY_MS = 1400;
+const CLOUD_BOOT_SYNC_DELAY_MS = 8000;
+const CLOUD_FOREGROUND_SYNC_DELAY_MS = 5000;
+const CLOUD_SYNC_TIMEOUT_MS = 12000;
+const CLOUD_SYNC_DEFERRED_NOTICE_MIN_MS = 5 * 60 * 1000;
+const FOREGROUND_SYNC_MIN_MS = 3 * 60 * 1000;
+const FOREGROUND_SYNC_RETRY_MIN_MS = 60 * 1000;
+const BOOT_REVEAL_MS = 1400;
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
 let releaseCheckCache = null;
 let cloudSyncTimer = 0;
+let cloudSyncDeferredNoticeAt = 0;
 let lastTabTap = { tab: "", at: 0 };
 const cloudAuthConfigured = isCloudAuthConfigured();
 let bootSplashVisible = true;
@@ -126,6 +134,7 @@ const state = {
   cloudSync: {
     status: "idle",
     lastSyncedAt: "",
+    lastAttemptAt: "",
     error: "",
   },
   update: {
@@ -1202,6 +1211,7 @@ const MESSAGES = {
     "toast.authSignedOut": "已退出 Aevum 账号。",
     "toast.cloudSyncDone": "账本已同步。",
     "toast.cloudSyncFailed": "云同步失败：{message}",
+    "toast.cloudSyncDeferred": "本地数据已可用，云同步稍后重试。",
     "toast.cloudSyncSignIn": "请先登录 Aevum 账号再同步。",
     "manual.changelogHeading": "产品迭代过程",
     "filter.search": "搜索标题、商家、项目、标签",
@@ -1425,6 +1435,7 @@ const MESSAGES = {
     "toast.authSignedOut": "Signed out of Aevum.",
     "toast.cloudSyncDone": "Ledger synced.",
     "toast.cloudSyncFailed": "Cloud sync failed: {message}",
+    "toast.cloudSyncDeferred": "Local data is ready. Cloud sync will retry later.",
     "toast.cloudSyncSignIn": "Sign in to Aevum before syncing.",
     "manual.changelogHeading": "Product History",
     "filter.search": "Search title, merchant, project, tags",
@@ -1598,7 +1609,30 @@ function canCloudSync() {
   return Boolean(state.auth.configured && state.auth.user);
 }
 
-function scheduleCloudSync(delay = 900) {
+function createClientTimeoutError(message) {
+  const error = new Error(message);
+  error.name = "TimeoutError";
+  return error;
+}
+
+function withClientTimeout(promise, timeoutMs, message) {
+  if (!timeoutMs || timeoutMs <= 0) return promise;
+  let timer = 0;
+  return Promise.race([
+    promise.finally(() => globalThis.clearTimeout(timer)),
+    new Promise((_, reject) => {
+      timer = globalThis.setTimeout(() => reject(createClientTimeoutError(message)), timeoutMs);
+    }),
+  ]);
+}
+
+function maybeToastCloudSyncDeferred() {
+  if (Date.now() - cloudSyncDeferredNoticeAt < CLOUD_SYNC_DEFERRED_NOTICE_MIN_MS) return;
+  cloudSyncDeferredNoticeAt = Date.now();
+  toast(t("toast.cloudSyncDeferred"));
+}
+
+function scheduleCloudSync(delay = CLOUD_MUTATION_SYNC_DELAY_MS) {
   if (!canCloudSync()) return;
   window.clearTimeout(cloudSyncTimer);
   cloudSyncTimer = window.setTimeout(() => {
@@ -1606,10 +1640,13 @@ function scheduleCloudSync(delay = 900) {
   }, delay);
 }
 
-function scheduleForegroundCloudSync(delay = 250) {
+function scheduleForegroundCloudSync(delay = CLOUD_FOREGROUND_SYNC_DELAY_MS) {
   if (!canCloudSync() || state.cloudSync.status === "syncing") return;
-  const lastSyncedAt = Number(new Date(state.cloudSync.lastSyncedAt || 0));
-  if (lastSyncedAt && Date.now() - lastSyncedAt < FOREGROUND_SYNC_MIN_MS) return;
+  const lastSyncTime = Number(new Date(state.cloudSync.lastSyncedAt || 0));
+  const lastAttemptTime = Number(new Date(state.cloudSync.lastAttemptAt || 0));
+  const lastRelevantTime = Math.max(lastSyncTime || 0, lastAttemptTime || 0);
+  const minGap = state.cloudSync.status === "error" ? FOREGROUND_SYNC_RETRY_MIN_MS : FOREGROUND_SYNC_MIN_MS;
+  if (lastRelevantTime && Date.now() - lastRelevantTime < minGap) return;
   scheduleCloudSync(delay);
 }
 
@@ -1631,10 +1668,17 @@ async function syncCloudNow({ silent = false } = {}) {
   window.clearTimeout(cloudSyncTimer);
   state.cloudSync.status = "syncing";
   state.cloudSync.error = "";
+  state.cloudSync.lastAttemptAt = new Date().toISOString();
   if (!silent) render();
 
   try {
-    const result = await syncViaticaLedger(localLedgerSnapshot());
+    const syncPromise = syncViaticaLedger(localLedgerSnapshot());
+    syncPromise.catch(() => {});
+    const result = await withClientTimeout(
+      syncPromise,
+      CLOUD_SYNC_TIMEOUT_MS,
+      "Cloud sync timed out"
+    );
     applySyncedLedgerState(result.state);
     state.cloudSync.status = "synced";
     state.cloudSync.lastSyncedAt = new Date().toISOString();
@@ -1642,8 +1686,15 @@ async function syncCloudNow({ silent = false } = {}) {
     if (!silent) toast(t("toast.cloudSyncDone"));
   } catch (error) {
     state.cloudSync.status = "error";
-    state.cloudSync.error = error?.message || "";
-    if (!silent) toast(t("toast.cloudSyncFailed", { message: state.cloudSync.error || t("settings.cloudSyncError") }));
+    state.cloudSync.error = isCloudTimeoutError(error)
+      ? t("toast.cloudSyncDeferred")
+      : error?.message || "";
+    if (isCloudTimeoutError(error)) {
+      if (silent) maybeToastCloudSyncDeferred();
+      else toast(t("toast.cloudSyncDeferred"));
+    } else if (!silent) {
+      toast(t("toast.cloudSyncFailed", { message: state.cloudSync.error || t("settings.cloudSyncError") }));
+    }
   } finally {
     render();
   }
@@ -1807,7 +1858,7 @@ async function initCloudAuth() {
     setCloudSession(session);
     if (session) {
       void loadSharedProfile({ silent: true });
-      scheduleCloudSync(250);
+      scheduleCloudSync(CLOUD_BOOT_SYNC_DELAY_MS);
     }
   } catch {
     state.auth.ready = true;
@@ -1819,7 +1870,7 @@ async function initCloudAuth() {
     render();
     if (session) {
       void loadSharedProfile({ silent: true });
-      scheduleCloudSync(250);
+      scheduleCloudSync(CLOUD_BOOT_SYNC_DELAY_MS);
     }
   });
 }

@@ -251,18 +251,6 @@ function transactionKeys(txn = {}) {
   return [txn.id];
 }
 
-function transactionRows(txn, userId) {
-  const rows = [
-    toTransactionRow(txn, userId, "client_id"),
-    toTransactionRow(txn, userId, "local_id"),
-    toTransactionRow(txn, userId, "id"),
-  ];
-  return [
-    ...rows,
-    ...rows.map(({ created_at, updated_at, ...row }) => row),
-  ];
-}
-
 function transactionUpdateRows(txn, userId) {
   const rows = [
     toTransactionRow(txn, userId, "client_id"),
@@ -294,6 +282,42 @@ function budgetRows(category, amount, userId) {
   ];
 }
 
+function withoutTimestamps(row) {
+  const { created_at, updated_at, ...rest } = row;
+  return rest;
+}
+
+function transactionInsertRowVariants(transactions, userId) {
+  const rows = [
+    transactions.map((txn) => toTransactionRow(txn, userId, "client_id")),
+    transactions.map((txn) => toTransactionRow(txn, userId, "local_id")),
+    transactions.map((txn) => toTransactionRow(txn, userId, "id")),
+  ];
+  return [
+    ...rows,
+    ...rows.map((items) => items.map(withoutTimestamps)),
+  ];
+}
+
+function budgetInsertRowVariants(entries, userId) {
+  return [
+    entries.map(([category, amount]) => toBudgetRow(category, amount, userId, "amount")),
+    entries.map(([category, amount]) => toBudgetRow(category, amount, userId, "budget")),
+    entries.map(([category, amount]) => toBudgetRow(category, amount, userId, "monthly_budget")),
+  ];
+}
+
+function accountInsertRowVariants(accounts, userId) {
+  const rows = [
+    accounts.map((account) => toAccountRow(account, userId, "full")),
+    accounts.map((account) => toAccountRow(account, userId, "minimal")),
+  ];
+  return [
+    ...rows,
+    ...rows.map((items) => items.map(withoutTimestamps)),
+  ];
+}
+
 async function trySchemaVariants(variants) {
   let lastError = null;
   for (const variant of variants) {
@@ -317,6 +341,45 @@ async function insertRow(supabase, table, rows) {
   return trySchemaVariants(rows.map((row) => () => supabase.from(table).insert(row)));
 }
 
+async function insertRows(supabase, table, rowVariants) {
+  if (!rowVariants.length || !rowVariants[0]?.length) return { data: null, error: null };
+  return trySchemaVariants(rowVariants.map((rows) => () => supabase.from(table).insert(rows)));
+}
+
+function rowHasColumns(row, columns) {
+  return columns.every((column) => Object.prototype.hasOwnProperty.call(row, column));
+}
+
+function firstCompatibleRow(rows = [], existing = {}) {
+  const compatibleRows = rows.filter((row) => rowHasColumns(existing, Object.keys(row)));
+  return compatibleRows.find((row) => !("created_at" in row) && !("updated_at" in row))
+    || compatibleRows[0]
+    || rows[0]
+    || {};
+}
+
+function timeValue(value) {
+  const time = Number(new Date(value || 0));
+  return Number.isFinite(time) ? time : 0;
+}
+
+function sameColumnValue(column, left, right) {
+  if (column.endsWith("_at")) return timeValue(left) === timeValue(right);
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return JSON.stringify(left || []) === JSON.stringify(right || []);
+  }
+  if (typeof right === "number") return Number(left || 0) === right;
+  if (typeof right === "boolean") return Boolean(left) === right;
+  return String(left ?? "") === String(right ?? "");
+}
+
+function rowMatchesExisting(row = {}, existing = {}) {
+  return Object.entries(row).every(([column, value]) =>
+    Object.prototype.hasOwnProperty.call(existing, column)
+      && sameColumnValue(column, existing[column], value)
+  );
+}
+
 function existingIdFilters(existing, userId) {
   return existing?.id ? [["user_id", userId], ["id", existing.id]] : [];
 }
@@ -331,18 +394,23 @@ async function upsertTransactions(supabase, userId, transactions) {
   if (!transactions.length) return;
   const existingRows = await selectRows(supabase, TABLES.transactions, userId, null);
   const existingByKey = indexRows(existingRows, transactionRowKeys);
+  const newTransactions = [];
   for (const txn of transactions) {
     const existing = transactionKeys(txn).map((key) => existingByKey.get(key)).find(Boolean);
     if (existing) {
+      const rows = transactionUpdateRows(txn, userId);
       const idFilters = existingIdFilters(existing, userId);
       const filters = idFilters.length ? idFilters : existingClientIdFilters(existing, userId);
       if (filters.length) {
-        await updateRowByFilters(supabase, TABLES.transactions, transactionUpdateRows(txn, userId), filters);
+        if (!rowMatchesExisting(firstCompatibleRow(rows, existing), existing)) {
+          await updateRowByFilters(supabase, TABLES.transactions, rows, filters);
+        }
         continue;
       }
     }
-    await insertRow(supabase, TABLES.transactions, transactionRows(txn, userId));
+    newTransactions.push(txn);
   }
+  await insertRows(supabase, TABLES.transactions, transactionInsertRowVariants(newTransactions, userId));
 }
 
 async function upsertBudgets(supabase, userId, budgets = {}) {
@@ -350,15 +418,19 @@ async function upsertBudgets(supabase, userId, budgets = {}) {
   if (!entries.length) return;
   const existingRows = await selectRows(supabase, TABLES.budgets, userId, null);
   const existingByCategory = indexRows(existingRows, (row) => [row.category]);
+  const newEntries = [];
   for (const [category, amount] of entries) {
     const rows = budgetRows(category, amount, userId);
     const existing = existingByCategory.get(category);
     if (existing) {
-      await updateRowByFilters(supabase, TABLES.budgets, rows, [["user_id", userId], ["category", category]]);
+      if (!rowMatchesExisting(firstCompatibleRow(rows, existing), existing)) {
+        await updateRowByFilters(supabase, TABLES.budgets, rows, [["user_id", userId], ["category", category]]);
+      }
     } else {
-      await insertRow(supabase, TABLES.budgets, rows);
+      newEntries.push([category, amount]);
     }
   }
+  await insertRows(supabase, TABLES.budgets, budgetInsertRowVariants(newEntries, userId));
 }
 
 async function upsertAccounts(supabase, userId, accounts = []) {
@@ -366,20 +438,32 @@ async function upsertAccounts(supabase, userId, accounts = []) {
   if (!normalizedAccounts.length) return;
   const existingRows = await selectRows(supabase, TABLES.accounts, userId, null);
   const existingByName = indexRows(existingRows, (row) => [row.name]);
+  const newAccounts = [];
   for (const account of normalizedAccounts) {
     const rows = accountRows(account, userId);
     const existing = existingByName.get(account.name);
     if (existing) {
-      await updateRowByFilters(supabase, TABLES.accounts, rows, [["user_id", userId], ["name", account.name]]);
+      if (!rowMatchesExisting(firstCompatibleRow(rows, existing), existing)) {
+        await updateRowByFilters(supabase, TABLES.accounts, rows, [["user_id", userId], ["name", account.name]]);
+      }
     } else {
+      newAccounts.push(account);
+    }
+    existingByName.set(account.name, { name: account.name, user_id: userId });
+  }
+  try {
+    await insertRows(supabase, TABLES.accounts, accountInsertRowVariants(newAccounts, userId));
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) throw error;
+    for (const account of newAccounts) {
+      const rows = accountRows(account, userId);
       try {
         await insertRow(supabase, TABLES.accounts, rows);
-      } catch (error) {
-        if (!isDuplicateKeyError(error)) throw error;
+      } catch (insertError) {
+        if (!isDuplicateKeyError(insertError)) throw insertError;
         await updateRowByFilters(supabase, TABLES.accounts, rows, [["user_id", userId], ["name", account.name]]);
       }
     }
-    existingByName.set(account.name, { name: account.name, user_id: userId });
   }
 }
 

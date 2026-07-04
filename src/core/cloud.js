@@ -3,8 +3,30 @@ import { createClient } from "@supabase/supabase-js";
 const VITE_ENV = import.meta.env || {};
 const SUPABASE_URL = VITE_ENV.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = VITE_ENV.VITE_SUPABASE_ANON_KEY || "";
+const CLOUD_AUTH_TIMEOUT_MS = 3500;
 
 let client = null;
+
+function createTimeoutError(message) {
+  const error = new Error(message);
+  error.name = "TimeoutError";
+  return error;
+}
+
+function withTimeout(promise, timeoutMs, message) {
+  if (!timeoutMs || timeoutMs <= 0) return promise;
+  let timer = 0;
+  return Promise.race([
+    promise.finally(() => globalThis.clearTimeout(timer)),
+    new Promise((_, reject) => {
+      timer = globalThis.setTimeout(() => reject(createTimeoutError(message)), timeoutMs);
+    }),
+  ]);
+}
+
+export function isCloudTimeoutError(error) {
+  return error?.name === "TimeoutError" || /timed out|timeout/i.test(error?.message || "");
+}
 
 export function isCloudAuthConfigured() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
@@ -24,18 +46,26 @@ export function getCloudClient() {
   return client;
 }
 
-export async function getCloudSession() {
+export async function getCloudSession({ timeoutMs = CLOUD_AUTH_TIMEOUT_MS } = {}) {
   const supabase = getCloudClient();
   if (!supabase) return null;
-  const { data, error } = await supabase.auth.getSession();
+  const { data, error } = await withTimeout(
+    supabase.auth.getSession(),
+    timeoutMs,
+    "Cloud session restore timed out"
+  );
   if (error) throw error;
   return data.session || null;
 }
 
-export async function getCloudUser() {
+export async function getCloudUser({ timeoutMs = CLOUD_AUTH_TIMEOUT_MS } = {}) {
   const supabase = getCloudClient();
   if (!supabase) return null;
-  const { data, error } = await supabase.auth.getUser();
+  const { data, error } = await withTimeout(
+    supabase.auth.getUser(),
+    timeoutMs,
+    "Cloud user restore timed out"
+  );
   if (error) throw error;
   return data.user || null;
 }

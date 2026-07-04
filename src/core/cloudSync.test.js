@@ -80,9 +80,12 @@ function createMemorySupabase(initial = {}, options = {}) {
           };
         },
         insert(row) {
+          const rowsToInsert = Array.isArray(row) ? row : [row];
           operations.push({ type: "insert", table, row: clone(row) });
           if (table === "viatica_accounts") {
-            const conflict = tables[table].some((existing) => existing.user_id === row.user_id && existing.name === row.name);
+            const conflict = rowsToInsert.some((item) =>
+              tables[table].some((existing) => existing.user_id === item.user_id && existing.name === item.name)
+            );
             if (conflict) {
               return Promise.resolve({
                 data: null,
@@ -93,7 +96,7 @@ function createMemorySupabase(initial = {}, options = {}) {
               });
             }
           }
-          tables[table].push(clone(row));
+          tables[table].push(...rowsToInsert.map(clone));
           return Promise.resolve({ data: null, error: null });
         },
         delete() {
@@ -339,6 +342,35 @@ test("pushes cloud state without requiring database conflict constraints", async
   assert.equal(supabase.tables.viatica_accounts.length, 1);
   assert.equal(supabase.tables.viatica_accounts[0].opening_balance, 150);
   assert.equal(supabase.operations.some((operation) => operation.type === "upsert"), false);
+});
+
+test("does not rewrite unchanged cloud rows during push", async () => {
+  const supabase = createMemorySupabase();
+  const state = {
+    transactions: [{
+      id: "txn_local",
+      type: "expense",
+      occurredAt: "2026-07-01T08:00:00+08:00",
+      amount: 18,
+      currency: "CNY",
+      book: "日常账本",
+      account: "其他",
+      category: "餐饮",
+      title: "早餐",
+      updatedAt: "2026-07-01T08:01:00+08:00",
+    }],
+    budgets: { "餐饮": 2000 },
+    accounts: [{ id: "acct_local", name: "其他", openingBalance: 100 }],
+    preferences: {},
+  };
+
+  await pushCloudState(supabase, "user_1", state);
+  supabase.operations.length = 0;
+
+  await pushCloudState(supabase, "user_1", state);
+
+  assert.equal(supabase.operations.some((operation) => operation.type === "insert"), false);
+  assert.equal(supabase.operations.some((operation) => operation.type === "update"), false);
 });
 
 test("updates existing account when insert hits the cloud user name constraint", async () => {
