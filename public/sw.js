@@ -1,4 +1,4 @@
-const CACHE_NAME = "viatica-v4";
+const CACHE_NAME = "viatica-v5";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -26,6 +26,10 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (["localhost", "127.0.0.1"].includes(url.hostname)) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) {
     event.respondWith(fetch(event.request));
     return;
   }

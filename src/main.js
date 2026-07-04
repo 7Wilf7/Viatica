@@ -560,15 +560,17 @@ const CHANGELOG_ENTRIES = [
         "加强云同步冲突处理，避免无时间戳的云端旧记录覆盖本机流水或初始资金。",
         "回到前台、进入账本/资产/设置时会保守触发云端刷新，减少 PWA 和 APP 长时间不同步。",
         "Add 页子类选中态更明显，切走再回来也会保留当前分类、细项、时间段、金额和备注草稿。",
-        "加一笔时间改为直接显示早上、中午、下午、晚上、凌晨五个按钮，不再使用容易闪退的下拉菜单。",
-        "账本流水行不再显示具体时分；资产概览增加初始资金和流水净额拆分。",
+        "账本流水行不再显示具体时分，改成早上、中午、下午、晚上、凌晨这类时间段；资产概览增加初始资金和流水净额拆分。",
+        "PWA 清缓存重载流程参考 Ultreia 简化为直接重新加载，并避免缓存云同步和更新检查请求。",
+        "图表里的分类占比和趋势图放大了绘图区，减少空白并让分类百分比更靠近标签。",
       ],
       en: [
         "Strengthened cloud conflict handling so untimestamped cloud rows cannot overwrite local entries or starting assets.",
         "Conservatively refreshes cloud data when returning to the foreground or opening Ledger, Assets, or Settings.",
         "Made Add detail-chip selection clearer and preserved the current category, detail, time segment, amount, and note draft across rerenders.",
-        "Changed Add time selection into five direct buttons: morning, noon, afternoon, evening, and late.",
-        "Ledger rows no longer show exact clock time; Assets now splits starting assets and ledger net.",
+        "Ledger rows now show broad time segments instead of exact clock time; Assets now splits starting assets and ledger net.",
+        "Simplified the PWA cache-clear reload after Ultreia and avoids caching cloud sync and update-check requests.",
+        "Expanded the category-share and trend chart plotting areas, with tighter category percentages.",
       ],
     },
   },
@@ -1455,6 +1457,12 @@ function captureTimeSegmentId(value) {
   if (hour >= 14 && hour < 18) return "afternoon";
   if (hour >= 18 && hour < 24) return "evening";
   return "late";
+}
+
+function captureTimeSegmentLabel(value) {
+  const selected = captureTimeSegmentId(value);
+  const item = CAPTURE_TIME_SEGMENTS.find((segment) => segment.id === selected) || CAPTURE_TIME_SEGMENTS[0];
+  return t(item.labelKey);
 }
 
 function dateInputValueWithHour(value, hour) {
@@ -2478,18 +2486,18 @@ function pieSlicePath(cx, cy, radius, start, end) {
 function renderPieChart(entries, total) {
   let cursor = 0;
   const slices = entries.length === 1
-    ? `<circle cx="58" cy="58" r="47" fill="${CHART_COLORS[0]}"></circle>`
+    ? `<circle cx="64" cy="64" r="56" fill="${CHART_COLORS[0]}"></circle>`
     : entries.map(([, amount], index) => {
       const start = cursor;
       const share = amount / total;
       cursor += share;
-      return `<path d="${pieSlicePath(58, 58, 47, start, cursor)}" fill="${CHART_COLORS[index % CHART_COLORS.length]}"></path>`;
+      return `<path d="${pieSlicePath(64, 64, 56, start, cursor)}" fill="${CHART_COLORS[index % CHART_COLORS.length]}"></path>`;
     }).join("");
   return `
-    <svg class="stats-chart-svg pie-chart" viewBox="0 0 116 116" role="img" aria-label="${escapeHtml(t("stats.pieTitle"))}">
-      <circle cx="58" cy="58" r="47" fill="oklch(0.145 0.006 95)"></circle>
+    <svg class="stats-chart-svg pie-chart" viewBox="0 0 128 128" role="img" aria-label="${escapeHtml(t("stats.pieTitle"))}">
+      <circle cx="64" cy="64" r="56" fill="oklch(0.145 0.006 95)"></circle>
       ${slices}
-      <circle cx="58" cy="58" r="21" fill="oklch(0.130 0.006 95 / 0.92)"></circle>
+      <circle cx="64" cy="64" r="24" fill="oklch(0.130 0.006 95 / 0.92)"></circle>
     </svg>
   `;
 }
@@ -2540,13 +2548,13 @@ function renderBarChart(entries) {
 function renderLineChart(transactions) {
   const series = dailyChartEntries(transactions);
   const max = Math.max(...series.map(([, amount]) => amount), 1);
-  const width = 280;
-  const height = 118;
-  const left = 42;
-  const right = 264;
-  const top = 18;
-  const middle = 53;
-  const bottom = 88;
+  const width = 300;
+  const height = 132;
+  const left = 34;
+  const right = 288;
+  const top = 12;
+  const middle = 59;
+  const bottom = 112;
   const points = series.map(([date, amount], index) => {
     const x = series.length === 1 ? width / 2 : left + ((right - left) * index) / (series.length - 1);
     const y = bottom - ((amount / max) * (bottom - top));
@@ -2564,10 +2572,10 @@ function renderLineChart(transactions) {
   const first = points[0]?.date.slice(5).replace("-", "/") || "";
   const last = points[points.length - 1]?.date.slice(5).replace("-", "/") || "";
   const xLabels = points.length === 1
-    ? `<text x="${width / 2}" y="112" text-anchor="middle">${escapeHtml(first)}</text>`
+    ? `<text x="${width / 2}" y="126" text-anchor="middle">${escapeHtml(first)}</text>`
     : `
-      <text x="${left}" y="112" text-anchor="start">${escapeHtml(first)}</text>
-      <text x="${right}" y="112" text-anchor="end">${escapeHtml(last)}</text>
+      <text x="${left}" y="126" text-anchor="start">${escapeHtml(first)}</text>
+      <text x="${right}" y="126" text-anchor="end">${escapeHtml(last)}</text>
     `;
   return `
     <svg class="stats-chart-svg line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(t("stats.lineTitle"))}">
@@ -2575,8 +2583,8 @@ function renderLineChart(transactions) {
       <path d="M${left} ${middle} H${right}" class="chart-grid-line"></path>
       <path d="M${left} ${bottom} H${right}" class="chart-axis"></path>
       <path d="M${left} ${top} V${bottom}" class="chart-axis"></path>
-      <text x="${left - 7}" y="${top + 3}" text-anchor="end">${escapeHtml(compactMoney(max))}</text>
-      <text x="${left - 7}" y="${bottom + 3}" text-anchor="end">0</text>
+      <text x="${left - 6}" y="${top + 3}" text-anchor="end">${escapeHtml(compactMoney(max))}</text>
+      <text x="${left - 6}" y="${bottom + 3}" text-anchor="end">0</text>
       ${areaPath ? `<path d="${areaPath}" class="line-chart-area"></path>` : ""}
       <path d="${path}" class="line-chart-path"></path>
       ${pointNodes}
@@ -2597,7 +2605,7 @@ function renderStatsCharts(transactions, entries, total) {
   if (!entries.length) return `<div class="empty">${escapeHtml(t("stats.noCategory"))}</div>`;
   return `
     <div class="stats-chart-grid">
-      <article class="stats-chart-card">
+      <article class="stats-chart-card pie-share-card">
         <div class="stats-chart-title">
           ${glyphSvg("chartPie")}
           <span class="stats-chart-copy"><strong>${escapeHtml(t("stats.pieTitle"))}</strong></span>
@@ -3375,13 +3383,20 @@ function renderCaptureCategoryBoard(txn) {
 
 function renderCaptureTimeChoice(value) {
   const selected = captureTimeSegmentId(value);
+  const selectedItem = CAPTURE_TIME_SEGMENTS.find((item) => item.id === selected) || CAPTURE_TIME_SEGMENTS[0];
   return `
-    <div class="capture-time-segments" data-choice-time aria-label="${escapeHtml(t("capture.time"))}">
+    <div class="choice-control capture-time-choice" data-choice data-choice-time aria-label="${escapeHtml(t("capture.time"))}">
+      <button class="choice-trigger" type="button" data-action="toggle-choice" aria-expanded="false">
+        <span>${escapeHtml(t(selectedItem.labelKey))}</span>
+        <span class="choice-chevron" aria-hidden="true">▼</span>
+      </button>
+      <div class="choice-menu">
       ${CAPTURE_TIME_SEGMENTS.map((item) => `
-          <button class="capture-time-segment ${selected === item.id ? "active" : ""}" type="button" data-action="choose-time-segment" data-choice-value="${escapeHtml(item.id)}" data-hour="${item.hour}" aria-pressed="${selected === item.id ? "true" : "false"}">
+          <button class="choice-option ${selected === item.id ? "active" : ""}" type="button" data-action="choose-option" data-choice-value="${escapeHtml(item.id)}" data-hour="${item.hour}">
           ${escapeHtml(t(item.labelKey))}
         </button>
         `).join("")}
+      </div>
     </div>
   `;
 }
@@ -3512,7 +3527,7 @@ function renderFilters() {
 }
 
 function renderTransactionRow(txn) {
-  const accountMeta = `${formatWhen(txn.occurredAt)} · ${transactionTypeLabel(txn)}`;
+  const accountMeta = `${formatWhen(txn.occurredAt)} · ${captureTimeSegmentLabel(txn.occurredAt)} · ${transactionTypeLabel(txn)}`;
   return `
     <article class="txn-row action-row ${escapeHtml(transactionTone(txn))}" data-long-press-actions>
       <div class="txn-main">
@@ -3695,20 +3710,6 @@ function pickCaptureSubcategory(button) {
   });
 }
 
-function pickCaptureTimeSegment(button) {
-  const form = button.closest("form");
-  const input = form?.elements?.namedItem("occurredAt");
-  if (!form || !input) return;
-  const hour = Number(button.dataset.hour || 8);
-  input.value = dateInputValueWithHour(input.value || new Date(), Number.isFinite(hour) ? hour : 8);
-  form.querySelectorAll("[data-action=\"choose-time-segment\"]").forEach((option) => {
-    const active = option === button;
-    option.classList.toggle("active", active);
-    option.setAttribute("aria-pressed", active ? "true" : "false");
-  });
-  syncCaptureDraftFromForm(form);
-}
-
 function nextAmountValue(current, key) {
   if (key === "clear") return "";
   if (key === "backspace") return current.slice(0, -1);
@@ -3756,9 +3757,7 @@ async function clearPwaCacheAndReload() {
   } catch (err) {
     console.warn("[clear-cache] failed:", err);
   }
-  const url = new URL(window.location.href);
-  url.searchParams.set("viatica_refresh", String(Date.now()));
-  window.location.replace(url.toString());
+  window.location.reload();
 }
 
 function maybeAutoCheckAppUpdate() {
@@ -3914,9 +3913,11 @@ function chooseOption(optionNode) {
   if (choiceName) syncChoiceGroup(choice.closest("form"), choiceName);
 
   if (choice.dataset.choiceTime != null) {
-    const input = choice.closest("form")?.elements?.namedItem("occurredAt");
+    const form = choice.closest("form");
+    const input = form?.elements?.namedItem("occurredAt");
     const hour = Number(optionNode.dataset.hour || 8);
     if (input) input.value = dateInputValueWithHour(input.value || new Date(), Number.isFinite(hour) ? hour : 8);
+    syncCaptureDraftFromForm(form);
   }
 
   const filterKey = choice.dataset.choiceFilter;
@@ -4140,9 +4141,6 @@ document.addEventListener("click", (event) => {
   }
   if (action === "pick-subcategory") {
     pickCaptureSubcategory(node);
-  }
-  if (action === "choose-time-segment") {
-    pickCaptureTimeSegment(node);
   }
   if (action === "amount-key") {
     applyAmountKey(node);

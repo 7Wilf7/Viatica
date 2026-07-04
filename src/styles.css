@@ -917,7 +917,11 @@ label span {
 }
 
 .stats-chart-card.trend {
-  min-height: 172px;
+  min-height: 180px;
+}
+
+.stats-chart-card.pie-share-card {
+  min-height: 164px;
 }
 
 .stats-chart-title {
@@ -962,16 +966,17 @@ label span {
 }
 
 .pie-chart-layout {
-  min-height: 134px;
+  min-height: 146px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(138px, 0.72fr);
-  gap: 10px;
+  grid-template-columns: minmax(92px, max-content) minmax(156px, 1fr);
+  gap: 6px;
   align-items: center;
+  margin-top: -10px;
 }
 
 .pie-chart {
-  width: min(100%, 156px);
-  height: 126px;
+  width: min(100%, 178px);
+  height: 150px;
   justify-self: end;
 }
 
@@ -986,8 +991,8 @@ label span {
 .pie-legend-item {
   min-width: 0;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 5px;
+  grid-template-columns: auto minmax(0, max-content) max-content;
+  gap: 4px;
   align-items: center;
   color: var(--ink-2);
   font-size: 10px;
@@ -1014,7 +1019,7 @@ label span {
 }
 
 .line-chart {
-  height: 124px;
+  height: 148px;
 }
 
 .bar-chart text,
@@ -1611,31 +1616,20 @@ label span {
   padding-left: 48px;
 }
 
-.capture-time-segments {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 4px;
-}
-
-.capture-time-segment {
-  min-width: 0;
-  min-height: 32px;
-  padding: 0 4px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+.capture-time-choice .choice-trigger {
+  min-height: 38px;
+  padding: 0 10px;
   background: oklch(0.145 0.006 95 / 0.74);
-  color: var(--ink-2);
   font-size: 12px;
   font-weight: 760;
-  transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out), color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
 }
 
-.capture-time-segment:hover,
-.capture-time-segment.active {
-  border-color: oklch(0.700 0.052 86 / 0.72);
-  background: oklch(0.235 0.026 86 / 0.72);
-  color: var(--ink);
-  box-shadow: 0 0 0 1px oklch(0.700 0.052 86 / 0.18) inset;
+.capture-time-choice .choice-menu {
+  min-width: 132px;
+}
+
+.capture-time-choice .choice-option {
+  text-align: center;
 }
 
 .amount-key {
