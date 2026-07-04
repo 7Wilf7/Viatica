@@ -98,6 +98,7 @@ const state = {
   searchOpen: false,
   accountFormOpen: false,
   captureDraft: null,
+  captureProjectOpen: false,
   budgetKeypadCategory: "",
   editingTransactionId: null,
   pwaRefreshInProgress: false,
@@ -239,6 +240,11 @@ const GLYPHS = {
     <circle cx="5.1" cy="6.8" r="0.65" fill="currentColor" stroke="none" />
     <circle cx="7.3" cy="8.1" r="0.65" fill="currentColor" stroke="none" />
     <circle cx="11.2" cy="3.8" r="0.65" fill="currentColor" stroke="none" />
+  `,
+  project: `
+    <circle cx="7" cy="7" r="4.8" />
+    <path d="M7 6.4 V9.5" />
+    <path d="M7 4.5 H7.05" />
   `,
   assets: `
     <path d="M2.2 4.2 H11.8 V11.2 H2.2 Z" />
@@ -1039,6 +1045,7 @@ const MESSAGES = {
     "capture.timeLate": "凌晨",
     "capture.tags": "标签",
     "capture.project": "项目",
+    "capture.projectToggle": "项目选项",
     "capture.projectPlaceholder": "比赛 / 旅行名",
     "capture.projectOnly": "仅计入项目",
     "capture.note": "备注",
@@ -1261,6 +1268,7 @@ const MESSAGES = {
     "capture.timeLate": "Late",
     "capture.tags": "Tags",
     "capture.project": "Project",
+    "capture.projectToggle": "Project Options",
     "capture.projectPlaceholder": "Race / trip name",
     "capture.projectOnly": "Project only",
     "capture.note": "Note",
@@ -3374,6 +3382,7 @@ function renderCaptureForm(editingTransaction) {
     project: transactionProjectLabel(sourceTxn),
     projectOnly: isProjectOnlyTransaction(sourceTxn),
   };
+  const projectPanelOpen = Boolean(state.captureProjectOpen || txn.project || txn.projectOnly);
 
   return `
     <form id="transaction-form" class="transaction-form type-${escapeHtml(txn.type)}" autocomplete="off">
@@ -3400,6 +3409,9 @@ function renderCaptureForm(editingTransaction) {
       <section class="amount-pad-panel" aria-label="${escapeHtml(t("capture.amount"))}">
         <div class="amount-readout">
           <span>${escapeHtml(t("capture.amount"))}</span>
+          <button class="capture-project-toggle ${projectPanelOpen ? "active" : ""}" type="button" data-action="toggle-project-fields" aria-label="${escapeHtml(t("capture.projectToggle"))}" aria-expanded="${projectPanelOpen ? "true" : "false"}">
+            ${glyphSvg("project")}
+          </button>
           <strong data-amount-display>${escapeHtml(captureAmountDisplay(txn.amount, txn.currency))}</strong>
         </div>
         <div class="capture-detail-row">
@@ -3410,7 +3422,7 @@ function renderCaptureForm(editingTransaction) {
             <input name="note" value="${escapeHtml(txn.note || "")}">
           </label>
         </div>
-        <div class="capture-project-row">
+        <div class="capture-project-row ${projectPanelOpen ? "open" : ""}">
           <label class="capture-project-field">
             <span>${escapeHtml(t("capture.project"))}</span>
             <input name="project" value="${escapeHtml(txn.project || "")}" placeholder="${escapeHtml(t("capture.projectPlaceholder"))}">
@@ -4165,6 +4177,7 @@ document.addEventListener("submit", (event) => {
       state.captureDraft = null;
       toast(t("toast.saved"));
     }
+    state.captureProjectOpen = false;
     state.activeTab = "ledger";
     state.ledgerView = "flow";
     persist();
@@ -4260,6 +4273,12 @@ document.addEventListener("click", (event) => {
   if (action === "amount-key") {
     applyAmountKey(node);
   }
+  if (action === "toggle-project-fields") {
+    const form = node.closest("#transaction-form");
+    syncCaptureDraftFromForm(form);
+    state.captureProjectOpen = !state.captureProjectOpen;
+    render();
+  }
   if (action === "activate-budget-keypad") {
     state.budgetKeypadCategory = state.budgetKeypadCategory === node.dataset.category
       ? ""
@@ -4286,6 +4305,7 @@ document.addEventListener("click", (event) => {
       return;
     }
     state.activeTab = nextTab;
+    if (state.activeTab !== "capture") state.captureProjectOpen = false;
     if (state.activeTab === "settings") state.settingsContent = "home";
     render();
     if (["ledger", "assets", "settings"].includes(state.activeTab)) scheduleForegroundCloudSync();
@@ -4296,6 +4316,7 @@ document.addEventListener("click", (event) => {
       return;
     }
     state.editingTransactionId = null;
+    state.captureProjectOpen = false;
     state.activeTab = "capture";
     render();
   }
@@ -4384,11 +4405,13 @@ document.addEventListener("click", (event) => {
   }
   if (action === "cancel-edit") {
     state.editingTransactionId = null;
+    state.captureProjectOpen = false;
     render();
   }
   if (action === "edit") {
     if (guardDemoMutation()) return;
     state.captureDraft = null;
+    state.captureProjectOpen = false;
     state.editingTransactionId = node.dataset.id;
     state.activeTab = "capture";
     render();

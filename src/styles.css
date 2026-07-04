@@ -1486,14 +1486,16 @@ label span {
 .capture-subcategory-grid {
   display: none;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  align-items: center;
-  align-content: center;
-  gap: 6px;
-  min-height: 42px;
-  padding: 6px;
+  grid-auto-rows: minmax(38px, auto);
+  align-items: stretch;
+  align-content: start;
+  gap: 8px 6px;
+  min-height: 0;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: oklch(0.130 0.006 95 / 0.58);
+  overflow: visible;
 }
 
 .capture-subcategory-grid.active {
@@ -1512,8 +1514,8 @@ label span {
 }
 
 .capture-subcategory-button {
-  height: 30px;
-  padding: 0 6px;
+  min-height: 38px;
+  padding: 4px 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1557,6 +1559,31 @@ label span {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.capture-project-toggle {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  display: inline-grid;
+  place-items: center;
+  background: oklch(0.145 0.006 95 / 0.74);
+  color: var(--ink-2);
+  transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out), color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+}
+
+.capture-project-toggle .glyph {
+  width: 15px;
+  height: 15px;
+}
+
+.capture-project-toggle:hover,
+.capture-project-toggle.active {
+  border-color: oklch(0.700 0.052 86 / 0.62);
+  background: oklch(0.210 0.016 86 / 0.72);
+  color: var(--accent-strong);
 }
 
 .amount-readout span {
@@ -1622,10 +1649,14 @@ label span {
 }
 
 .capture-project-row {
-  display: grid;
+  display: none;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
+}
+
+.capture-project-row.open {
+  display: grid;
 }
 
 .capture-project-field input {
