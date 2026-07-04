@@ -34,10 +34,13 @@ import {
 } from "./core/profileSync.js";
 import {
   filterTransactions,
+  isProjectOnlyTransaction,
   normalizeAccount,
   normalizeAccounts,
   normalizeBudgets,
+  normalizeProjectLabel,
   normalizeTransaction,
+  projectLabelFromTags,
   summarizeLedger,
 } from "./core/ledger.js";
 import { exportState, loadState, saveState } from "./core/storage.js";
@@ -480,11 +483,13 @@ const MANUAL_SECTIONS = [
         "“账本”顶部是类型筛选 + 流水 / 图表切换：流水用于查单笔记录，图表就是统计。",
         "“日历”用于快速定位日期，并查看本月支出、收入和有记录的天数。",
         "账本周期可切换所有时间、本周、本月、今年；支出、收入和记录数会跟着周期变化。需要时点放大镜搜索，或用分类筛选。长按单笔流水可以编辑或删除。",
+        "项目用于把一次比赛、一次旅行这类相关流水归在一起；图表页会按项目统计总额。已经在记账起点前付过的钱，可以勾选“仅计入项目”，它只进项目统计，不影响资产和日常支出。",
       ],
       en: [
         "Ledger starts with type filtering plus Flow / Charts: Flow reviews individual entries, and Charts means statistics.",
         "Calendar locates dates quickly and shows monthly spending, income, and active ledger days.",
         "Switch the Ledger period between All Time, This Week, This Month, and This Year. Expense, income, and entry count follow that period. Use the magnifier for search or Category when needed. Long-press an entry to edit or delete it.",
+        "Projects group related entries for a race, trip, or similar event. Charts summarize project totals. For money paid before your ledger start date, mark it Project only: it counts toward the project without changing assets or normal spending.",
       ],
     },
   },
@@ -563,6 +568,7 @@ const CHANGELOG_ENTRIES = [
         "账本流水行不再显示具体时分，改成早上、中午、下午、晚上、凌晨这类时间段；资产概览增加初始资金和流水净额拆分。",
         "PWA 清缓存重载流程参考 Ultreia 简化为直接重新加载，并避免缓存云同步和更新检查请求。",
         "图表里的分类占比和趋势图放大了绘图区，减少空白并让分类百分比更靠近标签。",
+        "新增轻量项目统计，用于汇总比赛、旅行等事件花费；项目补录不影响资产和日常支出。",
       ],
       en: [
         "Strengthened cloud conflict handling so untimestamped cloud rows cannot overwrite local entries or starting assets.",
@@ -571,6 +577,7 @@ const CHANGELOG_ENTRIES = [
         "Ledger rows now show broad time segments instead of exact clock time; Assets now splits starting assets and ledger net.",
         "Simplified the PWA cache-clear reload after Ultreia and avoids caching cloud sync and update-check requests.",
         "Expanded the category-share and trend chart plotting areas, with tighter category percentages.",
+        "Added lightweight project statistics for race, trip, and event costs; project-only backfills do not affect assets or normal spending.",
       ],
     },
   },
@@ -1031,6 +1038,9 @@ const MESSAGES = {
     "capture.timeEvening": "晚上",
     "capture.timeLate": "凌晨",
     "capture.tags": "标签",
+    "capture.project": "项目",
+    "capture.projectPlaceholder": "比赛 / 旅行名",
+    "capture.projectOnly": "仅计入项目",
     "capture.note": "备注",
     "capture.notePlaceholder": "点击填写备注",
     "capture.amountKeypad": "金额键盘",
@@ -1057,6 +1067,10 @@ const MESSAGES = {
     "stats.lineMeta": "",
     "stats.categoryTitle": "分类统计",
     "stats.categoryHint": "只按真实流水汇总，不看预算目标。",
+    "stats.projectTitle": "项目统计",
+    "stats.projectOnly": "含补录",
+    "stats.projectCount": "{count} 笔",
+    "stats.noProject": "当前范围还没有项目数据。",
     "stats.noCategory": "当前范围还没有可统计数据。",
     "stats.other": "其他",
     "assets.title": "资产概览",
@@ -1183,7 +1197,7 @@ const MESSAGES = {
     "toast.cloudSyncFailed": "云同步失败：{message}",
     "toast.cloudSyncSignIn": "请先登录 Aevum 账号再同步。",
     "manual.changelogHeading": "产品迭代过程",
-    "filter.search": "搜索标题、商家、标签",
+    "filter.search": "搜索标题、商家、项目、标签",
     "filter.allTypes": "全部类型",
     "filter.allBooks": "账本",
     "filter.allCategories": "分类",
@@ -1194,6 +1208,7 @@ const MESSAGES = {
     "range.all": "所有时间",
     "txn.edit": "编辑",
     "txn.delete": "删除",
+    "txn.projectOnly": "项目补录",
     "confirm.delete": "删除这笔流水？",
     "confirm.deleteAccount": "删除账户“{account}”？已有流水不会被删除。",
     "calendar.summaryTitle": "本月小计",
@@ -1245,6 +1260,9 @@ const MESSAGES = {
     "capture.timeEvening": "Evening",
     "capture.timeLate": "Late",
     "capture.tags": "Tags",
+    "capture.project": "Project",
+    "capture.projectPlaceholder": "Race / trip name",
+    "capture.projectOnly": "Project only",
     "capture.note": "Note",
     "capture.notePlaceholder": "Tap to add a note",
     "capture.amountKeypad": "Amount Keypad",
@@ -1271,6 +1289,10 @@ const MESSAGES = {
     "stats.lineMeta": "",
     "stats.categoryTitle": "Category Statistics",
     "stats.categoryHint": "Based only on real entries, not budget targets.",
+    "stats.projectTitle": "Project Statistics",
+    "stats.projectOnly": "includes backfill",
+    "stats.projectCount": "{count} entries",
+    "stats.noProject": "No project data in this range yet.",
     "stats.noCategory": "No chartable data in this range yet.",
     "stats.other": "Other",
     "assets.title": "Assets Overview",
@@ -1397,7 +1419,7 @@ const MESSAGES = {
     "toast.cloudSyncFailed": "Cloud sync failed: {message}",
     "toast.cloudSyncSignIn": "Sign in to Aevum before syncing.",
     "manual.changelogHeading": "Product History",
-    "filter.search": "Search title, merchant, tags",
+    "filter.search": "Search title, merchant, project, tags",
     "filter.allTypes": "All Types",
     "filter.allBooks": "Book",
     "filter.allCategories": "Category",
@@ -1408,6 +1430,7 @@ const MESSAGES = {
     "range.all": "All Time",
     "txn.edit": "Edit",
     "txn.delete": "Delete",
+    "txn.projectOnly": "Project Backfill",
     "confirm.delete": "Delete this entry?",
     "confirm.deleteAccount": "Delete account “{account}”? Existing entries will not be deleted.",
     "calendar.summaryTitle": "Month Summary",
@@ -1463,6 +1486,10 @@ function captureTimeSegmentLabel(value) {
   const selected = captureTimeSegmentId(value);
   const item = CAPTURE_TIME_SEGMENTS.find((segment) => segment.id === selected) || CAPTURE_TIME_SEGMENTS[0];
   return t(item.labelKey);
+}
+
+function transactionProjectLabel(txn = {}) {
+  return normalizeProjectLabel(txn.project || projectLabelFromTags(txn.tags));
 }
 
 function dateInputValueWithHour(value, hour) {
@@ -2022,11 +2049,13 @@ function summarizeLedgerPeriod(transactions = [], budgets = DEFAULT_BUDGETS) {
     budgets: {},
     bookExpense: {},
     reimbursableExpense: 0,
-    transactionCount: transactions.length,
+    transactionCount: 0,
   };
 
   for (const txn of transactions) {
+    if (isProjectOnlyTransaction(txn)) continue;
     const amount = Number(txn.amount || 0);
+    summary.transactionCount += 1;
     if (txn.type === "expense") {
       const category = EXPENSE_CATEGORY_ALIASES[txn.category] || txn.category;
       summary.monthExpense += amount;
@@ -2109,7 +2138,7 @@ function assetTotals(ledgerState = activeLedgerState()) {
   const accounts = normalizeAccounts(ledgerState.accounts || [], []);
   const opening = accounts.reduce((total, account) => total + Number(account.openingBalance || 0), 0);
   const flow = (ledgerState.transactions || []).reduce((total, txn) => (
-    total + Number(txn.amount || 0) * transactionSign(txn.type)
+    isProjectOnlyTransaction(txn) ? total : total + Number(txn.amount || 0) * transactionSign(txn.type)
   ), 0);
   return {
     opening: Math.round(opening * 100) / 100,
@@ -2412,6 +2441,7 @@ function renderLedgerFlow(filteredTransactions) {
 function renderLedgerStats(summary, transactions = []) {
   const chartEntries = categoryChartEntries(transactions, 5);
   const chartTotal = Math.max(1, chartEntries.reduce((total, [, amount]) => total + amount, 0));
+  const projectEntries = projectChartEntries(transactions, 6);
   return `
     <section class="panel stats-panel">
       <div class="section-title">
@@ -2430,6 +2460,15 @@ function renderLedgerStats(summary, transactions = []) {
       <div class="budget-list">
         ${renderCategoryStatRows(summary, 8, chartEntries, chartTotal)}
       </div>
+
+      <div class="section-title inline-section-title">
+        <div>
+          <h2>${escapeHtml(t("stats.projectTitle"))}</h2>
+        </div>
+      </div>
+      <div class="budget-list project-stat-list">
+        ${renderProjectStatRows(projectEntries)}
+      </div>
     </section>
   `;
 }
@@ -2442,6 +2481,7 @@ function categoryChartEntries(transactions = [], limit = 5) {
   const sourceType = chartSourceType();
   const totals = new Map();
   for (const txn of transactions) {
+    if (isProjectOnlyTransaction(txn)) continue;
     if (txn.type !== sourceType) continue;
     const amount = Number(txn.amount || 0);
     if (!(amount > 0)) continue;
@@ -2459,6 +2499,7 @@ function dailyChartEntries(transactions = []) {
   const sourceType = chartSourceType();
   const totals = new Map();
   for (const txn of transactions) {
+    if (isProjectOnlyTransaction(txn)) continue;
     if (txn.type !== sourceType) continue;
     const amount = Number(txn.amount || 0);
     if (!(amount > 0)) continue;
@@ -2466,6 +2507,32 @@ function dailyChartEntries(transactions = []) {
     totals.set(key, (totals.get(key) || 0) + amount);
   }
   return [...totals.entries()].sort((a, b) => new Date(a[0]) - new Date(b[0]));
+}
+
+function projectChartEntries(transactions = [], limit = 6) {
+  const sourceType = chartSourceType();
+  const totals = new Map();
+  for (const txn of transactions) {
+    if (txn.type !== sourceType) continue;
+    const project = transactionProjectLabel(txn);
+    if (!project) continue;
+    const amount = Number(txn.amount || 0);
+    if (!(amount > 0)) continue;
+    const current = totals.get(project) || { amount: 0, count: 0, projectOnlyCount: 0 };
+    current.amount += amount;
+    current.count += 1;
+    if (isProjectOnlyTransaction(txn)) current.projectOnlyCount += 1;
+    totals.set(project, current);
+  }
+  return [...totals.entries()]
+    .map(([project, data]) => ({
+      project,
+      amount: Math.round(data.amount * 100) / 100,
+      count: data.count,
+      projectOnlyCount: data.projectOnlyCount,
+    }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, limit);
 }
 
 function chartNumber(value) {
@@ -2669,7 +2736,7 @@ function monthActiveDays() {
   const currentMonth = monthKey(new Date());
   return new Set(
     transactions
-      .filter((txn) => monthKey(txn.occurredAt) === currentMonth)
+      .filter((txn) => !isProjectOnlyTransaction(txn) && monthKey(txn.occurredAt) === currentMonth)
       .map((txn) => todayKey(txn.occurredAt)),
   ).size;
 }
@@ -2685,6 +2752,7 @@ function renderMonthCalendar() {
   const today = todayKey(now);
 
   for (const txn of transactions) {
+    if (isProjectOnlyTransaction(txn)) continue;
     if (monthKey(txn.occurredAt) !== currentMonth) continue;
     const key = todayKey(txn.occurredAt);
     const amount = Number(txn.amount || 0);
@@ -3303,6 +3371,8 @@ function renderCaptureForm(editingTransaction) {
     ...sourceTxn,
     type,
     category: sanitizeCategoryForType(type, sourceTxn.category),
+    project: transactionProjectLabel(sourceTxn),
+    projectOnly: isProjectOnlyTransaction(sourceTxn),
   };
 
   return `
@@ -3338,6 +3408,16 @@ function renderCaptureForm(editingTransaction) {
           <label class="capture-note-field">
             <span>${escapeHtml(t("capture.note"))}</span>
             <input name="note" value="${escapeHtml(txn.note || "")}">
+          </label>
+        </div>
+        <div class="capture-project-row">
+          <label class="capture-project-field">
+            <span>${escapeHtml(t("capture.project"))}</span>
+            <input name="project" value="${escapeHtml(txn.project || "")}" placeholder="${escapeHtml(t("capture.projectPlaceholder"))}">
+          </label>
+          <label class="capture-project-only-field">
+            <input type="checkbox" name="projectOnly" value="true" ${txn.projectOnly ? "checked" : ""}>
+            <span>${escapeHtml(t("capture.projectOnly"))}</span>
           </label>
         </div>
 
@@ -3514,6 +3594,31 @@ function renderCategoryStatRows(summary, limit = 8) {
   `).join("");
 }
 
+function renderProjectStatRows(entries = []) {
+  if (!entries.length) return `<div class="empty">${escapeHtml(t("stats.noProject"))}</div>`;
+  const max = Math.max(...entries.map((entry) => entry.amount), 1);
+  return entries.map((entry) => {
+    const ratio = Math.min(1, entry.amount / max);
+    const meta = [
+      t("stats.projectCount", { count: entry.count }),
+      entry.projectOnlyCount ? t("stats.projectOnly") : "",
+    ].filter(Boolean).join(" · ");
+    return `
+      <div class="budget-row project-stat-row">
+        <div class="metric-row-head">
+          ${renderIconBadge("旅行", "category", "small")}
+          <div class="metric-copy">
+            <strong>${escapeHtml(entry.project)}</strong>
+            <span>${escapeHtml(meta)}</span>
+          </div>
+          <span class="metric-amount">${formatMoney(entry.amount)}</span>
+        </div>
+        <div class="budget-track"><span style="width: ${Math.round(ratio * 100)}%"></span></div>
+      </div>
+    `;
+  }).join("");
+}
+
 function renderFilters() {
   return `
     <div class="filters ${state.searchOpen ? "search-open" : ""}">
@@ -3527,9 +3632,16 @@ function renderFilters() {
 }
 
 function renderTransactionRow(txn) {
-  const accountMeta = `${formatWhen(txn.occurredAt)} · ${captureTimeSegmentLabel(txn.occurredAt)} · ${transactionTypeLabel(txn)}`;
+  const project = transactionProjectLabel(txn);
+  const accountMeta = [
+    formatWhen(txn.occurredAt),
+    captureTimeSegmentLabel(txn.occurredAt),
+    transactionTypeLabel(txn),
+    project ? `${t("capture.project")}：${project}` : "",
+    isProjectOnlyTransaction(txn) ? t("txn.projectOnly") : "",
+  ].filter(Boolean).join(" · ");
   return `
-    <article class="txn-row action-row ${escapeHtml(transactionTone(txn))}" data-long-press-actions>
+    <article class="txn-row action-row ${escapeHtml(transactionTone(txn))} ${isProjectOnlyTransaction(txn) ? "project-only" : ""}" data-long-press-actions>
       <div class="txn-main">
         ${renderIconBadge(txn.category, "category")}
         <div class="txn-copy">
@@ -3644,6 +3756,8 @@ function syncCaptureDraftFromForm(form) {
     merchant: data.merchant || "",
     occurredAt: data.occurredAt || toDateInputValue(new Date()),
     tags: data.tags || "",
+    project: data.project || "",
+    projectOnly: data.projectOnly === "true",
     note: data.note || "",
     reimbursable: false,
     receiptDataUrl: "",
@@ -4104,6 +4218,7 @@ document.addEventListener("change", (event) => {
     return;
   }
 
+  syncCaptureDraftFromForm(event.target?.closest?.("#transaction-form"));
 });
 
 document.addEventListener("click", (event) => {

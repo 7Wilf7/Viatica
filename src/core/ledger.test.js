@@ -3,11 +3,14 @@ import assert from "node:assert/strict";
 import {
   buildAevumOverview,
   filterTransactions,
+  isProjectOnlyTransaction,
   normalizeAccount,
   normalizeAccounts,
   normalizeBudgets,
   normalizeTransaction,
+  projectLabelFromTags,
   summarizeLedger,
+  tagsWithProject,
 } from "./ledger.js";
 import { exportTransactionsCsv, importTransactionsCsv } from "./csv.js";
 
@@ -107,6 +110,32 @@ test("filters reimbursable and receipt-backed transactions", () => {
   assert.equal(filterTransactions(txns, { query: "票据" }).length, 1);
 });
 
+test("keeps project labels in tags and excludes project-only costs from ledger totals", () => {
+  const raceEntry = normalizeTransaction({
+    amount: 388,
+    category: "运动",
+    account: "微信",
+    title: "越野赛报名",
+    project: "崇礼越野赛 2026",
+  });
+  const oldFee = normalizeTransaction({
+    amount: 299,
+    category: "运动",
+    account: "微信",
+    title: "历史报名费",
+    tags: tagsWithProject([], "崇礼越野赛 2026", true),
+  });
+  const summary = summarizeLedger([raceEntry, oldFee], { "运动": 1000 }, new Date());
+
+  assert.equal(projectLabelFromTags(raceEntry.tags), "崇礼越野赛 2026");
+  assert.equal(oldFee.project, "崇礼越野赛 2026");
+  assert.equal(isProjectOnlyTransaction(oldFee), true);
+  assert.equal(summary.monthExpense, 388);
+  assert.equal(summary.categoryExpense["运动"], 388);
+  assert.equal(summary.transactionCount, 1);
+  assert.equal(filterTransactions([raceEntry, oldFee], { query: "项目补录" }).length, 1);
+});
+
 test("csv export and import round trips ledger rows", () => {
   const txns = [
     normalizeTransaction({ amount: 20, category: "餐饮", account: "微信", title: "咖啡", tags: "work" }),
@@ -123,6 +152,7 @@ test("csv export and import round trips ledger rows", () => {
 test("builds an Aevum overview without exposing private notes", () => {
   const txns = [
     normalizeTransaction({ amount: 42, category: "餐饮", account: "微信", title: "午餐", note: "private" }),
+    normalizeTransaction({ amount: 299, category: "运动", account: "微信", title: "历史报名费", project: "崇礼越野赛", projectOnly: true }),
   ];
   const overview = buildAevumOverview(txns, {}, new Date("2026-06-24T12:00:00+08:00"));
 

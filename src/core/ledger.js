@@ -9,6 +9,9 @@ import {
 } from "./constants.js";
 import { monthKey, todayKey, transactionSign } from "./format.js";
 
+const PROJECT_TAG_PREFIX = "project:";
+const PROJECT_ONLY_TAG = "project-only";
+
 function uid(prefix = "id") {
   const random = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
   return `${prefix}_${random}`;
@@ -20,6 +23,38 @@ export function parseTags(input) {
     .split(/[,，\s]+/)
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+export function normalizeProjectLabel(input) {
+  return String(input || "").trim().replace(/\s+/g, " ");
+}
+
+function decodeProjectLabel(input) {
+  try {
+    return decodeURIComponent(input);
+  } catch {
+    return input;
+  }
+}
+
+export function projectLabelFromTags(tags = []) {
+  const tag = parseTags(tags).find((item) => item.startsWith(PROJECT_TAG_PREFIX));
+  if (!tag) return "";
+  return normalizeProjectLabel(decodeProjectLabel(tag.slice(PROJECT_TAG_PREFIX.length)));
+}
+
+export function tagsWithProject(tags = [], project = "", projectOnly = false) {
+  const base = parseTags(tags).filter((tag) => (
+    !tag.startsWith(PROJECT_TAG_PREFIX) && tag !== PROJECT_ONLY_TAG
+  ));
+  const projectLabel = normalizeProjectLabel(project);
+  if (projectLabel) base.push(`${PROJECT_TAG_PREFIX}${encodeURIComponent(projectLabel)}`);
+  if (projectOnly) base.push(PROJECT_ONLY_TAG);
+  return base;
+}
+
+export function isProjectOnlyTransaction(txn = {}) {
+  return Boolean(txn.projectOnly) || parseTags(txn.tags).includes(PROJECT_ONLY_TAG);
 }
 
 function parseBoolean(input) {
@@ -140,6 +175,12 @@ export function normalizeTransaction(input = {}, now = new Date()) {
 
   const createdAt = input.createdAt || now.toISOString();
   const updatedAt = input.updatedAt || now.toISOString();
+  const rawTags = parseTags(input.tags);
+  const hasProjectInput = Object.prototype.hasOwnProperty.call(input, "project")
+    || Object.prototype.hasOwnProperty.call(input, "projectName");
+  const project = normalizeProjectLabel(hasProjectInput ? (input.project ?? input.projectName) : projectLabelFromTags(rawTags));
+  const projectOnly = Boolean(project) && (parseBoolean(input.projectOnly) || rawTags.includes(PROJECT_ONLY_TAG));
+  const tags = tagsWithProject(rawTags, project, projectOnly);
   return {
     id: input.id || uid("txn"),
     type,
@@ -152,7 +193,9 @@ export function normalizeTransaction(input = {}, now = new Date()) {
     title,
     merchant: String(input.merchant || "").trim(),
     note: String(input.note || "").trim(),
-    tags: parseTags(input.tags),
+    tags,
+    project,
+    projectOnly,
     reimbursable: parseBoolean(input.reimbursable),
     receiptDataUrl: String(input.receiptDataUrl || "").trim(),
     createdAt,
@@ -175,7 +218,7 @@ export function summarizeLedger(transactions = [], budgets = DEFAULT_BUDGETS, no
     budgets: {},
     bookExpense: {},
     reimbursableExpense: 0,
-    transactionCount: transactions.length,
+    transactionCount: 0,
   };
 
   for (const account of normalizeAccounts(accounts, [], now)) {
@@ -184,6 +227,7 @@ export function summarizeLedger(transactions = [], budgets = DEFAULT_BUDGETS, no
   }
 
   for (const txn of transactions) {
+    if (isProjectOnlyTransaction(txn)) continue;
     const d = new Date(txn.occurredAt);
     if (Number.isNaN(d.getTime())) continue;
     const sign = transactionSign(txn.type);
@@ -193,6 +237,7 @@ export function summarizeLedger(transactions = [], budgets = DEFAULT_BUDGETS, no
     const txMonth = monthKey(d);
 
     summary.accountNet[txn.account] = (summary.accountNet[txn.account] || 0) + amount * sign;
+    summary.transactionCount += 1;
 
     if (dateKey === currentDay) {
       if (txn.type === "expense") summary.todayExpense += amount;
@@ -252,7 +297,9 @@ export function filterTransactions(transactions = [], filters = {}) {
       txn.note,
       txn.category,
       txn.account,
+      txn.project,
       txn.type,
+      isProjectOnlyTransaction(txn) ? "项目补录 仅计入项目 project only" : "",
       txn.reimbursable ? "报销 可报销 reimbursable" : "",
       txn.receiptDataUrl ? "票据 图片 收据 receipt" : "",
       ...(txn.tags || []),
@@ -262,8 +309,9 @@ export function filterTransactions(transactions = [], filters = {}) {
 }
 
 export function buildAevumOverview(transactions = [], budgets = DEFAULT_BUDGETS, now = new Date()) {
-  const summary = summarizeLedger(transactions, budgets, now);
-  const recent = [...transactions]
+  const ledgerTransactions = transactions.filter((txn) => !isProjectOnlyTransaction(txn));
+  const summary = summarizeLedger(ledgerTransactions, budgets, now);
+  const recent = [...ledgerTransactions]
     .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt))
     .slice(0, 5)
     .map((txn) => ({

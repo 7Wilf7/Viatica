@@ -991,8 +991,8 @@ label span {
 .pie-legend-item {
   min-width: 0;
   display: grid;
-  grid-template-columns: auto minmax(0, max-content) max-content;
-  gap: 4px;
+  grid-template-columns: auto minmax(48px, 1fr) minmax(32px, 38px);
+  gap: 6px;
   align-items: center;
   color: var(--ink-2);
   font-size: 10px;
@@ -1014,8 +1014,10 @@ label span {
 }
 
 .pie-legend-item strong {
+  justify-self: start;
   color: var(--ink);
   font-size: 10px;
+  text-align: left;
 }
 
 .line-chart {
@@ -1590,16 +1592,19 @@ label span {
 
 .capture-detail-row {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(102px, 0.44fr) minmax(0, 1fr);
+  align-items: start;
   gap: 6px;
 }
 
-.capture-note-field {
+.capture-note-field,
+.capture-project-field {
   position: relative;
   display: block;
 }
 
-.capture-note-field span {
+.capture-note-field span,
+.capture-project-field span {
   position: absolute;
   left: 10px;
   top: 50%;
@@ -1614,6 +1619,40 @@ label span {
 
 .capture-note-field input {
   padding-left: 48px;
+}
+
+.capture-project-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.capture-project-field input {
+  padding-left: 48px;
+}
+
+.capture-project-only-field {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: oklch(0.145 0.006 95 / 0.74);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.capture-project-only-field input {
+  width: 14px;
+  min-height: 14px;
+  height: 14px;
+  padding: 0;
+  accent-color: var(--accent-strong);
 }
 
 .capture-time-choice .choice-trigger {
@@ -1665,7 +1704,7 @@ label span {
   resize: none;
 }
 
-.amount-pad-panel input {
+.amount-pad-panel input:not([type="checkbox"]) {
   min-height: 38px;
 }
 
@@ -2844,6 +2883,12 @@ input[type="datetime-local"] {
   background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
 }
 
+.project-stat-row .metric-amount {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .txn-row {
   position: relative;
   padding: 9px;
@@ -2866,6 +2911,14 @@ input[type="datetime-local"] {
   border-color: var(--line-strong);
   background: var(--panel-2);
   transform: translateY(-1px);
+}
+
+.txn-row.project-only {
+  background: oklch(0.140 0.006 95 / 0.70);
+}
+
+.txn-row.project-only .amount {
+  color: var(--ink-2);
 }
 
 .txn-main {

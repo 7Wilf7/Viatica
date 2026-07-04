@@ -259,6 +259,7 @@ export const DEMO_TRANSACTIONS = [
     category: "旅行",
     title: "高铁票",
     merchant: "12306",
+    project: "杭州周末旅行",
     tags: "travel train",
   },
   {
@@ -272,6 +273,7 @@ export const DEMO_TRANSACTIONS = [
     category: "旅行",
     title: "酒店定金",
     merchant: "Booking",
+    project: "杭州周末旅行",
     tags: "travel hotel",
   },
   {
@@ -298,6 +300,7 @@ export const DEMO_TRANSACTIONS = [
     category: "运动",
     title: "越野赛报名",
     merchant: "赛事平台",
+    project: "崇礼越野赛",
     tags: "race",
   },
   {
@@ -337,6 +340,7 @@ export const DEMO_TRANSACTIONS = [
     category: "健康",
     title: "放松按摩",
     merchant: "运动恢复店",
+    project: "崇礼越野赛",
     tags: "recovery",
   },
   {
@@ -350,6 +354,7 @@ export const DEMO_TRANSACTIONS = [
     category: "运动",
     title: "跑步背心",
     merchant: "装备店",
+    project: "崇礼越野赛",
     tags: "gear",
   },
   {
