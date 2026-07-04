@@ -26,7 +26,7 @@ import {
   signOutFromAevum,
 } from "./core/cloud.js";
 import { deleteCloudTransaction, syncViaticaLedger } from "./core/cloudSync.js";
-import { formatCurrency, formatDateTime, monthKey, todayKey, toDateInputValue } from "./core/format.js";
+import { formatCurrency, monthKey, todayKey, toDateInputValue, transactionSign } from "./core/format.js";
 import {
   EMPTY_AEVUM_PROFILE,
   fetchAevumProfile,
@@ -56,6 +56,7 @@ const MIRROR_APK_URL = SUPABASE_PUBLIC_URL
   ? `${SUPABASE_PUBLIC_URL}/storage/v1/object/public/releases/viatica-latest.apk`
   : null;
 const AUTO_CHECK_CACHE_MS = 30 * 60 * 1000;
+const FOREGROUND_SYNC_MIN_MS = 12 * 1000;
 const BOOT_REVEAL_MS = 3600;
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
@@ -93,6 +94,7 @@ const state = {
   },
   searchOpen: false,
   accountFormOpen: false,
+  captureDraft: null,
   budgetKeypadCategory: "",
   editingTransactionId: null,
   pwaRefreshInProgress: false,
@@ -547,6 +549,29 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-07-04",
+    title: {
+      zh: "修复同步和加一笔反馈",
+      en: "Fixed sync and Add feedback",
+    },
+    items: {
+      zh: [
+        "加强云同步冲突处理，避免无时间戳的云端旧记录覆盖本机流水或初始资金。",
+        "回到前台、进入账本/资产/设置时会保守触发云端刷新，减少 PWA 和 APP 长时间不同步。",
+        "Add 页子类选中态更明显，切走再回来也会保留当前分类、细项、时间段、金额和备注草稿。",
+        "加一笔时间改为直接显示早上、中午、下午、晚上、凌晨五个按钮，不再使用容易闪退的下拉菜单。",
+        "账本流水行不再显示具体时分；资产概览增加初始资金和流水净额拆分。",
+      ],
+      en: [
+        "Strengthened cloud conflict handling so untimestamped cloud rows cannot overwrite local entries or starting assets.",
+        "Conservatively refreshes cloud data when returning to the foreground or opening Ledger, Assets, or Settings.",
+        "Made Add detail-chip selection clearer and preserved the current category, detail, time segment, amount, and note draft across rerenders.",
+        "Changed Add time selection into five direct buttons: morning, noon, afternoon, evening, and late.",
+        "Ledger rows no longer show exact clock time; Assets now splits starting assets and ledger net.",
+      ],
+    },
+  },
   {
     date: "2026-07-03",
     title: {
@@ -1042,6 +1067,7 @@ const MESSAGES = {
     "assets.totalBudget": "总预算",
     "assets.accountName": "账户名称",
     "assets.openingBalance": "初始资金",
+    "assets.flowNet": "流水净额",
     "assets.addAccount": "确认",
     "assets.editAssets": "长按编辑初始资金",
     "assets.deleteAccount": "删除账户",
@@ -1255,6 +1281,7 @@ const MESSAGES = {
     "assets.totalBudget": "Total Budget",
     "assets.accountName": "Account Name",
     "assets.openingBalance": "Starting Assets",
+    "assets.flowNet": "Ledger Net",
     "assets.addAccount": "Confirm",
     "assets.editAssets": "Long-press to edit starting assets",
     "assets.deleteAccount": "Delete Account",
@@ -1446,7 +1473,12 @@ function chunkList(items, size) {
 }
 
 function formatWhen(value) {
-  return formatDateTime(value, displayLocale());
+  const d = value ? new Date(value) : new Date();
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat(displayLocale(), {
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }
 
 function escapeHtml(value) {
@@ -1529,6 +1561,13 @@ function scheduleCloudSync(delay = 900) {
   cloudSyncTimer = window.setTimeout(() => {
     syncCloudNow({ silent: true });
   }, delay);
+}
+
+function scheduleForegroundCloudSync(delay = 250) {
+  if (!canCloudSync() || state.cloudSync.status === "syncing") return;
+  const lastSyncedAt = Number(new Date(state.cloudSync.lastSyncedAt || 0));
+  if (lastSyncedAt && Date.now() - lastSyncedAt < FOREGROUND_SYNC_MIN_MS) return;
+  scheduleCloudSync(delay);
 }
 
 function cloudSyncLabel() {
@@ -1863,6 +1902,24 @@ function defaultAccountName() {
   return names.includes("微信") ? "微信" : names[0] || "其他";
 }
 
+function defaultCaptureDraft() {
+  return {
+    type: "expense",
+    amount: "",
+    currency: "CNY",
+    book: "日常账本",
+    account: defaultAccountName(),
+    category: "餐饮",
+    title: "",
+    merchant: "",
+    occurredAt: toDateInputValue(new Date()),
+    tags: "",
+    note: "",
+    reimbursable: false,
+    receiptDataUrl: "",
+  };
+}
+
 function defaultCategoryForType(type = "expense") {
   return type === "income" ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0];
 }
@@ -2040,14 +2097,26 @@ function signedMoney(amount) {
   return formatMoney(value);
 }
 
-function totalAccountNet(summary) {
-  return accountNames().reduce((total, account) => total + Number(summary.accountNet[account] || 0), 0);
+function assetTotals(ledgerState = activeLedgerState()) {
+  const accounts = normalizeAccounts(ledgerState.accounts || [], []);
+  const opening = accounts.reduce((total, account) => total + Number(account.openingBalance || 0), 0);
+  const flow = (ledgerState.transactions || []).reduce((total, txn) => (
+    total + Number(txn.amount || 0) * transactionSign(txn.type)
+  ), 0);
+  return {
+    opening: Math.round(opening * 100) / 100,
+    flow: Math.round(flow * 100) / 100,
+    total: Math.round((opening + flow) * 100) / 100,
+  };
 }
 
 function assetSetupDefaults() {
   const accounts = activeLedgerState().accounts;
   const preferredName = defaultAccountName();
-  const existing = accounts.find((account) => account.name === preferredName) || accounts[0] || null;
+  const existing = accounts.find((account) => Number(account.openingBalance || 0) !== 0)
+    || accounts.find((account) => account.name === preferredName)
+    || accounts[0]
+    || null;
   return {
     name: existing?.name || preferredName,
     openingBalance: existing?.openingBalance ?? 0,
@@ -2667,13 +2736,18 @@ function renderCaptureTab(editingTransaction) {
 }
 
 function renderAssetsTab(summary) {
-  const assetTotal = totalAccountNet(summary);
+  const totals = assetTotals();
+  const assetTotal = totals.total;
   const setupDefaults = assetSetupDefaults();
   return `
     <section class="panel asset-overview-panel" data-long-press-action="toggle-account-form" role="button" tabindex="0" aria-label="${escapeHtml(t("assets.editAssets"))}">
       <div class="asset-total-card">
         <span>${escapeHtml(t("assets.title"))}</span>
         <strong class="amount ${assetTotal >= 0 ? "positive" : "negative"}">${escapeHtml(signedMoney(assetTotal))}</strong>
+        <div class="asset-breakdown">
+          <span>${escapeHtml(t("assets.openingBalance"))} ${escapeHtml(signedMoney(totals.opening))}</span>
+          <span>${escapeHtml(t("assets.flowNet"))} ${escapeHtml(signedMoney(totals.flow))}</span>
+        </div>
       </div>
       ${state.accountFormOpen ? renderAccountSetupForm(setupDefaults) : ""}
     </section>
@@ -3213,19 +3287,8 @@ function renderStat(label, value) {
 
 function renderCaptureForm(editingTransaction) {
   const sourceTxn = editingTransaction || {
-    type: "expense",
-    amount: "",
-    currency: "CNY",
-    book: "日常账本",
-    account: defaultAccountName(),
-    category: "餐饮",
-    title: "",
-    merchant: "",
-    occurredAt: toDateInputValue(new Date()),
-    tags: [],
-    note: "",
-    reimbursable: false,
-    receiptDataUrl: "",
+    ...defaultCaptureDraft(),
+    ...(state.captureDraft || {}),
   };
   const type = sourceTxn.type === "income" ? "income" : "expense";
   const txn = {
@@ -3312,20 +3375,13 @@ function renderCaptureCategoryBoard(txn) {
 
 function renderCaptureTimeChoice(value) {
   const selected = captureTimeSegmentId(value);
-  const selectedItem = CAPTURE_TIME_SEGMENTS.find((item) => item.id === selected) || CAPTURE_TIME_SEGMENTS[0];
   return `
-    <div class="choice-control capture-time-choice" data-choice data-choice-time aria-label="${escapeHtml(t("capture.time"))}">
-      <button class="choice-trigger" type="button" data-action="toggle-choice" aria-expanded="false">
-        <span>${escapeHtml(t(selectedItem.labelKey))}</span>
-        <span class="choice-chevron" aria-hidden="true">▼</span>
-      </button>
-      <div class="choice-menu">
+    <div class="capture-time-segments" data-choice-time aria-label="${escapeHtml(t("capture.time"))}">
       ${CAPTURE_TIME_SEGMENTS.map((item) => `
-          <button class="choice-option ${selected === item.id ? "active" : ""}" type="button" data-action="choose-option" data-choice-value="${escapeHtml(item.id)}" data-hour="${item.hour}">
+          <button class="capture-time-segment ${selected === item.id ? "active" : ""}" type="button" data-action="choose-time-segment" data-choice-value="${escapeHtml(item.id)}" data-hour="${item.hour}" aria-pressed="${selected === item.id ? "true" : "false"}">
           ${escapeHtml(t(item.labelKey))}
         </button>
         `).join("")}
-      </div>
     </div>
   `;
 }
@@ -3557,6 +3613,28 @@ function syncPickButtons(form) {
   });
 }
 
+function syncCaptureDraftFromForm(form) {
+  if (!form || form.getAttribute("id") !== "transaction-form" || state.editingTransactionId) return;
+  const data = Object.fromEntries(new FormData(form).entries());
+  const type = data.type === "income" ? "income" : "expense";
+  state.captureDraft = {
+    ...defaultCaptureDraft(),
+    type,
+    amount: data.amount || "",
+    currency: data.currency || "CNY",
+    book: data.book || "日常账本",
+    account: data.account || defaultAccountName(),
+    category: sanitizeCategoryForType(type, data.category),
+    title: data.title || "",
+    merchant: data.merchant || "",
+    occurredAt: data.occurredAt || toDateInputValue(new Date()),
+    tags: data.tags || "",
+    note: data.note || "",
+    reimbursable: false,
+    receiptDataUrl: "",
+  };
+}
+
 function refreshCaptureCategoryBoard(form) {
   const type = form?.elements?.namedItem("type")?.value || "expense";
   const category = form?.elements?.namedItem("category")?.value || defaultCategoryForType(type);
@@ -3582,6 +3660,7 @@ function fillForm(values) {
   });
   syncAmountDisplay(form);
   syncPickButtons(form);
+  syncCaptureDraftFromForm(form);
 }
 
 function pickFormField(button) {
@@ -3606,6 +3685,7 @@ function pickFormField(button) {
   syncChoiceControl(form, field, value);
   syncChoiceGroup(form, field);
   syncPickButtons(form);
+  syncCaptureDraftFromForm(form);
 }
 
 function pickCaptureSubcategory(button) {
@@ -3613,6 +3693,20 @@ function pickCaptureSubcategory(button) {
     category: button.dataset.category || "其他",
     title: button.dataset.title || "",
   });
+}
+
+function pickCaptureTimeSegment(button) {
+  const form = button.closest("form");
+  const input = form?.elements?.namedItem("occurredAt");
+  if (!form || !input) return;
+  const hour = Number(button.dataset.hour || 8);
+  input.value = dateInputValueWithHour(input.value || new Date(), Number.isFinite(hour) ? hour : 8);
+  form.querySelectorAll("[data-action=\"choose-time-segment\"]").forEach((option) => {
+    const active = option === button;
+    option.classList.toggle("active", active);
+    option.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+  syncCaptureDraftFromForm(form);
 }
 
 function nextAmountValue(current, key) {
@@ -3642,6 +3736,7 @@ function applyAmountKey(button) {
     syncBudgetAmountDisplay(budgetRow);
   } else {
     syncAmountDisplay(form);
+    syncCaptureDraftFromForm(form);
   }
 }
 
@@ -3952,6 +4047,7 @@ document.addEventListener("submit", (event) => {
       toast(t("toast.updated"));
     } else {
       state.transactions.unshift(data);
+      state.captureDraft = null;
       toast(t("toast.saved"));
     }
     state.activeTab = "ledger";
@@ -3974,7 +4070,10 @@ document.addEventListener("input", (event) => {
   }
 
   const key = event.target?.dataset?.filter;
-  if (!key) return;
+  if (!key) {
+    syncCaptureDraftFromForm(event.target?.closest?.("#transaction-form"));
+    return;
+  }
   state.filters[key] = event.target.value;
   render();
 });
@@ -4042,6 +4141,9 @@ document.addEventListener("click", (event) => {
   if (action === "pick-subcategory") {
     pickCaptureSubcategory(node);
   }
+  if (action === "choose-time-segment") {
+    pickCaptureTimeSegment(node);
+  }
   if (action === "amount-key") {
     applyAmountKey(node);
   }
@@ -4073,6 +4175,7 @@ document.addEventListener("click", (event) => {
     state.activeTab = nextTab;
     if (state.activeTab === "settings") state.settingsContent = "home";
     render();
+    if (["ledger", "assets", "settings"].includes(state.activeTab)) scheduleForegroundCloudSync();
   }
   if (action === "open-capture") {
     if (isDemoMode()) {
@@ -4087,6 +4190,7 @@ document.addEventListener("click", (event) => {
     state.activeTab = "ledger";
     state.ledgerView = "flow";
     render();
+    scheduleForegroundCloudSync();
   }
   if (action === "open-ledger-search") {
     state.activeTab = "ledger";
@@ -4105,6 +4209,7 @@ document.addEventListener("click", (event) => {
   if (action === "open-budgets") {
     state.activeTab = "assets";
     render();
+    scheduleForegroundCloudSync();
   }
   if (action === "ledger-view") {
     const view = node.dataset.view;
@@ -4170,6 +4275,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "edit") {
     if (guardDemoMutation()) return;
+    state.captureDraft = null;
     state.editingTransactionId = node.dataset.id;
     state.activeTab = "capture";
     render();
@@ -4278,9 +4384,14 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && state.auth.user && state.settingsContent !== "profile") {
-    void loadSharedProfile({ silent: true });
+  if (document.visibilityState === "visible" && state.auth.user) {
+    if (state.settingsContent !== "profile") void loadSharedProfile({ silent: true });
+    scheduleForegroundCloudSync();
   }
+});
+
+window.addEventListener("focus", () => {
+  scheduleForegroundCloudSync();
 });
 
 render();

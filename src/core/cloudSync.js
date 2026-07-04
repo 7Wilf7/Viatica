@@ -22,6 +22,10 @@ function asIso(value, fallback = new Date()) {
   return Number.isNaN(date.getTime()) ? fallback.toISOString() : date.toISOString();
 }
 
+function hasTimestamp(value) {
+  return Boolean(value?.updated_at || value?.updatedAt || value?.created_at || value?.createdAt);
+}
+
 function newer(a, b) {
   const aTime = Number(new Date(a?.updatedAt || a?.createdAt || 0));
   const bTime = Number(new Date(b?.updatedAt || b?.createdAt || 0));
@@ -51,11 +55,16 @@ function normalizeCloudTransaction(row, now = new Date()) {
     createdAt: row.created_at || row.createdAt,
     updatedAt: row.updated_at || row.updatedAt,
   };
-  return normalizeTransaction(input, now);
+  const transaction = normalizeTransaction(input, now);
+  if (!hasTimestamp(row)) {
+    transaction.createdAt = "";
+    transaction.updatedAt = "";
+  }
+  return transaction;
 }
 
 function normalizeCloudAccount(row, now = new Date()) {
-  return normalizeAccount({
+  const account = normalizeAccount({
     id: row.client_id || row.local_id || row.id,
     name: row.name,
     openingBalance: row.opening_balance ?? row.openingBalance ?? 0,
@@ -63,6 +72,11 @@ function normalizeCloudAccount(row, now = new Date()) {
     createdAt: row.created_at || row.createdAt,
     updatedAt: row.updated_at || row.updatedAt,
   }, now);
+  if (!hasTimestamp(row)) {
+    account.createdAt = "";
+    account.updatedAt = "";
+  }
+  return account;
 }
 
 function toTransactionRow(txn, userId, mode = "client_id") {
@@ -81,6 +95,8 @@ function toTransactionRow(txn, userId, mode = "client_id") {
     tags: Array.isArray(txn.tags) ? txn.tags : [],
     reimbursable: Boolean(txn.reimbursable),
     receipt_data_url: txn.receiptDataUrl || "",
+    created_at: asIso(txn.createdAt || txn.occurredAt),
+    updated_at: asIso(txn.updatedAt || txn.createdAt || txn.occurredAt),
   };
   if (mode === "client_id") row.client_id = txn.id;
   if (mode === "local_id") row.local_id = txn.id;
@@ -101,6 +117,8 @@ function toAccountRow(account, userId, mode = "full") {
     user_id: userId,
     name: account.name,
     opening_balance: Number(account.openingBalance || 0),
+    created_at: asIso(account.createdAt || account.updatedAt),
+    updated_at: asIso(account.updatedAt || account.createdAt),
   };
   if (mode === "full") {
     row.client_id = account.id;
@@ -124,9 +142,13 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
   const deletedTransactionIds = uniqueDeletedIds(localState.preferences);
   const deleted = new Set(deletedTransactionIds);
   const byId = new Map();
-  const addTransaction = (txn) => {
+  const addTransaction = (txn, { remote = false } = {}) => {
     try {
       const normalized = normalizeTransaction(txn, now);
+      if (remote && !hasTimestamp(txn)) {
+        normalized.createdAt = "";
+        normalized.updatedAt = "";
+      }
       if (deleted.has(normalized.id)) return;
       const existing = byId.get(normalized.id);
       byId.set(normalized.id, existing ? newer(existing, normalized) : normalized);
@@ -135,8 +157,8 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
     }
   };
 
-  (localState.transactions || []).forEach(addTransaction);
-  (remoteState.transactions || []).forEach(addTransaction);
+  (localState.transactions || []).forEach((txn) => addTransaction(txn));
+  (remoteState.transactions || []).forEach((txn) => addTransaction(txn, { remote: true }));
 
   const transactions = [...byId.values()]
     .sort((a, b) => Number(new Date(b.occurredAt)) - Number(new Date(a.occurredAt)));
@@ -153,7 +175,19 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
   for (const account of normalizeAccounts(localState.accounts || [], [], now)) {
     accountMap.set(account.name, account);
   }
-  for (const account of normalizeAccounts(remoteState.accounts || [], [], now)) {
+  const remoteAccounts = (remoteState.accounts || []).flatMap((account) => {
+    try {
+      const normalized = normalizeAccount(account, now);
+      if (!hasTimestamp(account)) {
+        normalized.createdAt = "";
+        normalized.updatedAt = "";
+      }
+      return [normalized];
+    } catch {
+      return [];
+    }
+  });
+  for (const account of remoteAccounts) {
     const existing = accountMap.get(account.name);
     accountMap.set(account.name, existing ? newer(existing, account) : account);
   }
@@ -218,18 +252,37 @@ function transactionKeys(txn = {}) {
 }
 
 function transactionRows(txn, userId) {
-  return [
+  const rows = [
     toTransactionRow(txn, userId, "client_id"),
     toTransactionRow(txn, userId, "local_id"),
     toTransactionRow(txn, userId, "id"),
   ];
+  return [
+    ...rows,
+    ...rows.map(({ created_at, updated_at, ...row }) => row),
+  ];
 }
 
 function transactionUpdateRows(txn, userId) {
-  return [
+  const rows = [
     toTransactionRow(txn, userId, "client_id"),
     toTransactionRow(txn, userId, "local_id"),
     toTransactionRow(txn, userId, "none"),
+  ];
+  return [
+    ...rows,
+    ...rows.map(({ created_at, updated_at, ...row }) => row),
+  ];
+}
+
+function accountRows(account, userId) {
+  const rows = [
+    toAccountRow(account, userId, "full"),
+    toAccountRow(account, userId, "minimal"),
+  ];
+  return [
+    ...rows,
+    ...rows.map(({ created_at, updated_at, ...row }) => row),
   ];
 }
 
@@ -238,13 +291,6 @@ function budgetRows(category, amount, userId) {
     toBudgetRow(category, amount, userId, "amount"),
     toBudgetRow(category, amount, userId, "budget"),
     toBudgetRow(category, amount, userId, "monthly_budget"),
-  ];
-}
-
-function accountRows(account, userId) {
-  return [
-    toAccountRow(account, userId, "full"),
-    toAccountRow(account, userId, "minimal"),
   ];
 }
 

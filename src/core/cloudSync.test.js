@@ -210,6 +210,68 @@ test("keeps the newest transaction when local and cloud share an id", () => {
   assert.equal(merged.transactions[0].amount, 28);
 });
 
+test("does not let untimestamped cloud transactions overwrite local updates", () => {
+  const merged = mergeLedgerStates({
+    transactions: [
+      {
+        id: "txn_same",
+        type: "expense",
+        occurredAt: "2026-07-01T08:00:00+08:00",
+        amount: 38,
+        category: "餐饮",
+        title: "本机晚餐",
+        updatedAt: "2026-07-04T08:00:00+08:00",
+      },
+    ],
+    preferences: {},
+  }, {
+    transactions: [
+      {
+        id: "txn_same",
+        type: "expense",
+        occurredAt: "2026-07-01T08:00:00+08:00",
+        amount: 18,
+        category: "餐饮",
+        title: "云端旧晚餐",
+      },
+    ],
+  }, new Date("2026-07-04T09:00:00+08:00"));
+
+  assert.equal(merged.transactions.length, 1);
+  assert.equal(merged.transactions[0].title, "本机晚餐");
+  assert.equal(merged.transactions[0].amount, 38);
+});
+
+test("does not let untimestamped cloud accounts reset local starting assets", () => {
+  const merged = mergeLedgerStates({
+    transactions: [],
+    budgets: {},
+    accounts: [
+      {
+        id: "acct_local",
+        name: "微信",
+        openingBalance: 560,
+        updatedAt: "2026-07-04T08:00:00+08:00",
+      },
+    ],
+    preferences: {},
+  }, {
+    transactions: [],
+    budgets: {},
+    accounts: [
+      {
+        id: "acct_cloud",
+        name: "微信",
+        openingBalance: 0,
+      },
+    ],
+  }, new Date("2026-07-04T09:00:00+08:00"));
+
+  assert.equal(merged.accounts.length, 1);
+  assert.equal(merged.accounts[0].name, "微信");
+  assert.equal(merged.accounts[0].openingBalance, 560);
+});
+
 test("does not resurrect locally deleted transactions during merge", () => {
   const now = new Date("2026-07-01T12:00:00+08:00");
   const merged = mergeLedgerStates({

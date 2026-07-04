@@ -1082,13 +1082,13 @@ label span {
 
 .asset-total-card {
   min-height: 38px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
 }
 
-.asset-total-card span {
+.asset-total-card > span {
   color: var(--ink);
   font-size: 15px;
   font-weight: 760;
@@ -1100,6 +1100,20 @@ label span {
   font-size: 24px;
   line-height: 1;
   letter-spacing: -0.02em;
+}
+
+.asset-breakdown {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.asset-breakdown span {
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 720;
+  line-height: 1.2;
 }
 
 .inline-section-title {
@@ -1512,9 +1526,10 @@ label span {
 }
 
 .capture-subcategory-button.active {
-  border-color: oklch(0.700 0.052 86 / 0.46);
-  background: linear-gradient(180deg, var(--accent-soft), oklch(0.158 0.007 95 / 0.84));
-  box-shadow: 0 0 0 1px oklch(0.700 0.052 86 / 0.08) inset;
+  border-color: oklch(0.700 0.052 86 / 0.78);
+  background: oklch(0.250 0.032 86 / 0.88);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px oklch(0.700 0.052 86 / 0.24) inset;
 }
 
 .amount-pad-panel {
@@ -1570,7 +1585,7 @@ label span {
 
 .capture-detail-row {
   display: grid;
-  grid-template-columns: minmax(112px, 0.7fr) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   gap: 6px;
 }
 
@@ -1596,20 +1611,31 @@ label span {
   padding-left: 48px;
 }
 
-.capture-time-choice .choice-trigger {
-  min-height: 38px;
-  padding: 0 10px;
+.capture-time-segments {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.capture-time-segment {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
   background: oklch(0.145 0.006 95 / 0.74);
+  color: var(--ink-2);
   font-size: 12px;
   font-weight: 760;
+  transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out), color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
 }
 
-.capture-time-choice .choice-menu {
-  min-width: 132px;
-}
-
-.capture-time-choice .choice-option {
-  text-align: center;
+.capture-time-segment:hover,
+.capture-time-segment.active {
+  border-color: oklch(0.700 0.052 86 / 0.72);
+  background: oklch(0.235 0.026 86 / 0.72);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px oklch(0.700 0.052 86 / 0.18) inset;
 }
 
 .amount-key {
