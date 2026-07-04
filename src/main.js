@@ -64,6 +64,7 @@ const CLOUD_MUTATION_SYNC_DELAY_MS = 1400;
 const CLOUD_BOOT_SYNC_DELAY_MS = 8000;
 const CLOUD_FOREGROUND_SYNC_DELAY_MS = 5000;
 const CLOUD_SYNC_TIMEOUT_MS = 12000;
+const CLOUD_SYNC_FEEDBACK_MIN_MS = 600;
 const CLOUD_SYNC_DEFERRED_NOTICE_MIN_MS = 5 * 60 * 1000;
 const FOREGROUND_SYNC_MIN_MS = 3 * 60 * 1000;
 const FOREGROUND_SYNC_RETRY_MIN_MS = 60 * 1000;
@@ -72,6 +73,8 @@ const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
 let releaseCheckCache = null;
 let cloudSyncTimer = 0;
+let cloudSyncFeedbackTimer = 0;
+let cloudSyncFeedbackStartedAt = 0;
 let cloudSyncDeferredNoticeAt = 0;
 let lastTabTap = { tab: "", at: 0 };
 const cloudAuthConfigured = isCloudAuthConfigured();
@@ -136,6 +139,7 @@ const state = {
     lastSyncedAt: "",
     lastAttemptAt: "",
     error: "",
+    feedback: false,
   },
   update: {
     status: "idle",
@@ -426,7 +430,7 @@ const ACCOUNT_META = {
 };
 
 const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
-  { category: "餐饮", items: ["早餐", "午餐", "晚餐", "宵夜", "咖啡奶茶", "水果", "其他"] },
+  { category: "餐饮", items: ["早餐", "午餐", "晚餐", "宵夜", "咖啡奶茶", "水果", "零食", "其他"] },
   { category: "交通", items: ["共享单车", "地铁", "打车"] },
   { category: "购物", items: ["日用品", "服饰", "数码", "家居"] },
   { category: "运动", items: ["装备", "补给", "康复", "训练课", "赛事报名"] },
@@ -579,6 +583,8 @@ const CHANGELOG_ENTRIES = [
       zh: [
         "加强云同步冲突处理，避免无时间戳的云端旧记录覆盖本机流水或初始资金。",
         "回到前台、进入账本/资产/设置时会保守触发云端刷新，减少 PWA 和 APP 长时间不同步。",
+        "双击底部“账本”会手动同步云端数据，并显示与 Ultreia 一致的顶部同步反馈。",
+        "餐饮子类新增“零食”。",
         "Add 页子类选中态更明显，切走再回来也会保留当前分类、细项、时间段、金额和备注草稿。",
         "账本流水行不再显示具体时分，改成早上、中午、下午、晚上、凌晨这类时间段；资产概览增加初始资金和流水净额拆分。",
         "PWA 清缓存重载流程参考 Ultreia 简化为直接重新加载，并避免缓存云同步和更新检查请求。",
@@ -588,6 +594,8 @@ const CHANGELOG_ENTRIES = [
       en: [
         "Strengthened cloud conflict handling so untimestamped cloud rows cannot overwrite local entries or starting assets.",
         "Conservatively refreshes cloud data when returning to the foreground or opening Ledger, Assets, or Settings.",
+        "Double-tapping the bottom Ledger tab now manually syncs cloud data with an Ultreia-style top sync indicator.",
+        "Added Snacks under Food details.",
         "Made Add detail-chip selection clearer and preserved the current category, detail, time segment, amount, and note draft across rerenders.",
         "Ledger rows now show broad time segments instead of exact clock time; Assets now splits starting assets and ledger net.",
         "Simplified the PWA cache-clear reload after Ultreia and avoids caching cloud sync and update-check requests.",
@@ -1019,6 +1027,7 @@ const MESSAGES = {
   zh: {
     "app.sections": "Viatica 页面",
     "splash.label": "Viatica 正在启动",
+    "sync.syncing": "正在同步数据",
     "tab.capture": "添加",
     "tab.ledger": "账本",
     "tab.calendar": "日历",
@@ -1243,6 +1252,7 @@ const MESSAGES = {
   en: {
     "app.sections": "Viatica sections",
     "splash.label": "Viatica is starting",
+    "sync.syncing": "Syncing Data",
     "tab.capture": "Add",
     "tab.ledger": "Ledger",
     "tab.calendar": "Calendar",
@@ -1632,6 +1642,25 @@ function maybeToastCloudSyncDeferred() {
   toast(t("toast.cloudSyncDeferred"));
 }
 
+function showCloudSyncFeedback() {
+  window.clearTimeout(cloudSyncFeedbackTimer);
+  cloudSyncFeedbackTimer = 0;
+  if (!state.cloudSync.feedback) cloudSyncFeedbackStartedAt = Date.now();
+  state.cloudSync.feedback = true;
+  render();
+}
+
+function hideCloudSyncFeedback() {
+  if (!state.cloudSync.feedback) return;
+  const remaining = Math.max(0, CLOUD_SYNC_FEEDBACK_MIN_MS - (Date.now() - cloudSyncFeedbackStartedAt));
+  window.clearTimeout(cloudSyncFeedbackTimer);
+  cloudSyncFeedbackTimer = window.setTimeout(() => {
+    state.cloudSync.feedback = false;
+    cloudSyncFeedbackTimer = 0;
+    render();
+  }, remaining);
+}
+
 function scheduleCloudSync(delay = CLOUD_MUTATION_SYNC_DELAY_MS) {
   if (!canCloudSync()) return;
   window.clearTimeout(cloudSyncTimer);
@@ -1663,13 +1692,16 @@ async function syncCloudNow({ silent = false } = {}) {
     if (!silent) toast(t("toast.cloudSyncSignIn"));
     return;
   }
-  if (state.cloudSync.status === "syncing") return;
+  if (state.cloudSync.status === "syncing") {
+    if (!silent) showCloudSyncFeedback();
+    return;
+  }
 
   window.clearTimeout(cloudSyncTimer);
   state.cloudSync.status = "syncing";
   state.cloudSync.error = "";
   state.cloudSync.lastAttemptAt = new Date().toISOString();
-  if (!silent) render();
+  if (!silent) showCloudSyncFeedback();
 
   try {
     const syncPromise = syncViaticaLedger(localLedgerSnapshot());
@@ -1696,6 +1728,7 @@ async function syncCloudNow({ silent = false } = {}) {
       toast(t("toast.cloudSyncFailed", { message: state.cloudSync.error || t("settings.cloudSyncError") }));
     }
   } finally {
+    hideCloudSyncFeedback();
     render();
   }
 }
@@ -2319,10 +2352,12 @@ function render() {
   const filteredTransactions = ledgerFlowTransactions(periodTransactions)
     .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt));
   const editingTransaction = state.transactions.find((txn) => txn.id === state.editingTransactionId) || null;
+  const syncFeedbackClass = state.cloudSync.feedback ? " sync-feedback-active" : "";
 
   app.innerHTML = `
     ${bootSplashVisible ? renderBootSplash() : ""}
-    <main class="app-shell tab-${escapeHtml(state.activeTab)}">
+    <main class="app-shell tab-${escapeHtml(state.activeTab)}${syncFeedbackClass}">
+      ${renderCloudSyncFeedback()}
       <section class="tab-stage">
         ${renderActiveTab(summary, ledgerSummary, filteredTransactions, editingTransaction, periodTransactions)}
       </section>
@@ -2336,6 +2371,16 @@ function render() {
   `;
   scheduleBootSplashDismiss();
   maybeAutoCheckAppUpdate();
+}
+
+function renderCloudSyncFeedback() {
+  if (!state.cloudSync.feedback) return "";
+  return `
+    <div class="sync-feedback" role="status" aria-live="polite">
+      <span class="sync-spinner" aria-hidden="true"></span>
+      <span>${escapeHtml(t("sync.syncing"))}</span>
+    </div>
+  `;
 }
 
 function renderBootSplash() {

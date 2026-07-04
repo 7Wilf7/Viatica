@@ -141,7 +141,7 @@ Required GitHub Secrets match Ultreia's naming:
 
 Production PWA:
 
-- `https://viatica-tan.vercel.app`
+- `https://viatica.cash`
 
 After any verified project change, commit and push to `main`, then deploy the
 latest `main` branch to Vercel production immediately. Use:
