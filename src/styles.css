@@ -95,7 +95,7 @@ body::after {
 
 @keyframes boot-splash-presence {
   0%,
-  86% {
+  92% {
     opacity: 1;
   }
 
@@ -254,7 +254,7 @@ label span {
   position: fixed;
   inset: 0;
   z-index: 120;
-  --boot-duration: 3600ms;
+  --boot-duration: 4400ms;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -334,7 +334,7 @@ label span {
 
 .boot-logo-trace {
   fill: none;
-  stroke: oklch(0.700 0.048 86 / 0.36);
+  stroke: oklch(0.710 0.052 86 / 0.50);
   stroke-width: 1.65;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -487,25 +487,25 @@ label span {
 @keyframes viaticaFrameReveal {
   0%, 12% { opacity: 0; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
   54% { opacity: 0.54; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  100% { opacity: 0.42; stroke-dashoffset: 0; }
+  100% { opacity: 0.52; stroke-dashoffset: 0; }
 }
 
 @keyframes viaticaTraceRevealA {
   0%, 11% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  58% { opacity: 0.56; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  100% { opacity: 0.34; stroke-dashoffset: 0; }
+  58% { opacity: 0.66; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  100% { opacity: 0.52; stroke-dashoffset: 0; }
 }
 
 @keyframes viaticaTraceRevealB {
   0%, 15% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  64% { opacity: 0.50; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  100% { opacity: 0.30; stroke-dashoffset: 0; }
+  64% { opacity: 0.60; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  100% { opacity: 0.46; stroke-dashoffset: 0; }
 }
 
 @keyframes viaticaTraceRevealC {
   0%, 20% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  68% { opacity: 0.44; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  100% { opacity: 0.28; stroke-dashoffset: 0; }
+  68% { opacity: 0.56; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  100% { opacity: 0.42; stroke-dashoffset: 0; }
 }
 
 @keyframes viaticaPieceAssembleA {

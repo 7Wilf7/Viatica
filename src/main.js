@@ -68,7 +68,7 @@ const CLOUD_SYNC_FEEDBACK_MIN_MS = 600;
 const CLOUD_SYNC_DEFERRED_NOTICE_MIN_MS = 5 * 60 * 1000;
 const FOREGROUND_SYNC_MIN_MS = 3 * 60 * 1000;
 const FOREGROUND_SYNC_RETRY_MIN_MS = 60 * 1000;
-const BOOT_REVEAL_MS = 3600;
+const BOOT_REVEAL_MS = 4400;
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
 let releaseCheckCache = null;
@@ -581,13 +581,13 @@ const CHANGELOG_ENTRIES = [
     },
     items: {
       zh: [
-        "重新编排开屏 Logo 动画：5 个金属块从不同方向拼合成 Viatica 标识，背景线路渐显后直接落到最终 Logo。",
+        "重新编排开屏 Logo 动画：5 个金属块从不同方向拼合成 Viatica 标识，背景线路完整浮现，并在最终 Logo 帧短暂停住。",
         "去掉加一笔页面的子类外框并扩大分类区域，餐饮和运动的两行子类可以直接显示。",
         "资产页顶部资产概览不再默认显示初始资金和净流水拆分。",
         "仅记录项目的补录不再显示日期或时间段，也不会作为本月流水出现；项目名和项目补录现在在流水里单独成行。",
       ],
       en: [
-        "Rechoreographed the splash logo animation: five metallic blocks assemble into the Viatica mark while background traces fade in and land directly on the final logo.",
+        "Rechoreographed the splash logo animation: five metallic blocks assemble into the Viatica mark, background traces fully appear, and the final logo frame holds briefly.",
         "Removed the Add detail-chip frame and expanded the category area so two-row Food and Sport details can show directly.",
         "Simplified the Assets overview by hiding starting-assets and ledger-net breakdowns by default.",
         "Project-only backfills no longer show a date or time segment, no longer appear as current-month ledger entries, and project details now get their own ledger row line.",
