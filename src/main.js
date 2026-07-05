@@ -581,13 +581,13 @@ const CHANGELOG_ENTRIES = [
     },
     items: {
       zh: [
-        "重新编排开屏 Logo 动画：5 个金属块从不同方向拼合成 Viatica 标识，背景线路完整浮现，并在最终 Logo 帧短暂停住。",
+        "重新编排开屏 Logo 动画：5 个金属块从不同方向拼合，并过渡到真实 Viatica Logo 图片作为最终定格帧。",
         "去掉加一笔页面的子类外框并扩大分类区域，餐饮和运动的两行子类可以直接显示。",
         "资产页顶部资产概览不再默认显示初始资金和净流水拆分。",
         "仅记录项目的补录不再显示日期或时间段，也不会作为本月流水出现；项目名和项目补录现在在流水里单独成行。",
       ],
       en: [
-        "Rechoreographed the splash logo animation: five metallic blocks assemble into the Viatica mark, background traces fully appear, and the final logo frame holds briefly.",
+        "Rechoreographed the splash logo animation: five metallic blocks assemble and resolve into the real Viatica logo image as the final held frame.",
         "Removed the Add detail-chip frame and expanded the category area so two-row Food and Sport details can show directly.",
         "Simplified the Assets overview by hiding starting-assets and ledger-net breakdowns by default.",
         "Project-only backfills no longer show a date or time segment, no longer appear as current-month ledger entries, and project details now get their own ledger row line.",
@@ -2446,6 +2446,7 @@ function renderBootSplash() {
             </g>
             <rect class="boot-logo-frame-rect" x="30" y="30" width="452" height="452" rx="88" pathLength="1" />
           </svg>
+          <img class="brand-logo boot-splash-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
           <div class="boot-logo-sheen" aria-hidden="true"></div>
         </div>
         <div class="brand-wordmark boot-wordmark">${escapeHtml(PRODUCT_NAME)}</div>
