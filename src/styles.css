@@ -1558,11 +1558,11 @@ label span {
   align-content: start;
   gap: 6px;
   min-height: 0;
-  padding: 7px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: oklch(0.130 0.006 95 / 0.58);
-  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
 }
 
 .capture-subcategory-grid.active {
@@ -3064,6 +3064,19 @@ input[type="datetime-local"] {
   white-space: nowrap;
 }
 
+.txn-copy .txn-project-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .txn-side {
   display: grid;
   gap: 3px;
@@ -3365,7 +3378,16 @@ input[type="datetime-local"] {
     height: 100%;
     display: grid;
     grid-template-rows: minmax(0, 1fr);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
     overflow: hidden;
+  }
+
+  .app-shell.tab-capture .capture-panel::before {
+    display: none;
   }
 
   .app-shell.tab-capture .capture-panel:has(> .section-title) {
@@ -3380,13 +3402,17 @@ input[type="datetime-local"] {
     height: 100%;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
-    gap: 8px;
+    gap: 6px;
     overflow: hidden;
+  }
+
+  .app-shell.tab-capture .capture-switch {
+    margin-top: -4px;
   }
 
   .app-shell.tab-capture .capture-category-board {
     min-height: 0;
-    padding-right: 2px;
+    padding-right: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;
@@ -3495,14 +3521,25 @@ input[type="datetime-local"] {
     grid-column: auto;
   }
 
-  .capture-category-button {
-    min-height: 60px;
+  .app-shell.tab-capture .capture-category-button {
+    min-height: 50px;
+    padding: 3px 2px;
+    gap: 2px;
   }
 
-  .capture-category-button .icon-badge {
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
+  .app-shell.tab-capture .capture-category-button .icon-badge {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+  }
+
+  .app-shell.tab-capture .capture-subcategory-grid {
+    gap: 5px 6px;
+  }
+
+  .app-shell.tab-capture .capture-subcategory-button {
+    min-height: 35px;
+    padding-block: 3px;
   }
 
   .amount-readout strong {

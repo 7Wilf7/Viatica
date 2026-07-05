@@ -582,15 +582,15 @@ const CHANGELOG_ENTRIES = [
     items: {
       zh: [
         "重新编排开屏 Logo 动画，并把播放时长对齐 Ultreia 的 3.6 秒，让线路、Logo 和字标完整落定后再进入应用。",
-        "修正加一笔页面的分类滚动区域，两行子类现在可以完整查看，金额键盘保持在下方。",
+        "去掉加一笔页面的子类外框并扩大分类区域，餐饮和运动的两行子类可以直接显示。",
         "资产页顶部资产概览不再默认显示初始资金和净流水拆分。",
-        "仅记录项目的补录不再显示日期或时间段，也不会作为本月流水出现。",
+        "仅记录项目的补录不再显示日期或时间段，也不会作为本月流水出现；项目名和项目补录现在在流水里单独成行。",
       ],
       en: [
         "Rechoreographed the splash logo animation and matched Ultreia's 3.6-second reveal so traces, mark, and wordmark settle before entering the app.",
-        "Fixed the Add category scroll area so two-row detail chips stay visible while the amount keypad remains anchored below.",
+        "Removed the Add detail-chip frame and expanded the category area so two-row Food and Sport details can show directly.",
         "Simplified the Assets overview by hiding starting-assets and ledger-net breakdowns by default.",
-        "Project-only backfills no longer show a date or time segment, and no longer appear as current-month ledger entries.",
+        "Project-only backfills no longer show a date or time segment, no longer appear as current-month ledger entries, and project details now get their own ledger row line.",
       ],
     },
   },
@@ -3764,16 +3764,21 @@ function renderTransactionRow(txn) {
     projectOnly ? "" : formatWhen(txn.occurredAt),
     projectOnly ? "" : captureTimeSegmentLabel(txn.occurredAt),
     transactionTypeLabel(txn),
-    project ? `${t("capture.project")}：${project}` : "",
-    projectOnly ? t("txn.projectOnly") : "",
   ].filter(Boolean).join(" · ");
+  const projectMeta = project || projectOnly
+    ? `<span class="txn-project-meta">
+        ${project ? `<span>${escapeHtml(t("capture.project"))}：${escapeHtml(project)}</span>` : ""}
+        ${projectOnly ? `<span>${escapeHtml(t("txn.projectOnly"))}</span>` : ""}
+      </span>`
+    : "";
   return `
     <article class="txn-row action-row ${escapeHtml(transactionTone(txn))} ${projectOnly ? "project-only" : ""}" data-long-press-actions>
       <div class="txn-main">
         ${renderIconBadge(txn.category, "category")}
         <div class="txn-copy">
           <strong>${escapeHtml(txn.title)}</strong>
-          <span>${escapeHtml(accountMeta)}</span>
+          ${accountMeta ? `<span>${escapeHtml(accountMeta)}</span>` : ""}
+          ${projectMeta}
         </div>
         <div class="txn-side">
           <div class="amount ${transactionAmountClass(txn)}">${signedAmount(txn)}</div>
