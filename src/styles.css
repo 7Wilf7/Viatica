@@ -286,9 +286,7 @@ label span {
 }
 
 .boot-logo-build,
-.boot-logo-frame,
-.boot-logo-sheen,
-.boot-splash-logo {
+.boot-logo-sheen {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -297,17 +295,14 @@ label span {
 
 .boot-logo-build {
   overflow: visible;
-}
-
-.boot-logo-frame {
-  overflow: visible;
-  z-index: 3;
+  z-index: 1;
   pointer-events: none;
+  shape-rendering: geometricPrecision;
 }
 
 .boot-logo-sheen {
   z-index: 2;
-  border-radius: 22px;
+  border-radius: 23%;
   background:
     linear-gradient(118deg,
       transparent 0%,
@@ -321,35 +316,38 @@ label span {
   pointer-events: none;
 }
 
-.boot-splash-logo {
-  border-radius: 22px;
-  object-fit: contain;
-  transform-origin: center;
-  z-index: 1;
-}
-
-.boot-logo-tile,
+.boot-logo-backplate,
 .boot-logo-frame-rect {
   fill: oklch(0.112 0.007 95);
-  stroke: oklch(0.770 0.036 86 / 0.66);
-  stroke-width: 3.1;
+  stroke: oklch(0.760 0.030 86 / 0.42);
+  stroke-width: 1.55;
   vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 7px oklch(0.700 0.052 86 / 0.16));
+  filter: drop-shadow(0 0 9px oklch(0.700 0.052 86 / 0.12));
 }
 
 .boot-logo-frame-rect {
   fill: none;
-  stroke: oklch(0.820 0.024 86 / 0.46);
-  stroke-width: 1.9;
-  filter: drop-shadow(0 0 4px oklch(0.700 0.052 86 / 0.10));
+  stroke: oklch(0.840 0.022 86 / 0.42);
+  stroke-width: 1.4;
+  filter: none;
 }
 
-.boot-logo-circuit {
+.boot-logo-trace {
   fill: none;
-  stroke: oklch(0.705 0.034 88 / 0.42);
-  stroke-width: 2.25;
+  stroke: oklch(0.700 0.048 86 / 0.36);
+  stroke-width: 1.65;
   stroke-linecap: round;
   stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.boot-logo-piece {
+  fill: url(#boot-piece-fill);
+  stroke: url(#boot-piece-edge);
+  stroke-width: 1.25;
+  filter: url(#boot-piece-glow);
+  transform-box: fill-box;
+  transform-origin: center;
   vector-effect: non-scaling-stroke;
 }
 
@@ -367,12 +365,11 @@ label span {
 @media (prefers-reduced-motion: no-preference) {
   .boot-logo-stage,
   .boot-logo-build,
-  .boot-logo-frame,
   .boot-logo-sheen,
-  .boot-splash-logo,
-  .boot-logo-tile,
+  .boot-logo-backplate,
   .boot-logo-frame-rect,
-  .boot-logo-circuit,
+  .boot-logo-trace,
+  .boot-logo-piece,
   .boot-wordmark {
     animation-duration: var(--boot-duration);
     animation-delay: var(--boot-delay, 0ms);
@@ -385,13 +382,14 @@ label span {
     will-change: transform, opacity;
   }
 
-  .boot-logo-build {
-    animation-name: viaticaBuildLayer;
+  .boot-logo-backplate {
+    animation-name: viaticaBackplateReveal;
   }
 
-  .boot-splash-logo {
-    animation-name: viaticaFinalLogo;
-    will-change: transform, opacity, filter;
+  .boot-logo-frame-rect {
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 1;
+    animation-name: viaticaFrameReveal;
   }
 
   .boot-logo-sheen {
@@ -399,34 +397,44 @@ label span {
     will-change: transform, opacity;
   }
 
-  .boot-logo-tile {
-    stroke-dasharray: 1 1;
-    stroke-dashoffset: 1;
-    animation-name: viaticaTileDraw;
-  }
-
-  .boot-logo-frame-rect {
-    stroke-dasharray: 1 1;
-    stroke-dashoffset: 1;
-    animation-name: viaticaFrameHold;
-  }
-
-  .boot-logo-circuit {
+  .boot-logo-trace {
     stroke-dasharray: 1 1.12;
     stroke-dashoffset: 1.08;
-    animation-name: viaticaCircuitDrawA;
+    animation-name: viaticaTraceRevealA;
   }
 
-  .boot-logo-circuit-b {
-    animation-name: viaticaCircuitDrawB;
+  .boot-logo-trace-b,
+  .boot-logo-trace-d {
+    animation-name: viaticaTraceRevealB;
   }
 
-  .boot-logo-circuit-late {
-    animation-name: viaticaCircuitDrawC;
+  .boot-logo-trace-c,
+  .boot-logo-trace-e {
+    animation-name: viaticaTraceRevealC;
   }
 
-  .boot-logo-circuit-d {
-    animation-name: viaticaCircuitDrawD;
+  .boot-logo-piece {
+    will-change: transform, opacity;
+  }
+
+  .boot-logo-piece-a {
+    animation-name: viaticaPieceAssembleA;
+  }
+
+  .boot-logo-piece-b {
+    animation-name: viaticaPieceAssembleB;
+  }
+
+  .boot-logo-piece-c {
+    animation-name: viaticaPieceAssembleC;
+  }
+
+  .boot-logo-piece-d {
+    animation-name: viaticaPieceAssembleD;
+  }
+
+  .boot-logo-piece-e {
+    animation-name: viaticaPieceAssembleE;
   }
 
   .boot-wordmark {
@@ -445,17 +453,16 @@ label span {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .boot-logo-build {
-    display: none;
-  }
-
-  .boot-logo-frame,
-  .boot-splash-logo,
+  .boot-logo-build,
+  .boot-logo-backplate,
+  .boot-logo-frame-rect,
+  .boot-logo-trace,
+  .boot-logo-piece,
   .boot-wordmark {
     opacity: 1;
     transform: none;
-    filter: none;
     clip-path: none;
+    stroke-dashoffset: 0;
   }
 
   .boot-logo-sheen {
@@ -464,77 +471,88 @@ label span {
 }
 
 @keyframes viaticaLogoStage {
-  0%, 8% { opacity: 0; transform: translateY(8px) scale(0.94); filter: blur(2px); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
-  20% { opacity: 1; transform: translateY(8px) scale(0.94); filter: blur(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  58% { opacity: 1; transform: translateY(-1px) scale(1.01); filter: blur(0); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  0%, 7% { opacity: 0; transform: translateY(8px) scale(0.94); filter: blur(2px); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  19% { opacity: 1; transform: translateY(8px) scale(0.94); filter: blur(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  66% { opacity: 1; transform: translateY(-1px) scale(1.01); filter: blur(0); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
   82% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes viaticaTileDraw {
-  0%, 7% { opacity: 0; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
-  26% { opacity: 0.9; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  62% { opacity: 0.44; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  82%, 100% { opacity: 0; stroke-dashoffset: 0; }
+@keyframes viaticaBackplateReveal {
+  0%, 5% { opacity: 0; transform: scale(0.985); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  24% { opacity: 1; transform: scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
-@keyframes viaticaFrameHold {
-  0%, 10% { opacity: 0; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
-  36% { opacity: 0.66; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  70% { opacity: 0.34; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  86%, 100% { opacity: 0; stroke-dashoffset: 0; }
+@keyframes viaticaFrameReveal {
+  0%, 12% { opacity: 0; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  54% { opacity: 0.54; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  100% { opacity: 0.42; stroke-dashoffset: 0; }
 }
 
-@keyframes viaticaCircuitDrawA {
-  0%, 12% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  44% { opacity: 0.78; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  66% { opacity: 0.26; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  86%, 100% { opacity: 0; stroke-dashoffset: 0; }
+@keyframes viaticaTraceRevealA {
+  0%, 11% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  58% { opacity: 0.56; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  100% { opacity: 0.34; stroke-dashoffset: 0; }
 }
 
-@keyframes viaticaCircuitDrawB {
-  0%, 17% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  51% { opacity: 0.74; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  70% { opacity: 0.24; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  88%, 100% { opacity: 0; stroke-dashoffset: 0; }
+@keyframes viaticaTraceRevealB {
+  0%, 15% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  64% { opacity: 0.50; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  100% { opacity: 0.30; stroke-dashoffset: 0; }
 }
 
-@keyframes viaticaCircuitDrawC {
-  0%, 22% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  56% { opacity: 0.68; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  74% { opacity: 0.20; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  90%, 100% { opacity: 0; stroke-dashoffset: 0; }
+@keyframes viaticaTraceRevealC {
+  0%, 20% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  68% { opacity: 0.44; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  100% { opacity: 0.28; stroke-dashoffset: 0; }
 }
 
-@keyframes viaticaCircuitDrawD {
-  0%, 27% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  60% { opacity: 0.62; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  76% { opacity: 0.18; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  90%, 100% { opacity: 0; stroke-dashoffset: 0; }
+@keyframes viaticaPieceAssembleA {
+  0%, 13% { opacity: 0; transform: translate(-112px, -92px) rotate(-9deg) scale(0.88); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  31% { opacity: 0.92; transform: translate(-48px, -40px) rotate(-5deg) scale(0.93); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  55% { opacity: 1; transform: translate(4px, -2px) rotate(0.8deg) scale(1.012); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  72%, 100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
 }
 
-@keyframes viaticaBuildLayer {
-  0%, 58% { opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  82%, 100% { opacity: 0; }
+@keyframes viaticaPieceAssembleB {
+  0%, 18% { opacity: 0; transform: translate(-120px, 74px) rotate(8deg) scale(0.88); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  38% { opacity: 0.88; transform: translate(-52px, 32px) rotate(4deg) scale(0.94); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  59% { opacity: 1; transform: translate(3px, 2px) rotate(-0.8deg) scale(1.01); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  74%, 100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
 }
 
-@keyframes viaticaFinalLogo {
-  0%, 31% { opacity: 0; transform: scale(0.965); filter: blur(7px); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
-  49% { opacity: 0.28; transform: scale(0.972); filter: blur(4px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  70% { opacity: 1; transform: scale(1); filter: blur(0); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+@keyframes viaticaPieceAssembleC {
+  0%, 15% { opacity: 0; transform: translate(116px, -78px) rotate(9deg) scale(0.88); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  34% { opacity: 0.90; transform: translate(50px, -34px) rotate(4deg) scale(0.94); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  56% { opacity: 1; transform: translate(-3px, -2px) rotate(-0.8deg) scale(1.012); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  72%, 100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+}
+
+@keyframes viaticaPieceAssembleD {
+  0%, 21% { opacity: 0; transform: translate(122px, 44px) rotate(-7deg) scale(0.88); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  42% { opacity: 0.88; transform: translate(52px, 20px) rotate(-3deg) scale(0.94); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  62% { opacity: 1; transform: translate(-3px, 1px) rotate(0.6deg) scale(1.01); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  76%, 100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+}
+
+@keyframes viaticaPieceAssembleE {
+  0%, 25% { opacity: 0; transform: translate(8px, 132px) rotate(6deg) scale(0.86); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  47% { opacity: 0.86; transform: translate(3px, 54px) rotate(3deg) scale(0.92); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  66% { opacity: 1; transform: translate(1px, -3px) rotate(-0.5deg) scale(1.01); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  80%, 100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
 }
 
 @keyframes viaticaLogoSheen {
   0%, 58% { opacity: 0; transform: translate3d(-38%, 4%, 0) scale(0.98); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  72% { opacity: 0.34; transform: translate3d(0, 0, 0) scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  86%, 100% { opacity: 0; transform: translate3d(30%, -4%, 0) scale(1); }
+  72% { opacity: 0.28; transform: translate3d(0, 0, 0) scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  84%, 100% { opacity: 0; transform: translate3d(30%, -4%, 0) scale(1); }
 }
 
 @keyframes viaticaWordReveal {
-  0%, 44% { opacity: 0; clip-path: inset(0 100% 0 0); transform: translate3d(-6px, 0, 0); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
-  62% { opacity: 0.82; clip-path: inset(0 52% 0 0); transform: translate3d(-2px, 0, 0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  82% { opacity: 1; clip-path: inset(0 0 0 0); transform: translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  0%, 52% { opacity: 0; clip-path: inset(0 100% 0 0); transform: translate3d(-6px, 0, 0); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  65% { opacity: 0.82; clip-path: inset(0 52% 0 0); transform: translate3d(-2px, 0, 0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  80% { opacity: 1; clip-path: inset(0 0 0 0); transform: translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
   100% { opacity: 1; clip-path: inset(0 0 0 0); transform: translate3d(0, 0, 0); }
 }
 

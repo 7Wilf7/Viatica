@@ -581,13 +581,13 @@ const CHANGELOG_ENTRIES = [
     },
     items: {
       zh: [
-        "重新编排开屏 Logo 动画，并把播放时长对齐 Ultreia 的 3.6 秒，让线路、Logo 和字标完整落定后再进入应用。",
+        "重新编排开屏 Logo 动画：5 个金属块从不同方向拼合成 Viatica 标识，背景线路渐显后直接落到最终 Logo。",
         "去掉加一笔页面的子类外框并扩大分类区域，餐饮和运动的两行子类可以直接显示。",
         "资产页顶部资产概览不再默认显示初始资金和净流水拆分。",
         "仅记录项目的补录不再显示日期或时间段，也不会作为本月流水出现；项目名和项目补录现在在流水里单独成行。",
       ],
       en: [
-        "Rechoreographed the splash logo animation and matched Ultreia's 3.6-second reveal so traces, mark, and wordmark settle before entering the app.",
+        "Rechoreographed the splash logo animation: five metallic blocks assemble into the Viatica mark while background traces fade in and land directly on the final logo.",
         "Removed the Add detail-chip frame and expanded the category area so two-row Food and Sport details can show directly.",
         "Simplified the Assets overview by hiding starting-assets and ledger-net breakdowns by default.",
         "Project-only backfills no longer show a date or time segment, no longer appear as current-month ledger entries, and project details now get their own ledger row line.",
@@ -2414,17 +2414,39 @@ function renderBootSplash() {
       <div class="boot-splash-stack" aria-busy="true">
         <div class="boot-logo-stage">
           <svg class="boot-logo-build" viewBox="0 0 512 512" aria-hidden="true">
-            <rect class="boot-logo-tile" x="30" y="30" width="452" height="452" rx="88" pathLength="1" />
-            <path class="boot-logo-circuit boot-logo-circuit-a" pathLength="1" d="M58 176 H138 C176 176 178 122 224 122 H286 C320 122 322 72 356 72" />
-            <path class="boot-logo-circuit boot-logo-circuit-b" pathLength="1" d="M56 262 H142 C178 262 186 204 228 204 H300 C346 204 350 154 392 154 H458" />
-            <path class="boot-logo-circuit boot-logo-circuit-c boot-logo-circuit-late" pathLength="1" d="M86 334 H178 C222 334 232 384 274 384 H328 C364 384 370 444 416 444" />
-            <path class="boot-logo-circuit boot-logo-circuit-d boot-logo-circuit-late" pathLength="1" d="M248 456 V354 C248 316 214 304 214 260 V174 C214 132 250 126 250 74" />
-          </svg>
-          <img class="brand-logo boot-splash-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
-          <div class="boot-logo-sheen" aria-hidden="true"></div>
-          <svg class="boot-logo-frame" viewBox="0 0 512 512" aria-hidden="true">
+            <defs>
+              <linearGradient id="boot-piece-fill" x1="152" x2="360" y1="120" y2="386" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#f6eec6" />
+                <stop offset="0.42" stop-color="#a99a70" />
+                <stop offset="1" stop-color="#4e4429" />
+              </linearGradient>
+              <linearGradient id="boot-piece-edge" x1="162" x2="354" y1="118" y2="386" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#fff7d2" />
+                <stop offset="1" stop-color="#8a7b4d" />
+              </linearGradient>
+              <filter id="boot-piece-glow" x="-30%" y="-30%" width="160%" height="170%">
+                <feDropShadow dx="0" dy="0" stdDeviation="5.5" flood-color="#f0dda0" flood-opacity="0.32" />
+                <feDropShadow dx="0" dy="9" stdDeviation="12" flood-color="#000000" flood-opacity="0.34" />
+              </filter>
+            </defs>
+            <rect class="boot-logo-backplate" x="30" y="30" width="452" height="452" rx="88" />
+            <g class="boot-logo-traces">
+              <path class="boot-logo-trace boot-logo-trace-a" pathLength="1" d="M28 200 H82 C116 200 118 166 118 136 V118 C118 86 146 60 180 60 H284 C302 60 304 46 304 28" />
+              <path class="boot-logo-trace boot-logo-trace-b" pathLength="1" d="M28 232 H96 C132 232 140 176 176 176 H248 C292 176 296 118 342 118 H484" />
+              <path class="boot-logo-trace boot-logo-trace-c" pathLength="1" d="M28 286 H112 C152 286 166 342 206 342 H244 C282 342 286 396 286 484" />
+              <path class="boot-logo-trace boot-logo-trace-d" pathLength="1" d="M484 220 H394 C360 220 352 260 318 260 H272" />
+              <path class="boot-logo-trace boot-logo-trace-e" pathLength="1" d="M484 360 H416 C382 360 376 402 342 402 H316 C292 402 286 438 286 484" />
+            </g>
+            <g class="boot-logo-mark">
+              <path class="boot-logo-piece boot-logo-piece-a" d="M170 125 C166 127 164 131 164 136 L164 183 C164 188 166 192 170 194 L246 237 C250 239 254 236 254 231 L254 180 C254 176 252 172 248 170 L176 127 C174 125 172 124 170 125 Z" />
+              <path class="boot-logo-piece boot-logo-piece-b" d="M169 198 C166 196 164 199 164 204 L164 286 C164 291 166 295 170 297 L245 340 C249 342 254 339 254 334 L254 252 C254 248 252 244 248 242 L169 198 Z" />
+              <path class="boot-logo-piece boot-logo-piece-c" d="M274 177 C274 174 276 172 279 170 L321 148 C324 146 328 146 331 148 L354 162 C358 165 360 169 360 174 L360 226 C360 230 358 234 354 236 L276 280 C272 282 267 279 267 274 L267 191 C267 185 269 181 274 177 Z" />
+              <path class="boot-logo-piece boot-logo-piece-d" d="M276 290 L351 247 C355 245 360 248 360 253 L360 292 C360 296 358 300 354 302 L309 330 C306 332 302 332 299 330 L276 316 C273 314 271 310 271 306 L271 298 C271 294 273 292 276 290 Z" />
+              <path class="boot-logo-piece boot-logo-piece-e" d="M258 313 C258 309 262 307 266 309 L304 332 C308 334 310 339 308 343 L288 385 C286 390 280 391 276 389 L260 379 C257 377 255 373 255 369 L255 320 C255 317 256 315 258 313 Z" />
+            </g>
             <rect class="boot-logo-frame-rect" x="30" y="30" width="452" height="452" rx="88" pathLength="1" />
           </svg>
+          <div class="boot-logo-sheen" aria-hidden="true"></div>
         </div>
         <div class="brand-wordmark boot-wordmark">${escapeHtml(PRODUCT_NAME)}</div>
       </div>
