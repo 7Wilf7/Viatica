@@ -68,7 +68,7 @@ const CLOUD_SYNC_FEEDBACK_MIN_MS = 600;
 const CLOUD_SYNC_DEFERRED_NOTICE_MIN_MS = 5 * 60 * 1000;
 const FOREGROUND_SYNC_MIN_MS = 3 * 60 * 1000;
 const FOREGROUND_SYNC_RETRY_MIN_MS = 60 * 1000;
-const BOOT_REVEAL_MS = 1400;
+const BOOT_REVEAL_MS = 1750;
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
 let releaseCheckCache = null;
@@ -573,6 +573,25 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-07-05",
+    title: {
+      zh: "打磨开屏和资产页",
+      en: "Polished Splash And Assets",
+    },
+    items: {
+      zh: [
+        "重新编排开屏 Logo 动画，让线路、Logo 和字标在同一条更短、更稳定的时间线上落定。",
+        "修正加一笔页面的子类区域，两行子类现在会完整包在同一个框内。",
+        "资产页顶部资产概览不再默认显示初始资金和净流水拆分。",
+      ],
+      en: [
+        "Rechoreographed the splash logo animation so traces, mark, and wordmark settle on one shorter, steadier timeline.",
+        "Fixed the Add detail tray so two-row detail chips are fully contained in one frame.",
+        "Simplified the Assets overview by hiding starting-assets and ledger-net breakdowns by default.",
+      ],
+    },
+  },
   {
     date: "2026-07-04",
     title: {
@@ -2393,10 +2412,10 @@ function renderBootSplash() {
         <div class="boot-logo-stage">
           <svg class="boot-logo-build" viewBox="0 0 512 512" aria-hidden="true">
             <rect class="boot-logo-tile" x="30" y="30" width="452" height="452" rx="88" pathLength="1" />
-            <path class="boot-logo-circuit" pathLength="1" d="M56 168 H156 C188 168 190 124 222 124 H316 C350 124 360 82 400 82 H458" />
-            <path class="boot-logo-circuit" pathLength="1" d="M54 284 H142 C174 284 184 236 224 236 H306 C342 236 348 194 390 194 H458" />
-            <path class="boot-logo-circuit boot-logo-circuit-late" pathLength="1" d="M122 454 V354 C122 316 164 312 164 274 V170 C164 128 210 126 210 86" />
-            <path class="boot-logo-circuit boot-logo-circuit-late" pathLength="1" d="M290 458 V338 C290 300 246 292 246 252 V156 C246 116 288 108 288 58" />
+            <path class="boot-logo-circuit boot-logo-circuit-a" pathLength="1" d="M58 176 H138 C176 176 178 122 224 122 H286 C320 122 322 72 356 72" />
+            <path class="boot-logo-circuit boot-logo-circuit-b" pathLength="1" d="M56 262 H142 C178 262 186 204 228 204 H300 C346 204 350 154 392 154 H458" />
+            <path class="boot-logo-circuit boot-logo-circuit-c boot-logo-circuit-late" pathLength="1" d="M86 334 H178 C222 334 232 384 274 384 H328 C364 384 370 444 416 444" />
+            <path class="boot-logo-circuit boot-logo-circuit-d boot-logo-circuit-late" pathLength="1" d="M248 456 V354 C248 316 214 304 214 260 V174 C214 132 250 126 250 74" />
           </svg>
           <img class="brand-logo boot-splash-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
           <div class="boot-logo-sheen" aria-hidden="true"></div>
@@ -2924,10 +2943,6 @@ function renderAssetsTab(summary) {
       <div class="asset-total-card">
         <span>${escapeHtml(t("assets.title"))}</span>
         <strong class="amount ${assetTotal >= 0 ? "positive" : "negative"}">${escapeHtml(signedMoney(assetTotal))}</strong>
-        <div class="asset-breakdown">
-          <span>${escapeHtml(t("assets.openingBalance"))} ${escapeHtml(signedMoney(totals.opening))}</span>
-          <span>${escapeHtml(t("assets.flowNet"))} ${escapeHtml(signedMoney(totals.flow))}</span>
-        </div>
       </div>
       ${state.accountFormOpen ? renderAccountSetupForm(setupDefaults) : ""}
     </section>

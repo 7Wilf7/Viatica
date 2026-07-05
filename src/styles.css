@@ -254,18 +254,19 @@ label span {
   position: fixed;
   inset: 0;
   z-index: 120;
+  --boot-duration: 1750ms;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
   background:
-    radial-gradient(circle at 50% 43%, oklch(0.700 0.052 86 / 0.105), transparent 245px),
+    radial-gradient(circle at 50% 43%, oklch(0.700 0.052 86 / 0.095), transparent 238px),
+    radial-gradient(circle at 50% 49%, oklch(0.820 0.036 86 / 0.045), transparent 118px),
     linear-gradient(180deg, oklch(0.130 0.007 95), var(--bg));
   pointer-events: none;
-  animation: boot-splash-presence 3600ms var(--ease-out) forwards;
+  animation: boot-splash-presence var(--boot-duration) var(--ease-out) forwards;
   overflow: hidden;
   isolation: isolate;
-  --boot-duration: 3600ms;
 }
 
 .boot-splash-stack {
@@ -280,8 +281,8 @@ label span {
 
 .boot-logo-stage {
   position: relative;
-  width: min(31vmin, 152px);
-  height: min(31vmin, 152px);
+  width: min(33vmin, 158px);
+  height: min(33vmin, 158px);
 }
 
 .boot-logo-build,
@@ -330,23 +331,23 @@ label span {
 .boot-logo-tile,
 .boot-logo-frame-rect {
   fill: oklch(0.112 0.007 95);
-  stroke: oklch(0.760 0.038 86 / 0.70);
-  stroke-width: 3.4;
+  stroke: oklch(0.770 0.036 86 / 0.66);
+  stroke-width: 3.1;
   vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 8px oklch(0.700 0.052 86 / 0.18));
+  filter: drop-shadow(0 0 7px oklch(0.700 0.052 86 / 0.16));
 }
 
 .boot-logo-frame-rect {
   fill: none;
-  stroke: oklch(0.790 0.026 86 / 0.50);
-  stroke-width: 2.1;
-  filter: drop-shadow(0 0 4px oklch(0.700 0.052 86 / 0.12));
+  stroke: oklch(0.820 0.024 86 / 0.46);
+  stroke-width: 1.9;
+  filter: drop-shadow(0 0 4px oklch(0.700 0.052 86 / 0.10));
 }
 
 .boot-logo-circuit {
   fill: none;
-  stroke: oklch(0.690 0.032 88 / 0.38);
-  stroke-width: 2.5;
+  stroke: oklch(0.705 0.034 88 / 0.42);
+  stroke-width: 2.25;
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
@@ -413,11 +414,19 @@ label span {
   .boot-logo-circuit {
     stroke-dasharray: 1 1.12;
     stroke-dashoffset: 1.08;
-    animation-name: viaticaCircuitDraw;
+    animation-name: viaticaCircuitDrawA;
+  }
+
+  .boot-logo-circuit-b {
+    animation-name: viaticaCircuitDrawB;
   }
 
   .boot-logo-circuit-late {
-    animation-name: viaticaCircuitDrawLate;
+    animation-name: viaticaCircuitDrawC;
+  }
+
+  .boot-logo-circuit-d {
+    animation-name: viaticaCircuitDrawD;
   }
 
   .boot-wordmark {
@@ -455,61 +464,77 @@ label span {
 }
 
 @keyframes viaticaLogoStage {
-  0% { opacity: 0; transform: translateY(14px) scale(0.86); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
-  8% { opacity: 1; transform: translateY(14px) scale(0.84); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  42% { opacity: 1; transform: translateY(-1px) scale(1.02); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  62% { opacity: 1; transform: translateY(0) scale(1); }
+  0%, 8% { opacity: 0; transform: translateY(8px) scale(0.94); filter: blur(2px); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  20% { opacity: 1; transform: translateY(8px) scale(0.94); filter: blur(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  58% { opacity: 1; transform: translateY(-1px) scale(1.01); filter: blur(0); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  82% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes viaticaTileDraw {
   0%, 7% { opacity: 0; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
-  25% { opacity: 1; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  100% { opacity: 1; stroke-dashoffset: 0; }
+  26% { opacity: 0.9; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  62% { opacity: 0.44; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  82%, 100% { opacity: 0; stroke-dashoffset: 0; }
 }
 
 @keyframes viaticaFrameHold {
-  0%, 7% { opacity: 0; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
-  25% { opacity: 1; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  100% { opacity: 1; stroke-dashoffset: 0; }
+  0%, 10% { opacity: 0; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  36% { opacity: 0.66; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  70% { opacity: 0.34; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  86%, 100% { opacity: 0; stroke-dashoffset: 0; }
 }
 
-@keyframes viaticaCircuitDraw {
-  0%, 14% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  46% { opacity: 0.82; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  76% { opacity: 0.38; stroke-dashoffset: 0; }
-  100% { opacity: 0.24; stroke-dashoffset: 0; }
+@keyframes viaticaCircuitDrawA {
+  0%, 12% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  44% { opacity: 0.78; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  66% { opacity: 0.26; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  86%, 100% { opacity: 0; stroke-dashoffset: 0; }
 }
 
-@keyframes viaticaCircuitDrawLate {
+@keyframes viaticaCircuitDrawB {
+  0%, 17% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  51% { opacity: 0.74; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  70% { opacity: 0.24; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  88%, 100% { opacity: 0; stroke-dashoffset: 0; }
+}
+
+@keyframes viaticaCircuitDrawC {
   0%, 22% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  54% { opacity: 0.72; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  80% { opacity: 0.34; stroke-dashoffset: 0; }
-  100% { opacity: 0.22; stroke-dashoffset: 0; }
+  56% { opacity: 0.68; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  74% { opacity: 0.20; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  90%, 100% { opacity: 0; stroke-dashoffset: 0; }
+}
+
+@keyframes viaticaCircuitDrawD {
+  0%, 27% { opacity: 0; stroke-dashoffset: 1.08; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  60% { opacity: 0.62; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  76% { opacity: 0.18; stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  90%, 100% { opacity: 0; stroke-dashoffset: 0; }
 }
 
 @keyframes viaticaBuildLayer {
   0%, 58% { opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  78%, 100% { opacity: 0; }
+  82%, 100% { opacity: 0; }
 }
 
 @keyframes viaticaFinalLogo {
-  0%, 26% { opacity: 0; transform: scale(0.925); filter: blur(8px); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
-  49% { opacity: 0.72; transform: scale(0.982); filter: blur(2px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  71% { opacity: 1; transform: scale(1.014); filter: blur(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  0%, 31% { opacity: 0; transform: scale(0.965); filter: blur(7px); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  49% { opacity: 0.28; transform: scale(0.972); filter: blur(4px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  70% { opacity: 1; transform: scale(1); filter: blur(0); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
   100% { opacity: 1; transform: scale(1); filter: blur(0); }
 }
 
 @keyframes viaticaLogoSheen {
-  0%, 55% { opacity: 0; transform: translate3d(-34%, 8%, 0) scale(0.98); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  68% { opacity: 0.44; transform: translate3d(0, 0, 0) scale(1.01); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  82%, 100% { opacity: 0; transform: translate3d(28%, -8%, 0) scale(1); }
+  0%, 58% { opacity: 0; transform: translate3d(-38%, 4%, 0) scale(0.98); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  72% { opacity: 0.34; transform: translate3d(0, 0, 0) scale(1); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  86%, 100% { opacity: 0; transform: translate3d(30%, -4%, 0) scale(1); }
 }
 
 @keyframes viaticaWordReveal {
-  0%, 14% { opacity: 0; clip-path: inset(0 100% 0 0); transform: translate3d(-8px, 0, 0); animation-timing-function: cubic-bezier(0.33, 0, 0.24, 1); }
-  24% { opacity: 1; clip-path: inset(0 80% 0 0); transform: translate3d(-4px, 0, 0); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
-  86% { opacity: 1; clip-path: inset(0 0 0 0); transform: translate3d(0, 0, 0); animation-timing-function: linear; }
+  0%, 44% { opacity: 0; clip-path: inset(0 100% 0 0); transform: translate3d(-6px, 0, 0); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  62% { opacity: 0.82; clip-path: inset(0 52% 0 0); transform: translate3d(-2px, 0, 0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  82% { opacity: 1; clip-path: inset(0 0 0 0); transform: translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
   100% { opacity: 1; clip-path: inset(0 0 0 0); transform: translate3d(0, 0, 0); }
 }
 
@@ -1526,16 +1551,16 @@ label span {
 .capture-subcategory-grid {
   display: none;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: minmax(38px, auto);
+  grid-auto-rows: minmax(42px, max-content);
   align-items: stretch;
   align-content: start;
   gap: 8px 6px;
   min-height: 0;
-  padding: 8px;
+  padding: 9px 8px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: oklch(0.130 0.006 95 / 0.58);
-  overflow: visible;
+  overflow: hidden;
 }
 
 .capture-subcategory-grid.active {
@@ -1554,16 +1579,19 @@ label span {
 }
 
 .capture-subcategory-button {
-  min-height: 38px;
-  padding: 4px 6px;
+  min-height: 42px;
+  padding: 5px 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   font-size: 11px;
-  line-height: 1;
+  line-height: 1.14;
+  text-align: center;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .capture-subcategory-button:hover,
