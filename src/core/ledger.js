@@ -299,7 +299,7 @@ export function filterTransactions(transactions = [], filters = {}) {
       txn.account,
       txn.project,
       txn.type,
-      isProjectOnlyTransaction(txn) ? "项目补录 仅计入项目 project only" : "",
+      isProjectOnlyTransaction(txn) ? "项目补录 仅记录项目 仅计入项目 project only" : "",
       txn.reimbursable ? "报销 可报销 reimbursable" : "",
       txn.receiptDataUrl ? "票据 图片 收据 receipt" : "",
       ...(txn.tags || []),

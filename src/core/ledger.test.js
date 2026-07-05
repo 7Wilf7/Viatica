@@ -134,6 +134,7 @@ test("keeps project labels in tags and excludes project-only costs from ledger t
   assert.equal(summary.categoryExpense["运动"], 388);
   assert.equal(summary.transactionCount, 1);
   assert.equal(filterTransactions([raceEntry, oldFee], { query: "项目补录" }).length, 1);
+  assert.equal(filterTransactions([raceEntry, oldFee], { query: "仅记录项目" }).length, 1);
 });
 
 test("csv export and import round trips ledger rows", () => {

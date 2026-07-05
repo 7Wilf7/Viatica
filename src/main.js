@@ -68,7 +68,7 @@ const CLOUD_SYNC_FEEDBACK_MIN_MS = 600;
 const CLOUD_SYNC_DEFERRED_NOTICE_MIN_MS = 5 * 60 * 1000;
 const FOREGROUND_SYNC_MIN_MS = 3 * 60 * 1000;
 const FOREGROUND_SYNC_RETRY_MIN_MS = 60 * 1000;
-const BOOT_REVEAL_MS = 1750;
+const BOOT_REVEAL_MS = 3600;
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
 let releaseCheckCache = null;
@@ -502,13 +502,13 @@ const MANUAL_SECTIONS = [
         "“账本”顶部是类型筛选 + 流水 / 图表切换：流水用于查单笔记录，图表就是统计。",
         "“日历”用于快速定位日期，并查看本月支出、收入和有记录的天数。",
         "账本周期可切换所有时间、本周、本月、今年；支出、收入和记录数会跟着周期变化。需要时点放大镜搜索，或用分类筛选。长按单笔流水可以编辑或删除。",
-        "项目用于把一次比赛、一次旅行这类相关流水归在一起；图表页会按项目统计总额。已经在记账起点前付过的钱，可以勾选“仅计入项目”，它只进项目统计，不影响资产和日常支出。",
+        "项目用于把一次比赛、一次旅行这类相关流水归在一起；图表页会按项目统计总额。已经在记账起点前付过的钱，可以勾选“仅记录项目”，它只进项目统计，不影响资产和日常支出，也不会显示日期或时间段。",
       ],
       en: [
         "Ledger starts with type filtering plus Flow / Charts: Flow reviews individual entries, and Charts means statistics.",
         "Calendar locates dates quickly and shows monthly spending, income, and active ledger days.",
         "Switch the Ledger period between All Time, This Week, This Month, and This Year. Expense, income, and entry count follow that period. Use the magnifier for search or Category when needed. Long-press an entry to edit or delete it.",
-        "Projects group related entries for a race, trip, or similar event. Charts summarize project totals. For money paid before your ledger start date, mark it Project only: it counts toward the project without changing assets or normal spending.",
+        "Projects group related entries for a race, trip, or similar event. Charts summarize project totals. For money paid before your ledger start date, mark it Project only: it counts toward the project without changing assets, normal spending, or date/time ledger context.",
       ],
     },
   },
@@ -581,14 +581,16 @@ const CHANGELOG_ENTRIES = [
     },
     items: {
       zh: [
-        "重新编排开屏 Logo 动画，让线路、Logo 和字标在同一条更短、更稳定的时间线上落定。",
-        "修正加一笔页面的子类区域，两行子类现在会完整包在同一个框内。",
+        "重新编排开屏 Logo 动画，并把播放时长对齐 Ultreia 的 3.6 秒，让线路、Logo 和字标完整落定后再进入应用。",
+        "修正加一笔页面的分类滚动区域，两行子类现在可以完整查看，金额键盘保持在下方。",
         "资产页顶部资产概览不再默认显示初始资金和净流水拆分。",
+        "仅记录项目的补录不再显示日期或时间段，也不会作为本月流水出现。",
       ],
       en: [
-        "Rechoreographed the splash logo animation so traces, mark, and wordmark settle on one shorter, steadier timeline.",
-        "Fixed the Add detail tray so two-row detail chips are fully contained in one frame.",
+        "Rechoreographed the splash logo animation and matched Ultreia's 3.6-second reveal so traces, mark, and wordmark settle before entering the app.",
+        "Fixed the Add category scroll area so two-row detail chips stay visible while the amount keypad remains anchored below.",
         "Simplified the Assets overview by hiding starting-assets and ledger-net breakdowns by default.",
+        "Project-only backfills no longer show a date or time segment, and no longer appear as current-month ledger entries.",
       ],
     },
   },
@@ -1084,7 +1086,7 @@ const MESSAGES = {
     "capture.project": "项目",
     "capture.projectToggle": "项目选项",
     "capture.projectPlaceholder": "比赛 / 旅行名",
-    "capture.projectOnly": "仅计入项目",
+    "capture.projectOnly": "仅记录项目",
     "capture.note": "备注",
     "capture.notePlaceholder": "点击填写备注",
     "capture.amountKeypad": "金额键盘",
@@ -2138,6 +2140,7 @@ function startOfWeek(date) {
 }
 
 function transactionInDashboardRange(txn, range, now = new Date()) {
+  if (isProjectOnlyTransaction(txn)) return range === "all";
   const d = new Date(txn.occurredAt);
   if (Number.isNaN(d.getTime())) return false;
   if (range === "all") return true;
@@ -3525,7 +3528,7 @@ function renderCaptureForm(editingTransaction) {
           </button>
           <strong data-amount-display>${escapeHtml(captureAmountDisplay(txn.amount, txn.currency))}</strong>
         </div>
-        <div class="capture-detail-row">
+        <div class="capture-detail-row ${txn.projectOnly ? "project-only" : ""}">
           <input type="hidden" name="occurredAt" value="${escapeHtml(toDateInputValue(txn.occurredAt || new Date()))}">
           ${renderCaptureTimeChoice(txn.occurredAt || new Date())}
           <label class="capture-note-field">
@@ -3756,15 +3759,16 @@ function renderFilters() {
 
 function renderTransactionRow(txn) {
   const project = transactionProjectLabel(txn);
+  const projectOnly = isProjectOnlyTransaction(txn);
   const accountMeta = [
-    formatWhen(txn.occurredAt),
-    captureTimeSegmentLabel(txn.occurredAt),
+    projectOnly ? "" : formatWhen(txn.occurredAt),
+    projectOnly ? "" : captureTimeSegmentLabel(txn.occurredAt),
     transactionTypeLabel(txn),
     project ? `${t("capture.project")}：${project}` : "",
-    isProjectOnlyTransaction(txn) ? t("txn.projectOnly") : "",
+    projectOnly ? t("txn.projectOnly") : "",
   ].filter(Boolean).join(" · ");
   return `
-    <article class="txn-row action-row ${escapeHtml(transactionTone(txn))} ${isProjectOnlyTransaction(txn) ? "project-only" : ""}" data-long-press-actions>
+    <article class="txn-row action-row ${escapeHtml(transactionTone(txn))} ${projectOnly ? "project-only" : ""}" data-long-press-actions>
       <div class="txn-main">
         ${renderIconBadge(txn.category, "category")}
         <div class="txn-copy">
@@ -3863,8 +3867,17 @@ function syncPickButtons(form) {
   });
 }
 
+function syncProjectOnlyMode(form) {
+  if (!form || form.getAttribute("id") !== "transaction-form") return;
+  const field = form.elements.namedItem("projectOnly");
+  const projectOnly = Boolean(field?.checked);
+  form.querySelector(".capture-detail-row")?.classList.toggle("project-only", projectOnly);
+}
+
 function syncCaptureDraftFromForm(form) {
-  if (!form || form.getAttribute("id") !== "transaction-form" || state.editingTransactionId) return;
+  if (!form || form.getAttribute("id") !== "transaction-form") return;
+  syncProjectOnlyMode(form);
+  if (state.editingTransactionId) return;
   const data = Object.fromEntries(new FormData(form).entries());
   const type = data.type === "income" ? "income" : "expense";
   state.captureDraft = {
