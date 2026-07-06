@@ -2107,57 +2107,6 @@ input[type="datetime-local"] {
   color: var(--ink);
 }
 
-.mode-switch {
-  position: relative;
-  width: 128px;
-  height: 30px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: oklch(0.102 0.006 95 / 0.9);
-  cursor: pointer;
-}
-
-.mode-switch::before {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 61px;
-  height: 24px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--accent-strong), var(--accent));
-  content: "";
-  transition: transform 180ms var(--ease-out);
-}
-
-.mode-switch[data-mode="demo"]::before {
-  transform: translateX(61px);
-}
-
-.mode-switch span {
-  position: relative;
-  z-index: 1;
-  min-height: 24px;
-  display: grid;
-  place-items: center;
-  color: var(--ink-2);
-  font-size: 12px;
-  font-weight: 760;
-  white-space: nowrap;
-  transition: color 180ms var(--ease-out);
-}
-
-.mode-switch span.active {
-  color: oklch(0.120 0.010 95);
-}
-
-.mode-switch:hover span:not(.active) {
-  color: var(--ink);
-}
-
 .settings-list {
   display: grid;
   gap: 12px;

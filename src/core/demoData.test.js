@@ -5,18 +5,16 @@ import {
   DEMO_BUDGETS,
   DEMO_REFERENCE_DATE,
   DEMO_TRANSACTIONS,
-  VIATICA_DEMO_DATA_ENABLED,
   demoTransactionsForMonth,
 } from "./demoData.js";
 import { normalizeAccounts, normalizeTransaction, summarizeLedger } from "./ledger.js";
 
-test("temporary demo ledger data is valid and useful for chart review", () => {
+test("cloud demo seed data is valid and useful for chart review", () => {
   const now = new Date(DEMO_REFERENCE_DATE);
   const transactions = DEMO_TRANSACTIONS.map((txn) => normalizeTransaction(txn, now));
   const accounts = normalizeAccounts(DEMO_ACCOUNTS, [], now);
   const summary = summarizeLedger(transactions, DEMO_BUDGETS, now, accounts);
 
-  assert.equal(VIATICA_DEMO_DATA_ENABLED, true);
   assert.ok(transactions.length > 35);
   assert.ok(transactions.some((txn) => txn.type === "income"));
   assert.ok(transactions.some((txn) => txn.book === "训练账本"));

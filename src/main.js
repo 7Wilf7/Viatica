@@ -12,12 +12,6 @@ import {
 } from "./core/constants.js";
 import { exportTransactionsCsv, importTransactionsCsv } from "./core/csv.js";
 import {
-  DEMO_ACCOUNTS,
-  DEMO_BUDGETS,
-  VIATICA_DEMO_DATA_ENABLED,
-  demoTransactionsForMonth,
-} from "./core/demoData.js";
-import {
   getCloudSession,
   isCloudTimeoutError,
   isCloudAuthConfigured,
@@ -83,16 +77,6 @@ let bootSplashVisible = true;
 let bootSplashDismissTimer = 0;
 const storedState = loadState();
 const storedTransactions = normalizeTransactionList(storedState.transactions);
-const hasStoredDataMode = ["personal", "demo"].includes(storedState.preferences?.dataMode);
-const initialDataMode = hasStoredDataMode
-  ? storedState.preferences.dataMode
-  : (VIATICA_DEMO_DATA_ENABLED && storedTransactions.length === 0 ? "demo" : "personal");
-const demoReferenceDate = new Date();
-const demoLedgerState = {
-  transactions: demoTransactionsForMonth(demoReferenceDate).map((txn) => normalizeTransaction(txn, demoReferenceDate)),
-  budgets: { ...DEMO_BUDGETS },
-  accounts: DEMO_ACCOUNTS,
-};
 const state = {
   ...storedState,
   transactions: storedTransactions,
@@ -158,15 +142,14 @@ state.budgets = normalizeBudgets(state.budgets);
 state.preferences = {
   activeBook: "日常账本",
   locale: "zh",
-  dataMode: initialDataMode,
   deletedAccounts: [],
   ...state.preferences,
 };
+delete state.preferences.dataMode;
 if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
 if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
 state.accounts = visibleAccounts(normalizeAccounts(pruneLegacyDefaultAccounts(state.accounts)));
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
-if (!["personal", "demo"].includes(state.preferences.dataMode)) state.preferences.dataMode = initialDataMode;
 state.filters.book = "all";
 state.filters.account = "all";
 state.filters.month = "";
@@ -520,12 +503,12 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "分类统计只看当前数据模式下的流水：所选周期内每个分类实际花了多少钱，用来回答“钱花到哪里了”。",
+        "分类统计只看当前类型和周期筛选下的流水：所选周期内每个分类实际花了多少钱，用来回答“钱花到哪里了”。",
         "分类预算是目标对照：实际支出 / 你设置的每月预算，用来回答“这个分类有没有接近上限”。",
         "预算在“设置 → 分类预算”里改，初始值来自 Viatica 默认预算；登录 Aevum 账号后会随账本一起同步。",
       ],
       en: [
-        "Category statistics read the current data mode: how much each category spent in the selected period.",
+        "Category statistics read the current type and period filters: how much each category spent in the selected period.",
         "Category budgets compare actual spending against the monthly target you set.",
         "Edit budgets in Settings → Category budgets. Defaults come from Viatica; signed-in budgets sync with the Aevum account.",
       ],
@@ -540,14 +523,14 @@ const MANUAL_SECTIONS = [
       zh: [
         "“资产”先看资产概览；长按资产概览这一行可以直接编辑初始资金，资产金额按初始资金加流水收支计算。",
         "收入可以只选主分类保存；红包、退款和其他收入的具体说明直接写在备注里。",
-        "“设置 → 数据模式”可在个人 / Demo 之间切换。Demo 用于展示给朋友看，不暴露真实资产；在 Demo 下点加号会提醒先切回个人模式。",
+        "需要演示时，退出当前 Aevum 账号并登录专用 Demo 账号；演示数据存在云端，不再使用本机内置 Demo 模式。",
         "登录 Aevum 账号后，真实流水、分类预算和初始资金会与 Supabase 云端合并同步；空设备不会覆盖已有数据。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
         "Assets leads with the Assets Overview row. Long-press that row to edit the starting assets directly; the overview combines that amount with ledger flow.",
         "Income can be saved from the primary category alone; describe gifts, refunds, and other income in the note when needed.",
-        "Settings → Data mode switches between Personal and Demo. Demo is for showing the app without exposing real assets; tapping Add in Demo reminds you to switch back to Personal first.",
+        "For demos, sign out of your current Aevum account and sign in with the dedicated Demo account. Demo data now lives in the cloud instead of a bundled local mode.",
         "After signing in to the Aevum account, real entries, category budgets, and starting assets merge with Supabase cloud data; an empty device will not overwrite existing data.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
       ],
@@ -574,6 +557,23 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-07-06",
+    title: {
+      zh: "改用云端 Demo 账号",
+      en: "Moved Demo Data To A Cloud Account",
+    },
+    items: {
+      zh: [
+        "移除本机内置 Demo 模式和设置页数据模式开关，账本、日历、资产和预算都只读取当前 Aevum 账号或本机真实数据。",
+        "演示数据改为写入专用 Aevum Demo 账号；需要给朋友展示时，退出当前账号后登录 Demo 账号即可。",
+      ],
+      en: [
+        "Removed the bundled local Demo mode and Settings data-mode switch; Ledger, Calendar, Assets, and Budgets now read only the active Aevum account or real local data.",
+        "Demo data now lives in a dedicated Aevum Demo account. Sign out and use that account when showing the app to friends.",
+      ],
+    },
+  },
   {
     date: "2026-07-05",
     title: {
@@ -1203,9 +1203,6 @@ const MESSAGES = {
     "settings.guideHint": "使用说明和产品变化",
     "settings.manualTitle": "使用手册",
     "settings.manualHint": "包含使用说明和迭代过程",
-    "settings.dataModeTitle": "数据模式",
-    "settings.dataModePersonal": "个人",
-    "settings.dataModeDemo": "Demo",
     "settings.back": "返回",
     "profile.title": "个人资料",
     "profile.hint": "这些是 Aevum 账号的通用资料；在 Viatica、Ultreia 任意一边修改后都会从云端同步。",
@@ -1267,9 +1264,6 @@ const MESSAGES = {
     "toast.imported": "已导入 {count} 条流水。",
     "toast.importFailed": "导入失败：{message}",
     "toast.deleted": "流水已删除。",
-    "toast.demoMode": "当前是 Demo 展示模式。请先在设置里切回个人模式再操作真实数据。",
-    "toast.demoOn": "已切换到 Demo 展示模式，真实账本不会展示。",
-    "toast.demoOff": "已切换回个人模式。",
   },
   en: {
     "app.sections": "Viatica sections",
@@ -1428,9 +1422,6 @@ const MESSAGES = {
     "settings.guideHint": "Usage Notes And Product Changes",
     "settings.manualTitle": "Manual",
     "settings.manualHint": "Includes Usage Notes And Product History",
-    "settings.dataModeTitle": "Data Mode",
-    "settings.dataModePersonal": "Personal",
-    "settings.dataModeDemo": "Demo",
     "settings.back": "Back",
     "profile.title": "Personal Profile",
     "profile.hint": "These are shared Aevum account fields. Changes made in Viatica or Ultreia sync through the cloud.",
@@ -1492,9 +1483,6 @@ const MESSAGES = {
     "toast.imported": "Imported {count} entries.",
     "toast.importFailed": "Import failed: {message}",
     "toast.deleted": "Entry deleted.",
-    "toast.demoMode": "Demo mode is on. Switch back to Personal in Settings before changing real data.",
-    "toast.demoOn": "Demo mode is on. Your real ledger is hidden.",
-    "toast.demoOff": "Back to Personal mode.",
   },
 };
 
@@ -1581,12 +1569,7 @@ function localized(copy) {
   return copy?.[locale] || copy?.zh || "";
 }
 
-function isDemoMode() {
-  return state.preferences.dataMode === "demo";
-}
-
 function activeLedgerState() {
-  if (isDemoMode()) return demoLedgerState;
   return {
     transactions: state.transactions,
     budgets: state.budgets,
@@ -1630,9 +1613,9 @@ function applySyncedLedgerState(nextState) {
   state.preferences = {
     ...state.preferences,
     ...(nextState.preferences || {}),
-    dataMode: state.preferences.dataMode,
     locale: state.preferences.locale,
   };
+  delete state.preferences.dataMode;
   if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
   if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
   state.accounts = visibleAccounts(normalizeAccounts(pruneLegacyDefaultAccounts(nextState.accounts || [])));
@@ -1781,28 +1764,6 @@ function refreshLedgerFromTab() {
     return;
   }
   syncCloudNow({ silent: false });
-}
-
-function beginRealDataMode() {
-  if (!isDemoMode()) return;
-  state.preferences.dataMode = "personal";
-  state.filters = {
-    ...state.filters,
-    type: "all",
-    book: "all",
-    category: "all",
-    account: "all",
-  };
-}
-
-function warnDemoMode() {
-  toast(t("toast.demoMode"));
-}
-
-function guardDemoMutation() {
-  if (!isDemoMode()) return false;
-  warnDemoMode();
-  return true;
 }
 
 function normalizeEmail(value) {
@@ -2047,7 +2008,7 @@ function pruneLegacyDefaultAccounts(accounts) {
 }
 
 function accountNames(transactions = activeLedgerState().transactions, accounts = activeLedgerState().accounts) {
-  const deleted = isDemoMode() ? new Set() : deletedAccountSet();
+  const deleted = deletedAccountSet();
   return uniqueItems([
     ...accounts.map((account) => account.name),
     ...ACCOUNTS.filter((account) => !deleted.has(account)),
@@ -2346,7 +2307,6 @@ function openActionRow(row) {
 function runLongPressAction(node) {
   const action = node?.dataset?.longPressAction || "";
   if (action === "toggle-account-form") {
-    if (guardDemoMutation()) return;
     state.accountFormOpen = true;
     render();
   }
@@ -3037,7 +2997,6 @@ function renderSettingsTab() {
       ${renderSettingsSection(t("settings.productSection"), [
         renderSettingsCell(t("settings.budgetTitle"), t("settings.budgetHint"), "", "budgets"),
         renderSettingsCell(t("settings.languageTitle"), "", renderLanguageSwitch()),
-        renderSettingsCell(t("settings.dataModeTitle"), "", renderDataModeSwitch()),
         renderSettingsCell(t("settings.manualTitle"), "", "", "manual"),
         renderAppUpdateChecker(),
       ])}
@@ -3419,16 +3378,6 @@ function renderLanguageSwitch() {
   return `
     <button class="language-switch compact-language" type="button" data-action="toggle-locale" data-locale="${escapeHtml(state.preferences.locale)}" aria-label="${escapeHtml(t("settings.languageTitle"))}">
       ${LOCALES.map(renderLocaleSegment).join("")}
-    </button>
-  `;
-}
-
-function renderDataModeSwitch() {
-  const demo = isDemoMode();
-  return `
-    <button class="mode-switch data-mode-switch" type="button" data-action="toggle-data-mode" data-mode="${demo ? "demo" : "personal"}" aria-label="${escapeHtml(t("settings.dataModeTitle"))}">
-      <span class="${demo ? "" : "active"}">${escapeHtml(t("settings.dataModePersonal"))}</span>
-      <span class="${demo ? "active" : ""}">${escapeHtml(t("settings.dataModeDemo"))}</span>
     </button>
   `;
 }
@@ -4268,8 +4217,6 @@ document.addEventListener("submit", (event) => {
     return;
   }
   if (form.getAttribute("id") === "budget-form") {
-    if (guardDemoMutation()) return;
-    beginRealDataMode();
     try {
       const nextBudgets = {};
       for (const category of CATEGORIES) {
@@ -4292,8 +4239,6 @@ document.addEventListener("submit", (event) => {
     return;
   }
   if (form.getAttribute("id") === "account-form") {
-    if (guardDemoMutation()) return;
-    beginRealDataMode();
     try {
       const data = Object.fromEntries(new FormData(form).entries());
       const account = normalizeAccount(data);
@@ -4320,10 +4265,8 @@ document.addEventListener("submit", (event) => {
     return;
   }
   if (form.getAttribute("id") !== "transaction-form") return;
-  if (guardDemoMutation()) return;
   try {
     const data = formToTransaction(form);
-    beginRealDataMode();
     const existing = data.id ? state.transactions.find((txn) => txn.id === data.id) : null;
     if (existing) {
       const txn = normalizeTransaction({
@@ -4372,17 +4315,12 @@ document.addEventListener("input", (event) => {
 
 document.addEventListener("change", (event) => {
   if (event.target.id === "csv-import") {
-    if (guardDemoMutation()) {
-      event.target.value = "";
-      return;
-    }
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
       try {
         const imported = importTransactionsCsv(String(reader.result || ""));
-        beginRealDataMode();
         state.transactions = [...imported, ...state.transactions];
         persist();
         render();
@@ -4450,10 +4388,6 @@ document.addEventListener("click", (event) => {
     render();
   }
   if (action === "tab") {
-    if ((node.dataset.tab || "") === "capture" && isDemoMode()) {
-      warnDemoMode();
-      return;
-    }
     const nextTab = node.dataset.tab || "ledger";
     const now = event.timeStamp || performance.now();
     const doubleTap = state.activeTab === nextTab
@@ -4475,10 +4409,6 @@ document.addEventListener("click", (event) => {
     if (["ledger", "assets", "settings"].includes(state.activeTab)) scheduleForegroundCloudSync();
   }
   if (action === "open-capture") {
-    if (isDemoMode()) {
-      warnDemoMode();
-      return;
-    }
     state.editingTransactionId = null;
     state.captureProjectOpen = false;
     state.activeTab = "capture";
@@ -4554,8 +4484,6 @@ document.addEventListener("click", (event) => {
     handleAuthSignOut();
   }
   if (action === "reset-budgets") {
-    if (guardDemoMutation()) return;
-    beginRealDataMode();
     state.budgets = { ...DEFAULT_BUDGETS };
     state.budgetKeypadCategory = "";
     persist();
@@ -4563,7 +4491,6 @@ document.addEventListener("click", (event) => {
     toast(t("settings.budgetResetDone"));
   }
   if (action === "toggle-account-form") {
-    if (guardDemoMutation()) return;
     state.accountFormOpen = !state.accountFormOpen;
     render();
   }
@@ -4573,7 +4500,6 @@ document.addEventListener("click", (event) => {
     render();
   }
   if (action === "edit") {
-    if (guardDemoMutation()) return;
     state.captureDraft = null;
     state.captureProjectOpen = false;
     state.editingTransactionId = node.dataset.id;
@@ -4582,7 +4508,6 @@ document.addEventListener("click", (event) => {
     document.querySelector("#transaction-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
   if (action === "delete") {
-    if (guardDemoMutation()) return;
     if (!confirm(t("confirm.delete"))) return;
     const deletedId = node.dataset.id;
     state.transactions = state.transactions.filter((txn) => txn.id !== deletedId);
@@ -4596,7 +4521,6 @@ document.addEventListener("click", (event) => {
     toast(t("toast.deleted"));
   }
   if (action === "delete-account") {
-    if (guardDemoMutation()) return;
     const accountName = node.dataset.account || "";
     if (!accountName || !confirm(t("confirm.deleteAccount", { account: accountName }))) return;
     state.accounts = state.accounts.filter((account) => account.name !== accountName);
@@ -4610,15 +4534,12 @@ document.addEventListener("click", (event) => {
     toast(t("assets.accountDeleted"));
   }
   if (action === "export-csv") {
-    if (guardDemoMutation()) return;
     download("viatica-transactions.csv", exportTransactionsCsv(state.transactions), "text/csv;charset=utf-8");
   }
   if (action === "import-csv") {
-    if (guardDemoMutation()) return;
     document.querySelector("#csv-import")?.click();
   }
   if (action === "export-json") {
-    if (guardDemoMutation()) return;
     download("viatica-backup.json", exportState({
       transactions: state.transactions,
       budgets: state.budgets,
@@ -4643,24 +4564,6 @@ document.addEventListener("click", (event) => {
     state.preferences.locale = state.preferences.locale === "en" ? "zh" : "en";
     persist();
     render();
-  }
-  if (action === "toggle-data-mode") {
-    const nextMode = isDemoMode() ? "personal" : "demo";
-    state.preferences.dataMode = nextMode;
-    state.activeTab = nextMode === "demo" && state.activeTab === "capture" ? "ledger" : state.activeTab;
-    state.editingTransactionId = null;
-    state.searchOpen = false;
-    state.filters = {
-      ...state.filters,
-      query: "",
-      category: "all",
-      account: "all",
-      book: "all",
-      month: "",
-    };
-    persist();
-    render();
-    toast(t(nextMode === "demo" ? "toast.demoOn" : "toast.demoOff"));
   }
   if (action === "set-locale") {
     const locale = node.dataset.locale;

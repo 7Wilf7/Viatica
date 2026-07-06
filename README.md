@@ -53,25 +53,22 @@ account records for compatibility. The current UI treats accounts as hidden
 internals: Assets shows one starting-assets value plus ledger income/expense
 flow, and transaction rows do not show account names.
 
-## Temporary Demo Data
+## Cloud Demo Account
 
-Temporary demo data is currently enabled for pre-launch review. The seed lives
-in `src/core/demoData.js` behind `VIATICA_DEMO_DATA_ENABLED = true`.
+Viatica no longer has an in-app Personal / Demo mode switch. Product demos use a
+dedicated Aevum account in the shared Supabase project, so the app exercises the
+same login and sync path as real usage.
 
-- It appears automatically for a fresh empty install and can also be selected
-  from Settings to hide personal data during demos.
-- It includes sample transactions, starting assets, and category budgets so
-  Ledger, Calendar, Charts, Assets, and budget progress can be reviewed without
-  manual entry.
-- Runtime Demo dates shift into the current month so the default monthly review
+- The seed source lives in `src/core/demoData.js`.
+- `scripts/seed-demo-account.mjs` creates or signs into the demo account and
+  writes sample transactions, starting assets, and category budgets to
+  `viatica_transactions`, `viatica_accounts`, and `viatica_budgets`.
+- Runtime seed dates shift into the current month so the default monthly review
   does not look empty when the calendar moves past the original seed month.
-- While demo mode is active, `persist()` does not write the demo transactions,
-  demo budgets, or demo accounts into `viatica:v1`.
-- Explicit data-saving actions such as saving a transaction, importing CSV,
-  editing budgets, or editing accounts exit demo mode and start real local
-  state.
-- Remove it later by setting `VIATICA_DEMO_DATA_ENABLED = false` or deleting the
-  demo file and its import path.
+- The demo password is provided only at run time through an environment variable;
+  do not commit it to the repo.
+- If Viatica does not have local Supabase env values, pass
+  `VIATICA_ENV_FILE=/path/to/.env.local` from another Aevum-family app.
 
 ## Commands
 
@@ -81,6 +78,8 @@ npm run dev
 npm run test
 npm run lint
 npm run build
+VIATICA_DEMO_PASSWORD=... npm run seed:demo
+VIATICA_ENV_FILE=/path/to/.env.local VIATICA_DEMO_PASSWORD=... npm run seed:demo
 npm run android:sync
 npm run apk:debug
 ```

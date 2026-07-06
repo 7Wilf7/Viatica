@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "lint": "node scripts/lint.mjs",
+    "seed:demo": "node scripts/seed-demo-account.mjs",
     "test": "node --test",
     "android:sync": "npm run build && npx cap sync android",
     "apk:debug": "npm run android:sync && cd android && gradlew.bat assembleDebug",

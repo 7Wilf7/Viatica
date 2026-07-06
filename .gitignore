@@ -1,6 +1,7 @@
 .vercel
 node_modules
 dist
+supabase/.temp/
 android/app/src/main/assets/public
 android/app/src/main/assets/capacitor.config.json
 android/app/src/main/assets/capacitor.plugins.json
@@ -8,5 +9,6 @@ android/keystore.properties
 android/app/*.jks
 .env.local
 .env.*.local
+.env
 .DS_Store
 *.log

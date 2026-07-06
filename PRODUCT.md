@@ -95,11 +95,9 @@ The active milestone is to make the PWA ready for real daily accounting by
 2026-07-01. The priority is not AI features yet; it is speed, clarity, account
 setup, backup, and confidence in the transaction workflow.
 
-## Personal / Demo Data Mode
-Viatica supports a one-tap Personal / Demo mode switch for safe product demos.
-Personal mode reads and writes the local `viatica:v1` ledger. Demo mode displays
-bundled sample transactions, budgets, and accounts from `src/core/demoData.js`
-without overwriting real local data, so Wilf can show the app without exposing
-personal assets or spending. In Demo mode, add/edit/delete/import/export-style
-real-data actions should be blocked with a reminder to switch back to Personal
-mode first.
+## Demo Account
+Viatica does not expose an in-app Personal / Demo data mode. Product demos use a
+dedicated Aevum account in Supabase, seeded from `src/core/demoData.js`, so Wilf
+can show the app through the same login and cloud-sync path used by real data.
+The app itself should always read and write the active Aevum account or local
+`viatica:v1` cache; it should not branch into a bundled local demo ledger.
