@@ -20,7 +20,12 @@ import {
   signInToAevum,
   signOutFromAevum,
 } from "./core/cloud.js";
-import { deleteCloudTransaction, syncViaticaLedger } from "./core/cloudSync.js";
+import {
+  deleteCloudTransaction,
+  isCloudUserChangedError,
+  mergePendingLocalTransactions,
+  syncViaticaLedger,
+} from "./core/cloudSync.js";
 import { formatCurrency, monthKey, todayKey, toDateInputValue, transactionSign } from "./core/format.js";
 import {
   EMPTY_AEVUM_PROFILE,
@@ -84,6 +89,7 @@ const cloudAuthConfigured = isCloudAuthConfigured();
 let bootSplashVisible = true;
 let bootSplashDismissTimer = 0;
 let ledgerStorageOwnerId = "";
+let signedOutLedgerDirty = false;
 const storedState = loadState();
 const storedTransactions = normalizeTransactionList(storedState.transactions);
 const state = {
@@ -1648,6 +1654,7 @@ function applyLedgerState(nextState, { preserveLocale = true } = {}) {
 }
 
 function persist({ sync = true } = {}) {
+  if (sync && !ledgerStorageOwnerId) signedOutLedgerDirty = true;
   saveStateForOwner(localLedgerSnapshot(), ledgerStorageOwnerId);
   if (sync) ledgerRevision += 1;
   if (sync) scheduleCloudSync();
@@ -1657,10 +1664,16 @@ function applySyncedLedgerState(nextState) {
   applyLedgerState(nextState);
 }
 
-function storedStateForUser(user) {
+function storedStateForUser(user, pendingSignedOutState = null) {
   const ownerId = user?.id || "";
   if (!ownerId) return loadStateForOwner("");
-  if (hasStateForOwner(ownerId)) return loadStateForOwner(ownerId);
+  if (hasStateForOwner(ownerId)) {
+    const ownerState = loadStateForOwner(ownerId);
+    if (pendingSignedOutState && !isDemoAccountUser(user)) {
+      return mergePendingLocalTransactions(ownerState, pendingSignedOutState);
+    }
+    return ownerState;
+  }
 
   const localState = loadStateForOwner("");
   if (isDemoAccountUser(user)) {
@@ -1677,9 +1690,13 @@ function switchLedgerStorageOwner(user) {
   const nextOwnerId = user?.id || "";
   if (nextOwnerId === ledgerStorageOwnerId) return;
 
-  saveStateForOwner(localLedgerSnapshot(), ledgerStorageOwnerId);
+  const previousOwnerId = ledgerStorageOwnerId;
+  const previousState = localLedgerSnapshot();
+  const pendingSignedOutState = previousOwnerId === "" && signedOutLedgerDirty ? previousState : null;
+  saveStateForOwner(previousState, ledgerStorageOwnerId);
   ledgerStorageOwnerId = nextOwnerId;
-  applyLedgerState(storedStateForUser(user));
+  applyLedgerState(storedStateForUser(user, pendingSignedOutState));
+  if (nextOwnerId && !isDemoAccountUser(user)) signedOutLedgerDirty = false;
   state.editingTransactionId = null;
   state.captureDraft = null;
   state.captureProjectOpen = false;
@@ -1781,9 +1798,12 @@ async function syncCloudNow({ silent = false } = {}) {
   state.cloudSync.lastAttemptAt = new Date().toISOString();
   if (!silent) showCloudSyncFeedback();
   const syncStartedAtRevision = ledgerRevision;
+  const expectedUser = state.auth.user
+    ? { id: state.auth.user.id, email: state.auth.user.email }
+    : null;
 
   try {
-    const syncPromise = syncViaticaLedger(localLedgerSnapshot());
+    const syncPromise = syncViaticaLedger(localLedgerSnapshot(), expectedUser);
     syncPromise.catch(() => {});
     const result = await withClientTimeout(
       syncPromise,
@@ -1803,6 +1823,11 @@ async function syncCloudNow({ silent = false } = {}) {
     persist({ sync: false });
     if (!silent) toast(t("toast.cloudSyncDone"));
   } catch (error) {
+    if (isCloudUserChangedError(error)) {
+      state.cloudSync.status = "idle";
+      state.cloudSync.error = "";
+      return;
+    }
     state.cloudSync.status = "error";
     state.cloudSync.error = isCloudTimeoutError(error)
       ? t("toast.cloudSyncDeferred")

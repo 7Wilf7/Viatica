@@ -8,6 +8,18 @@ const TABLES = {
 };
 const DEMO_ACCOUNT_EMAIL = "demo@demo.com";
 
+function expectedUserId(expectedUser = null) {
+  if (!expectedUser) return "";
+  if (typeof expectedUser === "string") return expectedUser;
+  return String(expectedUser.id || "");
+}
+
+function createCloudUserChangedError() {
+  const error = new Error("Cloud user changed during sync");
+  error.name = "CloudUserChangedError";
+  return error;
+}
+
 function isSchemaFallbackError(error) {
   const message = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`.toLowerCase();
   return /column|schema cache|does not exist|invalid input syntax for type uuid|there is no unique or exclusion constraint|violates not-null constraint/.test(message);
@@ -16,6 +28,15 @@ function isSchemaFallbackError(error) {
 function isDuplicateKeyError(error) {
   const message = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`.toLowerCase();
   return /23505|duplicate key value|violates unique constraint/.test(message);
+}
+
+export function isCloudUserChangedError(error) {
+  return error?.name === "CloudUserChangedError";
+}
+
+export function cloudUserMatchesExpected(user = null, expectedUser = null) {
+  const expectedId = expectedUserId(expectedUser);
+  return !expectedId || String(user?.id || "") === expectedId;
 }
 
 function asIso(value, fallback = new Date()) {
@@ -74,6 +95,28 @@ export function stripDemoSeedTransactions(state = {}) {
     ...state,
     transactions: (state.transactions || []).filter((txn) => !isDemoSeedTransaction(txn)),
   };
+}
+
+export function mergePendingLocalTransactions(ownerState = {}, pendingState = {}, now = new Date()) {
+  const pendingWithoutDemo = stripDemoSeedTransactions(pendingState);
+  const deletedTransactionIds = [
+    ...new Set([
+      ...uniqueDeletedIds(ownerState.preferences),
+      ...uniqueDeletedIds(pendingWithoutDemo.preferences),
+    ]),
+  ];
+  return mergeLedgerStates({
+    ...ownerState,
+    preferences: {
+      ...(ownerState.preferences || {}),
+      deletedTransactionIds,
+    },
+  }, {
+    transactions: pendingWithoutDemo.transactions || [],
+    budgets: {},
+    accounts: [],
+    preferences: {},
+  }, now);
 }
 
 function shouldStripDemoSeedTransactions(user = {}) {
@@ -541,11 +584,12 @@ export async function pushCloudState(supabase, userId, state) {
   await upsertAccounts(supabase, userId, state.accounts || []);
 }
 
-export async function syncViaticaLedger(localState) {
+export async function syncViaticaLedger(localState, expectedUser = null) {
   const supabase = getCloudClient();
   if (!supabase) throw new Error("Supabase is not configured");
   const user = await getCloudUser();
   if (!user) throw new Error("Not authenticated");
+  if (!cloudUserMatchesExpected(user, expectedUser)) throw createCloudUserChangedError();
 
   const stripDemoSeeds = shouldStripDemoSeedTransactions(user);
   const localStateForMerge = stripDemoSeeds ? stripDemoSeedTransactions(localState) : localState;

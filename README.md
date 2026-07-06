@@ -58,6 +58,13 @@ Signed-in ledgers are cached under account-specific localStorage keys shaped as
 `viatica:v1`. This keeps the cloud Demo account from leaking into Wilf's
 personal account when switching users on the same PWA install.
 
+Sync is bound to the Aevum user id that started it. If the active Supabase user
+changes while a sync is in flight, Viatica stops that sync instead of uploading
+the old account's local snapshot to the new account. If entries are saved before
+the restored Aevum session is ready, those pending signed-out transactions are
+merged into the real account cache on sign-in, while Demo seed transactions are
+still ignored.
+
 ## Cloud Demo Account
 
 Viatica no longer has an in-app Personal / Demo mode switch. Product demos use a

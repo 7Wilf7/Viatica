@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  cloudUserMatchesExpected,
   isDemoSeedTransaction,
   mergeLedgerStates,
+  mergePendingLocalTransactions,
   pushCloudState,
   stripDemoSeedTransactions,
 } from "./cloudSync.js";
@@ -343,6 +345,86 @@ test("does not resurrect locally deleted transactions during merge", () => {
   }, now);
 
   assert.equal(merged.transactions.length, 0);
+  assert.deepEqual(merged.preferences.deletedTransactionIds, ["txn_deleted"]);
+});
+
+test("matches a cloud sync result only to the account that started it", () => {
+  assert.equal(cloudUserMatchesExpected({ id: "user_1" }, { id: "user_1" }), true);
+  assert.equal(cloudUserMatchesExpected({ id: "user_2" }, { id: "user_1" }), false);
+  assert.equal(cloudUserMatchesExpected({ id: "user_2" }, null), true);
+});
+
+test("carries signed-out pending transactions into an existing account cache", () => {
+  const merged = mergePendingLocalTransactions({
+    transactions: [{
+      id: "txn_account",
+      type: "expense",
+      occurredAt: "2026-07-01T08:00:00+08:00",
+      amount: 18,
+      category: "餐饮",
+      title: "账号早餐",
+      updatedAt: "2026-07-01T08:01:00+08:00",
+    }],
+    budgets: { "餐饮": 2000 },
+    accounts: [{ id: "acct_account", name: "其他", openingBalance: 100 }],
+    preferences: { deletedTransactionIds: [] },
+  }, {
+    transactions: [{
+      id: "txn_pending",
+      type: "expense",
+      occurredAt: "2026-07-01T09:00:00+08:00",
+      amount: 26,
+      category: "交通",
+      title: "启动阶段新增",
+      updatedAt: "2026-07-01T09:01:00+08:00",
+    }],
+    budgets: { "交通": 9999 },
+    accounts: [{ id: "acct_pending", name: "现金", openingBalance: 9999 }],
+    preferences: {},
+  }, new Date("2026-07-01T10:00:00+08:00"));
+
+  assert.deepEqual(merged.transactions.map((txn) => txn.id).sort(), ["txn_account", "txn_pending"]);
+  assert.equal(merged.budgets["餐饮"], 2000);
+  assert.equal(merged.budgets["交通"], 600);
+  assert.deepEqual(merged.accounts.map((account) => account.name), ["其他"]);
+});
+
+test("pending transaction carryover strips demo seeds and preserves deletes", () => {
+  const merged = mergePendingLocalTransactions({
+    transactions: [{
+      id: "txn_deleted",
+      type: "expense",
+      occurredAt: "2026-07-01T08:00:00+08:00",
+      amount: 18,
+      category: "餐饮",
+      title: "要删除",
+    }],
+    budgets: {},
+    accounts: [],
+    preferences: {},
+  }, {
+    transactions: [
+      {
+        id: "demo_txn_202607010900",
+        type: "expense",
+        occurredAt: "2026-07-01T09:00:00+08:00",
+        amount: 99,
+        category: "餐饮",
+        title: "Demo",
+      },
+      {
+        id: "txn_real",
+        type: "expense",
+        occurredAt: "2026-07-01T10:00:00+08:00",
+        amount: 32,
+        category: "交通",
+        title: "真实新增",
+      },
+    ],
+    preferences: { deletedTransactionIds: ["txn_deleted"] },
+  }, new Date("2026-07-01T11:00:00+08:00"));
+
+  assert.deepEqual(merged.transactions.map((txn) => txn.id), ["txn_real"]);
   assert.deepEqual(merged.preferences.deletedTransactionIds, ["txn_deleted"]);
 });
 

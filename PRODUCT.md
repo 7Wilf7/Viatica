@@ -105,3 +105,8 @@ When a user signs in, the PWA stores that ledger under an account-specific
 localStorage key, so switching between the Demo account and Wilf's personal
 account does not merge their local caches. Non-Demo accounts should also ignore
 seed transaction ids beginning with `demo_txn_` during cloud sync.
+If a user records transactions before the Aevum session finishes restoring,
+those pending signed-out transactions must be carried into the real account
+cache instead of being hidden by the account cache swap. Demo sign-in must not
+consume or clear those pending real transactions. Cloud sync calls must also
+verify that the Supabase user still matches the user that started the sync.
