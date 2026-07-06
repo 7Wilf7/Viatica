@@ -22,8 +22,10 @@ import {
 } from "./core/cloud.js";
 import {
   deleteCloudTransaction,
+  hasDemoSeedArtifacts,
   isCloudUserChangedError,
   mergePendingLocalTransactions,
+  stripDemoSeedArtifacts,
   syncViaticaLedger,
 } from "./core/cloudSync.js";
 import { formatCurrency, monthKey, todayKey, toDateInputValue, transactionSign } from "./core/format.js";
@@ -96,6 +98,7 @@ let lastTabTap = { tab: "", at: 0 };
 const cloudAuthConfigured = isCloudAuthConfigured();
 let bootSplashVisible = true;
 let bootSplashDismissTimer = 0;
+const bootSplashStartedAt = globalThis.performance?.now?.() || Date.now();
 let ledgerStorageOwnerId = "";
 let signedOutLedgerDirty = false;
 const storedState = loadState();
@@ -591,12 +594,14 @@ const CHANGELOG_ENTRIES = [
       zh: [
         "移除本机内置 Demo 模式和设置页数据模式开关，账本、日历、资产和预算都只读取当前 Aevum 账号或本机真实数据。",
         "演示数据改为写入专用 Aevum Demo 账号；需要给朋友展示时，退出当前账号后登录 Demo 账号即可。",
-        "账号切换时本地缓存按 Aevum user 分开保存，非 Demo 账号同步时会忽略 `demo_txn_*` 演示流水，避免 Demo 数据继续混进个人账本。",
+        "账号切换时本地缓存按 Aevum user 分开保存，非 Demo 账号同步时会忽略 `demo_txn_*` 演示流水和明显的 Demo 初始资产，避免 Demo 数据继续混进个人账本。",
+        "开屏动画改为单一时间轴，启动期间发生页面重绘时不会从头重播或中途卡住。",
       ],
       en: [
         "Removed the bundled local Demo mode and Settings data-mode switch; Ledger, Calendar, Assets, and Budgets now read only the active Aevum account or real local data.",
         "Demo data now lives in a dedicated Aevum Demo account. Sign out and use that account when showing the app to friends.",
-        "Account switching now keeps local caches per Aevum user, and non-Demo accounts ignore `demo_txn_*` seed entries during sync so Demo entries do not leak into personal ledgers.",
+        "Account switching now keeps local caches per Aevum user, and non-Demo accounts ignore `demo_txn_*` entries plus obvious Demo starting assets so Demo data does not leak into personal ledgers.",
+        "The splash animation now uses one fixed timeline, so page rerenders during launch no longer restart or cut off the animation.",
       ],
     },
   },
@@ -1630,19 +1635,6 @@ function hasUsefulLedgerState(snapshot = {}) {
   );
 }
 
-function hasDemoSeedTransactions(snapshot = {}) {
-  const transactions = snapshot.transactions || [];
-  return transactions.some((txn) => String(txn?.id || "").startsWith("demo_txn_"));
-}
-
-function stripDemoSeedTransactionsFromState(snapshot = {}) {
-  return {
-    ...snapshot,
-    transactions: (snapshot.transactions || [])
-      .filter((txn) => !String(txn?.id || "").startsWith("demo_txn_")),
-  };
-}
-
 function isDemoAccountUser(user = null) {
   return normalizeEmail(user?.email) === DEMO_ACCOUNT_EMAIL;
 }
@@ -1691,6 +1683,9 @@ function storedStateForUser(user, pendingSignedOutState = null) {
     if (pendingSignedOutState && !isDemoAccountUser(user)) {
       return mergePendingLocalTransactions(ownerState, pendingSignedOutState);
     }
+    if (!isDemoAccountUser(user) && hasDemoSeedArtifacts(ownerState)) {
+      return stripDemoSeedArtifacts(ownerState, { stripLikelySeedAccounts: true });
+    }
     return ownerState;
   }
 
@@ -1698,9 +1693,9 @@ function storedStateForUser(user, pendingSignedOutState = null) {
   if (isDemoAccountUser(user)) {
     return structuredClone(EMPTY_STATE);
   }
-  if (hasDemoSeedTransactions(localState)) {
-    const strippedLocalState = stripDemoSeedTransactionsFromState(localState);
-    return strippedLocalState.transactions.length ? strippedLocalState : structuredClone(EMPTY_STATE);
+  if (hasDemoSeedArtifacts(localState)) {
+    const strippedLocalState = stripDemoSeedArtifacts(localState, { stripLikelySeedAccounts: true });
+    return hasUsefulLedgerState(strippedLocalState) ? strippedLocalState : structuredClone(EMPTY_STATE);
   }
   return hasUsefulLedgerState(localState) ? localState : structuredClone(EMPTY_STATE);
 }
@@ -2454,11 +2449,25 @@ function runLongPressAction(node) {
 function scheduleBootSplashDismiss() {
   if (!bootSplashVisible || bootSplashDismissTimer) return;
   if (bootSplashFrameMs() !== null) return;
+  const remainingMs = Math.max(0, BOOT_REVEAL_MS - bootSplashElapsedMs());
+  if (remainingMs <= 0) {
+    bootSplashVisible = false;
+    render();
+    return;
+  }
   bootSplashDismissTimer = window.setTimeout(() => {
     bootSplashVisible = false;
     bootSplashDismissTimer = 0;
     render();
-  }, BOOT_REVEAL_MS);
+  }, remainingMs);
+}
+
+function bootSplashNow() {
+  return globalThis.performance?.now?.() || Date.now();
+}
+
+function bootSplashElapsedMs() {
+  return Math.max(0, Math.min(BOOT_REVEAL_MS, bootSplashNow() - bootSplashStartedAt));
 }
 
 function bootSplashFrameMs() {
@@ -2516,8 +2525,9 @@ function renderCloudSyncFeedback() {
 
 function renderBootSplash() {
   const frameMs = bootSplashFrameMs();
+  const timelineMs = frameMs === null ? bootSplashElapsedMs() : frameMs;
   const qaFrameClass = frameMs === null ? "" : " boot-splash-qa";
-  const qaFrameStyle = frameMs === null ? "" : ` style="--boot-delay: -${frameMs}ms"`;
+  const qaFrameStyle = ` style="--boot-delay: -${timelineMs}ms"`;
   return `
     <section class="boot-splash${qaFrameClass}"${qaFrameStyle} aria-label="${escapeHtml(t("splash.label"))}">
       <div class="boot-splash-stack" aria-busy="true">

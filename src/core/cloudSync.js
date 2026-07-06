@@ -1,4 +1,5 @@
 import { getCloudClient, getCloudUser } from "./cloud.js";
+import { DEMO_ACCOUNTS } from "./demoData.js";
 import { normalizeAccount, normalizeAccounts, normalizeBudgets, normalizeTransaction } from "./ledger.js";
 
 const TABLES = {
@@ -7,6 +8,10 @@ const TABLES = {
   accounts: "viatica_accounts",
 };
 const DEMO_ACCOUNT_EMAIL = "demo@demo.com";
+const DEMO_ACCOUNT_OPENING_BY_NAME = new Map(
+  DEMO_ACCOUNTS.map((account) => [account.name, Number(account.openingBalance || 0)])
+);
+const LIKELY_DEMO_ACCOUNT_MATCH_MIN = 2;
 
 function expectedUserId(expectedUser = null) {
   if (!expectedUser) return "";
@@ -90,6 +95,34 @@ export function isDemoSeedTransaction(value = {}) {
     .some((id) => String(id || "").startsWith("demo_txn_"));
 }
 
+export function isDemoSeedAccount(value = {}, { stripLikelySeedBalance = false } = {}) {
+  if ([value.id, value.client_id, value.local_id]
+    .some((id) => String(id || "").startsWith("demo_account_"))) {
+    return true;
+  }
+  if (!stripLikelySeedBalance) return false;
+  const name = String(value.name || "").trim();
+  const expectedOpening = DEMO_ACCOUNT_OPENING_BY_NAME.get(name);
+  if (expectedOpening === undefined) return false;
+  const opening = Number(value.openingBalance ?? value.opening_balance ?? 0);
+  return Number.isFinite(opening) && Math.round(opening * 100) === Math.round(expectedOpening * 100);
+}
+
+export function hasLikelyDemoSeedAccounts(state = {}) {
+  const matches = new Set();
+  for (const account of state.accounts || []) {
+    if (!isDemoSeedAccount(account, { stripLikelySeedBalance: true })) continue;
+    matches.add(String(account.name || "").trim());
+  }
+  return matches.size >= LIKELY_DEMO_ACCOUNT_MATCH_MIN;
+}
+
+export function hasDemoSeedArtifacts(state = {}) {
+  return (state.transactions || []).some(isDemoSeedTransaction)
+    || (state.accounts || []).some((account) => isDemoSeedAccount(account))
+    || hasLikelyDemoSeedAccounts(state);
+}
+
 export function stripDemoSeedTransactions(state = {}) {
   return {
     ...state,
@@ -97,8 +130,20 @@ export function stripDemoSeedTransactions(state = {}) {
   };
 }
 
+export function stripDemoSeedArtifacts(state = {}, { stripLikelySeedAccounts = false } = {}) {
+  return {
+    ...stripDemoSeedTransactions(state),
+    accounts: (state.accounts || [])
+      .filter((account) => !isDemoSeedAccount(account, {
+        stripLikelySeedBalance: stripLikelySeedAccounts,
+      })),
+  };
+}
+
 export function mergePendingLocalTransactions(ownerState = {}, pendingState = {}, now = new Date()) {
-  const pendingWithoutDemo = stripDemoSeedTransactions(pendingState);
+  const pendingWithoutDemo = stripDemoSeedArtifacts(pendingState, {
+    stripLikelySeedAccounts: hasDemoSeedArtifacts(pendingState),
+  });
   const deletedTransactionIds = [
     ...new Set([
       ...uniqueDeletedIds(ownerState.preferences),
@@ -592,9 +637,15 @@ export async function syncViaticaLedger(localState, expectedUser = null) {
   if (!cloudUserMatchesExpected(user, expectedUser)) throw createCloudUserChangedError();
 
   const stripDemoSeeds = shouldStripDemoSeedTransactions(user);
-  const localStateForMerge = stripDemoSeeds ? stripDemoSeedTransactions(localState) : localState;
   const remoteState = await fetchCloudState(supabase, user.id);
-  const remoteStateForMerge = stripDemoSeeds ? stripDemoSeedTransactions(remoteState) : remoteState;
+  const stripLikelySeedAccounts = stripDemoSeeds
+    && (hasDemoSeedArtifacts(localState) || hasDemoSeedArtifacts(remoteState));
+  const localStateForMerge = stripDemoSeeds
+    ? stripDemoSeedArtifacts(localState, { stripLikelySeedAccounts })
+    : localState;
+  const remoteStateForMerge = stripDemoSeeds
+    ? stripDemoSeedArtifacts(remoteState, { stripLikelySeedAccounts })
+    : remoteState;
   const mergedState = mergeLedgerStates(localStateForMerge, remoteStateForMerge);
   await pushCloudState(supabase, user.id, mergedState);
 

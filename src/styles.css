@@ -265,6 +265,8 @@ label span {
     linear-gradient(180deg, oklch(0.130 0.007 95), var(--bg));
   pointer-events: none;
   animation: boot-splash-presence var(--boot-duration) var(--ease-out) forwards;
+  animation-delay: var(--boot-delay, 0ms);
+  animation-fill-mode: both;
   overflow: hidden;
   isolation: isolate;
 }

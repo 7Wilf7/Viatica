@@ -2,10 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   cloudUserMatchesExpected,
+  hasDemoSeedArtifacts,
+  hasLikelyDemoSeedAccounts,
+  isDemoSeedAccount,
   isDemoSeedTransaction,
   mergeLedgerStates,
   mergePendingLocalTransactions,
   pushCloudState,
+  stripDemoSeedArtifacts,
   stripDemoSeedTransactions,
 } from "./cloudSync.js";
 
@@ -228,6 +232,39 @@ test("can strip demo seed transactions before non-demo account sync", () => {
   assert.deepEqual(stripped.transactions.map((txn) => txn.id), ["real_txn_1"]);
   assert.equal(stripped.budgets, state.budgets);
   assert.equal(stripped.accounts, state.accounts);
+});
+
+test("detects and strips likely demo seed accounts from contaminated non-demo state", () => {
+  const state = {
+    transactions: [
+      { id: "demo_txn_20260602_breakfast", title: "Demo Breakfast" },
+      { id: "real_txn_1", title: "Real Breakfast" },
+    ],
+    accounts: [
+      { id: "acct_wechat", name: "微信", openingBalance: 1977.45 },
+      { id: "acct_bank", name: "银行卡", openingBalance: 26200 },
+      { id: "acct_alipay", name: "支付宝", openingBalance: 2200 },
+      { id: "acct_other", name: "其他", openingBalance: 600 },
+    ],
+  };
+  const stripped = stripDemoSeedArtifacts(state, { stripLikelySeedAccounts: true });
+
+  assert.equal(hasDemoSeedArtifacts(state), true);
+  assert.equal(hasLikelyDemoSeedAccounts(state), true);
+  assert.equal(isDemoSeedAccount(state.accounts[1], { stripLikelySeedBalance: true }), true);
+  assert.deepEqual(stripped.transactions.map((txn) => txn.id), ["real_txn_1"]);
+  assert.deepEqual(stripped.accounts.map((account) => account.name), ["微信"]);
+});
+
+test("keeps matching account names when likely demo stripping is not enabled", () => {
+  const state = {
+    accounts: [{ id: "acct_bank", name: "银行卡", openingBalance: 26200 }],
+    transactions: [],
+  };
+
+  assert.equal(hasLikelyDemoSeedAccounts(state), false);
+  assert.equal(isDemoSeedAccount(state.accounts[0]), false);
+  assert.deepEqual(stripDemoSeedArtifacts(state).accounts, state.accounts);
 });
 
 test("keeps the newest transaction when local and cloud share an id", () => {
