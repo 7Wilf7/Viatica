@@ -43,14 +43,14 @@ When the user signs in with the shared Aevum account, the app syncs that local
 cache with the Aevum Supabase tables using the `viatica_*` prefix.
 
 The first sync is merge-first rather than overwrite-first: Viatica reads cloud
-transactions, budgets, and accounts, merges them with the current device, keeps
+transactions, budgets, and preferences, merges them with the current device, keeps
 the newest `updatedAt` when transaction ids match, saves the merged state back
 to `viatica:v1`, and upserts the merged state to Supabase. This protects an
 empty PWA from wiping an APK that already has data.
 
-The local state includes transactions, category budgets, preferences, and legacy
-account records for compatibility. The current UI treats accounts as hidden
-internals: Assets shows one starting-assets value plus ledger income/expense
+The local state includes transactions, category budgets, preferences, and a
+legacy empty account array for compatibility. The current UI has no account
+workflow: Assets shows one starting-assets value plus ledger income/expense
 flow, and transaction rows do not show account names.
 
 Signed-in ledgers are cached under account-specific localStorage keys shaped as
@@ -74,7 +74,7 @@ same login and sync path as real usage.
 - The seed source lives in `src/core/demoData.js`.
 - `scripts/seed-demo-account.mjs` creates or signs into the demo account and
   writes sample transactions, starting assets, and category budgets to
-  `viatica_transactions`, `viatica_accounts`, and `viatica_budgets`.
+  `viatica_transactions`, `viatica_preferences`, and `viatica_budgets`.
 - Runtime seed dates shift into the current month so the default monthly review
   does not look empty when the calendar moves past the original seed month.
 - The demo password is provided only at run time through an environment variable;

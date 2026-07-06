@@ -22,6 +22,7 @@ function createMemorySupabase(initial = {}, options = {}) {
     viatica_transactions: clone(initial.viatica_transactions || []),
     viatica_budgets: clone(initial.viatica_budgets || []),
     viatica_accounts: clone(initial.viatica_accounts || []),
+    viatica_preferences: clone(initial.viatica_preferences || []),
   };
   const operations = [];
   let hiddenAccountSelects = options.hideExistingAccountsOnce ? 1 : 0;
@@ -133,6 +134,20 @@ function createMemorySupabase(initial = {}, options = {}) {
               });
             }
           }
+          if (table === "viatica_preferences") {
+            const conflict = rowsToInsert.some((item) =>
+              tables[table].some((existing) => existing.user_id === item.user_id)
+            );
+            if (conflict) {
+              return Promise.resolve({
+                data: null,
+                error: {
+                  code: "23505",
+                  message: 'duplicate key value violates unique constraint "viatica_preferences_pkey"',
+                },
+              });
+            }
+          }
           tables[table].push(...rowsToInsert.map(clone));
           return Promise.resolve({ data: null, error: null });
         },
@@ -198,6 +213,63 @@ test("merges local and cloud transactions without dropping either side", () => {
   assert.equal(merged.budgets["餐饮"], 2000);
   assert.equal(merged.budgets["交通"], 600);
   assert.deepEqual(merged.accounts, []);
+});
+
+test("keeps local starting assets when cloud only has the default zero", () => {
+  const merged = mergeLedgerStates({
+    transactions: [],
+    budgets: {},
+    preferences: { startingAssets: 1977.45 },
+  }, {
+    transactions: [],
+    budgets: {},
+    preferences: {
+      startingAssets: 0,
+      updatedAt: "2026-07-06T10:00:00+08:00",
+    },
+  });
+
+  assert.equal(merged.preferences.startingAssets, 1977.45);
+});
+
+test("uses newer non-zero cloud starting assets", () => {
+  const merged = mergeLedgerStates({
+    transactions: [],
+    budgets: {},
+    preferences: {
+      startingAssets: 1200,
+      updatedAt: "2026-07-05T10:00:00+08:00",
+    },
+  }, {
+    transactions: [],
+    budgets: {},
+    preferences: {
+      startingAssets: 2200,
+      updatedAt: "2026-07-06T10:00:00+08:00",
+    },
+  });
+
+  assert.equal(merged.preferences.startingAssets, 2200);
+});
+
+test("uses newer cloud zero when local starting assets has a timestamp", () => {
+  const merged = mergeLedgerStates({
+    transactions: [],
+    budgets: {},
+    preferences: {
+      startingAssets: 1200,
+      updatedAt: "2026-07-05T10:00:00+08:00",
+    },
+  }, {
+    transactions: [],
+    budgets: {},
+    preferences: {
+      startingAssets: 0,
+      updatedAt: "2026-07-06T10:00:00+08:00",
+    },
+  });
+
+  assert.equal(merged.preferences.startingAssets, 0);
 });
 
 test("merges legacy sports budgets into the unified sports budget", () => {
@@ -480,12 +552,14 @@ test("pushes cloud state without requiring database conflict constraints", async
     }],
     budgets: { "餐饮": 2000 },
     accounts: [{ id: "acct_local", name: "其他", openingBalance: 100 }],
-    preferences: {},
+    preferences: { startingAssets: 1977.45, updatedAt: "2026-07-01T08:02:00+08:00" },
   };
 
   await pushCloudState(supabase, "user_1", firstState);
   assert.equal(supabase.tables.viatica_transactions.length, 1);
   assert.equal(supabase.tables.viatica_budgets.length, 1);
+  assert.equal(supabase.tables.viatica_preferences.length, 1);
+  assert.equal(supabase.tables.viatica_preferences[0].starting_assets, 1977.45);
   assert.equal(supabase.tables.viatica_accounts.length, 0);
   assert.equal(supabase.tables.viatica_transactions[0].account, "ledger");
 
@@ -499,6 +573,7 @@ test("pushes cloud state without requiring database conflict constraints", async
     }],
     budgets: { "餐饮": 2400 },
     accounts: [{ id: "acct_local", name: "其他", openingBalance: 150 }],
+    preferences: { startingAssets: 2100, updatedAt: "2026-07-01T09:02:00+08:00" },
   });
 
   assert.equal(supabase.tables.viatica_transactions.length, 1);
@@ -506,6 +581,8 @@ test("pushes cloud state without requiring database conflict constraints", async
   assert.equal(supabase.tables.viatica_transactions[0].title, "新早餐");
   assert.equal(supabase.tables.viatica_budgets.length, 1);
   assert.equal(supabase.tables.viatica_budgets[0].amount, 2400);
+  assert.equal(supabase.tables.viatica_preferences.length, 1);
+  assert.equal(supabase.tables.viatica_preferences[0].starting_assets, 2100);
   assert.equal(supabase.tables.viatica_accounts.length, 0);
   assert.equal(supabase.operations.some((operation) => operation.type === "upsert"), false);
 });

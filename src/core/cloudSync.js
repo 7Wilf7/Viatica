@@ -9,6 +9,7 @@ const TABLES = {
   transactions: "viatica_transactions",
   budgets: "viatica_budgets",
   accounts: "viatica_accounts",
+  preferences: "viatica_preferences",
 };
 const DEMO_ACCOUNT_EMAIL = "demo@demo.com";
 const DEMO_ACCOUNT_OPENING_BY_NAME = new Map(
@@ -64,6 +65,21 @@ function newer(a, b) {
 
 function uniqueDeletedIds(preferences = {}) {
   return [...new Set((preferences.deletedTransactionIds || []).map(String).filter(Boolean))];
+}
+
+function normalizeStartingAssets(value) {
+  const amount = Number(value ?? 0);
+  return Number.isFinite(amount) ? Math.round(amount * 100) / 100 : 0;
+}
+
+function normalizePreferenceRows(rows = []) {
+  const row = rows[0] || {};
+  return {
+    activeBook: row.active_book || row.activeBook || "日常账本",
+    locale: row.locale || "zh",
+    startingAssets: normalizeStartingAssets(row.starting_assets ?? row.startingAssets),
+    updatedAt: row.updated_at || row.updatedAt || "",
+  };
 }
 
 function normalizeCloudTransaction(row, now = new Date()) {
@@ -248,12 +264,26 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
     ...remoteBudgets,
   });
 
+  const localPreferences = localState.preferences || {};
+  const remotePreferences = remoteState.preferences || {};
+  const localStartingAssets = normalizeStartingAssets(localPreferences.startingAssets);
+  const remoteStartingAssets = normalizeStartingAssets(remotePreferences.startingAssets);
+  const remoteIsNewer = timeValue(remotePreferences.updatedAt) > timeValue(localPreferences.updatedAt);
+  const localHasTimestamp = Boolean(localPreferences.updatedAt);
+  let startingAssets = localStartingAssets;
+  if (remoteStartingAssets && !localStartingAssets) {
+    startingAssets = remoteStartingAssets;
+  } else if (remoteStartingAssets !== localStartingAssets && remoteIsNewer && (localHasTimestamp || remoteStartingAssets !== 0)) {
+    startingAssets = remoteStartingAssets;
+  }
+
   return {
     transactions,
     budgets,
     accounts: [],
     preferences: {
-      ...(localState.preferences || {}),
+      ...localPreferences,
+      startingAssets,
       deletedTransactionIds,
     },
   };
@@ -268,15 +298,17 @@ async function selectRows(supabase, table, userId, orderColumn = "updated_at") {
 }
 
 async function fetchCloudState(supabase, userId) {
-  const [transactionRows, budgetRows] = await Promise.all([
+  const [transactionRows, budgetRows, preferenceRows] = await Promise.all([
     selectRows(supabase, TABLES.transactions, userId, "occurred_at"),
     selectRows(supabase, TABLES.budgets, userId, "category"),
+    selectRows(supabase, TABLES.preferences, userId, "updated_at"),
   ]);
 
   return {
     transactions: transactionRows.map((row) => normalizeCloudTransaction(row)),
     budgets: normalizeBudgetRows(budgetRows),
     accounts: [],
+    preferences: normalizePreferenceRows(preferenceRows),
   };
 }
 
@@ -493,6 +525,39 @@ async function upsertBudgets(supabase, userId, budgets = {}) {
   await insertRows(supabase, TABLES.budgets, budgetInsertRowVariants(newEntries, userId));
 }
 
+function preferenceRows(preferences = {}, userId, now = new Date()) {
+  const base = {
+    user_id: userId,
+    active_book: preferences.activeBook || "日常账本",
+    locale: preferences.locale || "zh",
+    starting_assets: normalizeStartingAssets(preferences.startingAssets),
+  };
+  if (preferences.updatedAt) base.updated_at = asIso(preferences.updatedAt, now);
+  return [
+    base,
+    withoutTimestamps(base),
+    {
+      user_id: userId,
+      active_book: base.active_book,
+      locale: base.locale,
+    },
+  ];
+}
+
+async function upsertPreferences(supabase, userId, preferences = {}) {
+  const existingRows = await selectRows(supabase, TABLES.preferences, userId, null);
+  const rows = preferenceRows(preferences, userId);
+  const existing = existingRows[0];
+  if (existing) {
+    const row = firstCompatibleRow(rows, existing);
+    if (!rowMatchesExisting(row, existing)) {
+      await updateRowByFilters(supabase, TABLES.preferences, rows, [["user_id", userId]]);
+    }
+    return;
+  }
+  await insertRow(supabase, TABLES.preferences, rows);
+}
+
 async function deleteCloudAccountsByNames(supabase, userId, names = []) {
   const uniqueNames = [...new Set(names.map(String).map((name) => name.trim()).filter(Boolean))];
   if (!uniqueNames.length) return;
@@ -540,6 +605,7 @@ export async function pushCloudState(supabase, userId, state) {
   await deleteCloudTransactionsByIds(supabase, userId, deletedTransactionIds);
   await upsertTransactions(supabase, userId, state.transactions || []);
   await upsertBudgets(supabase, userId, state.budgets || {});
+  await upsertPreferences(supabase, userId, state.preferences || {});
   await deleteAllCloudAccounts(supabase, userId, state.accounts || []);
 }
 

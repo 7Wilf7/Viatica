@@ -117,6 +117,7 @@ const state = {
   captureDraft: null,
   captureProjectOpen: false,
   budgetKeypadCategory: "",
+  startingAssetsFormOpen: false,
   editingTransactionId: null,
   pwaRefreshInProgress: false,
   ledgerPeriod: { ...DEFAULT_LEDGER_PERIOD },
@@ -164,11 +165,12 @@ state.budgets = normalizeBudgets(state.budgets);
 state.preferences = {
   activeBook: "日常账本",
   locale: "zh",
-  deletedAccounts: [],
+  startingAssets: 0,
   ...state.preferences,
 };
 delete state.preferences.dataMode;
-if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
+delete state.preferences.deletedAccounts;
+state.preferences.startingAssets = normalizeStartingAssets(state.preferences.startingAssets);
 if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
 state.accounts = [];
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
@@ -543,14 +545,14 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "“资产”先看资产概览；资产金额只按当前流水净额计算，不再维护微信、支付宝、银行卡这类子账户。",
+        "“资产”先看资产概览；资产金额按一个初始资金总额加流水净额计算，不再维护微信、支付宝、银行卡这类子账户。",
         "收入可以只选主分类保存；红包、退款和其他收入的具体说明直接写在备注里。",
         "需要演示时，退出当前 Aevum 账号并登录专用 Demo 账号；演示数据存在云端，不再使用本机内置 Demo 模式。",
         "登录 Aevum 账号后，真实流水和分类预算会与 Supabase 云端合并同步；空设备不会覆盖已有数据。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
-        "Assets leads with the Assets Overview row. The amount is calculated from ledger flow only, without wallet or bank sub-accounts.",
+        "Assets leads with the Assets Overview row. The amount is one starting-assets total plus ledger net, without wallet or bank sub-accounts.",
         "Income can be saved from the primary category alone; describe gifts, refunds, and other income in the note when needed.",
         "For demos, sign out of your current Aevum account and sign in with the dedicated Demo account. Demo data now lives in the cloud instead of a bundled local mode.",
         "After signing in to the Aevum account, real entries and category budgets merge with Supabase cloud data; an empty device will not overwrite existing data.",
@@ -591,12 +593,14 @@ const CHANGELOG_ENTRIES = [
         "演示数据改为写入专用 Aevum Demo 账号；需要给朋友展示时，退出当前账号后登录 Demo 账号即可。",
         "账号切换时本地缓存按 Aevum user 分开保存，非 Demo 账号同步时会忽略 `demo_txn_*` 演示流水和明显的 Demo 初始资产，避免 Demo 数据继续混进个人账本。",
         "开屏动画改为单一时间轴，启动期间发生页面重绘时不会从头重播或中途卡住。",
+        "资产页恢复单一初始资金编辑：长按资产概览后用内置数字键盘修改，并同步到 Aevum 云端偏好。",
       ],
       en: [
         "Removed the bundled local Demo mode and Settings data-mode switch; Ledger, Calendar, Assets, and Budgets now read only the active Aevum account or real local data.",
         "Demo data now lives in a dedicated Aevum Demo account. Sign out and use that account when showing the app to friends.",
         "Account switching now keeps local caches per Aevum user, and non-Demo accounts ignore `demo_txn_*` entries plus obvious Demo starting assets so Demo data does not leak into personal ledgers.",
         "The splash animation now uses one fixed timeline, so page rerenders during launch no longer restart or cut off the animation.",
+        "Restored single starting-assets editing on Assets: long-press Assets Overview, edit with the built-in keypad, and sync it through Aevum cloud preferences.",
       ],
     },
   },
@@ -1153,7 +1157,7 @@ const MESSAGES = {
     "stats.other": "其他",
     "assets.title": "资产概览",
     "assets.totalAssets": "我的总资产",
-    "assets.hint": "基于当前流水净额汇总。",
+    "assets.hint": "基于初始资金和流水净额汇总。",
     "assets.accountTitle": "账户金额",
     "assets.accountHint": "收入记正数，支出记负数。",
     "assets.categoryTitle": "预算",
@@ -1166,6 +1170,7 @@ const MESSAGES = {
     "assets.editAssets": "长按编辑初始资金",
     "assets.deleteAccount": "删除账户",
     "assets.accountSaved": "资产已确认。",
+    "assets.startingAssetsSaved": "初始资金已保存。",
     "assets.accountDeleted": "账户已删除。",
     "assets.accountInvalid": "初始资金必须是数字。",
     "assets.accountNetTitle": "账户净额",
@@ -1377,7 +1382,7 @@ const MESSAGES = {
     "stats.other": "Other",
     "assets.title": "Assets Overview",
     "assets.totalAssets": "Total Assets",
-    "assets.hint": "Based on current ledger net.",
+    "assets.hint": "Based on starting assets and ledger net.",
     "assets.accountTitle": "Account Balances",
     "assets.accountHint": "Income is positive and expense is negative.",
     "assets.categoryTitle": "Budget",
@@ -1390,6 +1395,7 @@ const MESSAGES = {
     "assets.editAssets": "Long-press to edit starting assets",
     "assets.deleteAccount": "Delete Account",
     "assets.accountSaved": "Assets confirmed.",
+    "assets.startingAssetsSaved": "Starting assets saved.",
     "assets.accountDeleted": "Account deleted.",
     "assets.accountInvalid": "Starting assets must be a number.",
     "assets.accountNetTitle": "Account Net",
@@ -1610,6 +1616,7 @@ function activeLedgerState() {
     transactions: state.transactions,
     budgets: state.budgets,
     accounts: [],
+    preferences: state.preferences,
   };
 }
 
@@ -1653,7 +1660,8 @@ function applyLedgerState(nextState, { preserveLocale = true } = {}) {
     locale: preserveLocale ? locale : (nextState.preferences?.locale || locale),
   };
   delete state.preferences.dataMode;
-  if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
+  delete state.preferences.deletedAccounts;
+  state.preferences.startingAssets = normalizeStartingAssets(state.preferences.startingAssets);
   if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
   state.accounts = [];
 }
@@ -2096,27 +2104,6 @@ function uniqueItems(items) {
   return [...new Set(items.map((item) => String(item || "").trim()).filter(Boolean))];
 }
 
-function deletedAccountSet() {
-  return new Set(Array.isArray(state.preferences.deletedAccounts) ? state.preferences.deletedAccounts : []);
-}
-
-function visibleAccounts(accounts) {
-  void accounts;
-  return [];
-}
-
-function pruneLegacyDefaultAccounts(accounts, transactions = state.transactions) {
-  void accounts;
-  void transactions;
-  return [];
-}
-
-function sanitizeVisibleAccounts(accounts, transactions = state.transactions) {
-  void accounts;
-  void transactions;
-  return [];
-}
-
 function defaultAccountName() {
   return "ledger";
 }
@@ -2341,14 +2328,20 @@ function signedMoney(amount) {
   return formatMoney(value);
 }
 
+function normalizeStartingAssets(value) {
+  const amount = Number(value ?? 0);
+  return Number.isFinite(amount) ? Math.round(amount * 100) / 100 : 0;
+}
+
 function assetTotals(ledgerState = activeLedgerState()) {
+  const opening = normalizeStartingAssets(ledgerState.preferences?.startingAssets);
   const flow = (ledgerState.transactions || []).reduce((total, txn) => (
     isProjectOnlyTransaction(txn) ? total : total + Number(txn.amount || 0) * transactionSign(txn.type)
   ), 0);
   return {
-    opening: 0,
+    opening,
     flow: Math.round(flow * 100) / 100,
-    total: Math.round(flow * 100) / 100,
+    total: Math.round((opening + flow) * 100) / 100,
   };
 }
 
@@ -2413,7 +2406,10 @@ function openActionRow(row) {
 
 function runLongPressAction(node) {
   const action = node?.dataset?.longPressAction || "";
-  void action;
+  if (action === "toggle-starting-assets-form") {
+    state.startingAssetsFormOpen = !state.startingAssetsFormOpen;
+    render();
+  }
 }
 
 function scheduleBootSplashDismiss() {
@@ -3163,10 +3159,11 @@ function renderAssetsTab(summary) {
   const assetTotal = totals.total;
   return `
     <section class="panel asset-overview-panel">
-      <div class="asset-total-card">
+      <div class="asset-total-card" data-long-press-action="toggle-starting-assets-form" role="button" tabindex="0" aria-label="${escapeHtml(t("assets.editAssets"))}">
         <span>${escapeHtml(t("assets.title"))}</span>
         <strong class="amount ${assetTotal >= 0 ? "positive" : "negative"}">${escapeHtml(signedMoney(assetTotal))}</strong>
       </div>
+      ${state.startingAssetsFormOpen ? renderStartingAssetsForm(totals.opening) : ""}
     </section>
 
     <div class="workspace budget-workspace">
@@ -3182,6 +3179,22 @@ function renderAssetsTab(summary) {
         </div>
       </section>
     </div>
+  `;
+}
+
+function renderStartingAssetsForm(amount) {
+  return `
+    <form id="starting-assets-form" class="account-form asset-account-form" autocomplete="off">
+      <input type="hidden" name="startingAssets" value="${escapeHtml(normalizeStartingAssets(amount))}">
+      <div class="asset-form-head">
+        <span>${escapeHtml(t("assets.openingBalance"))}</span>
+        <strong data-starting-assets-display>${escapeHtml(captureAmountDisplay(amount))}</strong>
+      </div>
+      <button class="btn secondary" type="submit">${escapeHtml(t("assets.addAccount"))}</button>
+      <div class="amount-keypad asset-keypad" aria-label="${escapeHtml(t("capture.amountKeypad"))}">
+        ${ASSET_AMOUNT_KEY_ROWS.flatMap((row) => row).map(renderAssetAmountKey).join("")}
+      </div>
+    </form>
   `;
 }
 
@@ -4027,6 +4040,12 @@ function syncBudgetAmountDisplay(row) {
   if (display) display.textContent = captureAmountDisplay(amount);
 }
 
+function syncStartingAssetsDisplay(form) {
+  const amount = form?.elements?.namedItem("startingAssets")?.value || "";
+  const display = form?.querySelector("[data-starting-assets-display]");
+  if (display) display.textContent = captureAmountDisplay(amount);
+}
+
 function syncPickButtons(form) {
   if (!form) return;
   form.querySelectorAll("[data-pick-button]").forEach((button) => {
@@ -4160,12 +4179,16 @@ function nextAmountValue(current, key) {
 function applyAmountKey(button) {
   const form = button.closest("form");
   const budgetRow = button.closest("[data-budget-row]");
+  const startingAssetsInput = form?.elements?.namedItem("startingAssets");
   const input = form?.elements?.namedItem("amount")
+    || startingAssetsInput
     || budgetRow?.querySelector("[data-budget-input]");
-  if (!form || !input) return;
+  if (!input) return;
   input.value = nextAmountValue(String(input.value || ""), button.dataset.key || "");
   if (budgetRow) {
     syncBudgetAmountDisplay(budgetRow);
+  } else if (startingAssetsInput) {
+    syncStartingAssetsDisplay(form);
   } else {
     syncAmountDisplay(form);
     syncCaptureDraftFromForm(form);
@@ -4426,6 +4449,21 @@ document.addEventListener("submit", (event) => {
     }
     return;
   }
+  if (form.getAttribute("id") === "starting-assets-form") {
+    try {
+      const value = Number(form.elements.namedItem("startingAssets")?.value || 0);
+      if (!Number.isFinite(value)) throw new Error(t("assets.accountInvalid"));
+      state.preferences.startingAssets = normalizeStartingAssets(value);
+      state.preferences.updatedAt = new Date().toISOString();
+      state.startingAssetsFormOpen = false;
+      persist();
+      render();
+      toast(t("assets.startingAssetsSaved"));
+    } catch (err) {
+      toast(err.message || t("assets.accountInvalid"));
+    }
+    return;
+  }
   if (form.getAttribute("id") === "profile-form") {
     handleProfileSave(form);
     return;
@@ -4472,6 +4510,8 @@ document.addEventListener("input", (event) => {
 
   const key = event.target?.dataset?.filter;
   if (!key) {
+    const form = event.target?.closest?.("form");
+    if (form?.id === "starting-assets-form") syncStartingAssetsDisplay(form);
     syncCaptureDraftFromForm(event.target?.closest?.("#transaction-form"));
     return;
   }

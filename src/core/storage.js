@@ -8,6 +8,7 @@ export const EMPTY_STATE = {
   preferences: {
     activeBook: "日常账本",
     locale: "zh",
+    startingAssets: 0,
     deletedTransactionIds: [],
   },
 };

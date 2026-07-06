@@ -53,3 +53,15 @@ test("detects whether an account-specific cache exists", () => {
   assert.equal(hasStateForOwner("user-123", storage), true);
   assert.equal(hasStateForOwner("user-456", storage), false);
 });
+
+test("fills missing starting assets preference with zero", () => {
+  const storage = createMemoryStorage();
+  saveStateForOwner({
+    transactions: [],
+    budgets: {},
+    accounts: [],
+    preferences: {},
+  }, "user-123", storage);
+
+  assert.equal(loadStateForOwner("user-123", storage).preferences.startingAssets, 0);
+});

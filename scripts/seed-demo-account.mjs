@@ -7,7 +7,7 @@ import {
   DEMO_BUDGETS,
   demoTransactionsForMonth,
 } from "../src/core/demoData.js";
-import { normalizeAccounts, normalizeTransaction } from "../src/core/ledger.js";
+import { normalizeTransaction } from "../src/core/ledger.js";
 import { pushCloudState } from "../src/core/cloudSync.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -134,11 +134,15 @@ async function saveDemoProfile(client, userId) {
 }
 
 function buildDemoLedgerState(now = new Date()) {
+  const startingAssets = DEMO_ACCOUNTS.reduce((total, account) =>
+    total + Number(account.openingBalance || 0), 0);
   return {
     transactions: demoTransactionsForMonth(now).map((txn) => normalizeTransaction(txn, now)),
     budgets: { ...DEMO_BUDGETS },
-    accounts: normalizeAccounts(DEMO_ACCOUNTS, [], now),
+    accounts: [],
     preferences: {
+      startingAssets: Math.round(startingAssets * 100) / 100,
+      updatedAt: now.toISOString(),
       deletedTransactionIds: [],
     },
   };
@@ -162,5 +166,5 @@ await pushCloudState(writeClient, user.id, state);
 console.log(`Seeded ${demoEmail}`);
 console.log(`user_id=${user.id}`);
 console.log(`transactions=${state.transactions.length}`);
-console.log(`accounts=${state.accounts.length}`);
+console.log(`startingAssets=${state.preferences.startingAssets}`);
 console.log(`budgets=${Object.keys(state.budgets).length}`);
