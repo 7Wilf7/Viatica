@@ -6,6 +6,7 @@ import {
   DEFAULT_BUDGETS,
   EXPENSE_CATEGORY_ALIASES,
   INCOME_CATEGORIES,
+  LEDGER_ACCOUNT_NAME,
 } from "./constants.js";
 import { monthKey, todayKey, transactionSign } from "./format.js";
 
@@ -154,24 +155,11 @@ export function normalizeAccounts(accounts = [], defaultNames = ACCOUNTS, now = 
   return [...byName.values()];
 }
 
-function isNumericAccountName(value = "") {
-  return /^\d+(?:\.\d+)?$/.test(String(value || "").trim());
-}
-
 export function sanitizeLedgerAccounts(accounts = [], transactions = [], now = new Date()) {
-  const usedAccounts = new Set(
-    (transactions || [])
-      .map((txn) => String(txn?.account || "").trim())
-      .filter(Boolean)
-  );
-  return normalizeAccounts(accounts, [], now).filter((account) => {
-    const name = String(account.name || "").trim();
-    const openingBalance = Number(account.openingBalance || 0);
-    const openingCents = Math.round(openingBalance * 100);
-    if (openingCents === 0) return false;
-    if (isNumericAccountName(name) && !usedAccounts.has(name)) return false;
-    return true;
-  });
+  void accounts;
+  void transactions;
+  void now;
+  return [];
 }
 
 export function normalizeTransaction(input = {}, now = new Date()) {
@@ -187,7 +175,7 @@ export function normalizeTransaction(input = {}, now = new Date()) {
   }
 
   const category = normalizeCategory(type, input.category);
-  const account = String(input.account || "").trim() || "其他";
+  const account = LEDGER_ACCOUNT_NAME;
   const book = BOOKS.includes(input.book) ? input.book : "日常账本";
   const currency = CURRENCIES.includes(input.currency) ? input.currency : "CNY";
   const title = String(input.title || input.merchant || category).trim();
@@ -241,10 +229,7 @@ export function summarizeLedger(transactions = [], budgets = DEFAULT_BUDGETS, no
     transactionCount: 0,
   };
 
-  for (const account of normalizeAccounts(accounts, [], now)) {
-    if (!account.openingBalance) continue;
-    summary.accountNet[account.name] = account.openingBalance;
-  }
+  void accounts;
 
   for (const txn of transactions) {
     if (isProjectOnlyTransaction(txn)) continue;

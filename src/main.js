@@ -2,7 +2,6 @@ import "./styles.css";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { productLogoUrl } from "./assets/logo.js";
 import {
-  ACCOUNTS,
   CATEGORIES,
   DEFAULT_BUDGETS,
   EXPENSE_CATEGORY_ALIASES,
@@ -37,13 +36,10 @@ import {
 import {
   filterTransactions,
   isProjectOnlyTransaction,
-  normalizeAccount,
-  normalizeAccounts,
   normalizeBudgets,
   normalizeProjectLabel,
   normalizeTransaction,
   projectLabelFromTags,
-  sanitizeLedgerAccounts,
   summarizeLedger,
 } from "./core/ledger.js";
 import {
@@ -68,7 +64,6 @@ const LOCALES = [
   { id: "zh", label: "中" },
   { id: "en", label: "EN" },
 ];
-const LEGACY_DEFAULT_ACCOUNTS = new Set(["现金", "信用卡"]);
 const PRODUCT_NAME = "Viatica";
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "0.1.0";
 const GITHUB_RELEASES_API = "https://api.github.com/repos/7Wilf7/Viatica/releases/latest";
@@ -108,7 +103,7 @@ const state = {
   ...storedState,
   transactions: storedTransactions,
   budgets: storedState.budgets,
-  accounts: storedState.accounts,
+  accounts: [],
   activeTab: "ledger",
   filters: {
     query: "",
@@ -119,7 +114,6 @@ const state = {
     month: monthKey(new Date()),
   },
   searchOpen: false,
-  accountFormOpen: false,
   captureDraft: null,
   captureProjectOpen: false,
   budgetKeypadCategory: "",
@@ -176,7 +170,7 @@ state.preferences = {
 delete state.preferences.dataMode;
 if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
 if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
-state.accounts = sanitizeVisibleAccounts(state.accounts, state.transactions);
+state.accounts = [];
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
 state.filters.book = "all";
 state.filters.account = "all";
@@ -494,12 +488,12 @@ const MANUAL_SECTIONS = [
     items: {
       zh: [
         "从底部中间的“+”开始，先点支出或收入，再点对应类型的分类、子项和金额。",
-        "新增流水默认使用内置金额键盘，尽量避免调出系统金额键盘；账户不放在主流程里。",
+        "新增流水默认使用内置金额键盘，尽量避免调出系统金额键盘；账本不再区分微信、支付宝、银行卡这类子账户。",
         "支出和收入使用不同分类：收入不会出现交通、购物这类支出入口。",
       ],
       en: [
         "Start from the centered + tab. Pick expense or income, then the matching category, detail, and amount.",
-        "New entries use the built-in amount keypad first; account switching stays out of the main flow.",
+        "New entries use the built-in amount keypad first; the ledger no longer separates wallet or bank sub-accounts.",
         "Expense and income use different categories, so income no longer shows spending categories like transport or shopping.",
       ],
     },
@@ -549,17 +543,17 @@ const MANUAL_SECTIONS = [
     },
     items: {
       zh: [
-        "“资产”先看资产概览；长按资产概览这一行可以直接编辑初始资金，资产金额按初始资金加流水收支计算。",
+        "“资产”先看资产概览；资产金额只按当前流水净额计算，不再维护微信、支付宝、银行卡这类子账户。",
         "收入可以只选主分类保存；红包、退款和其他收入的具体说明直接写在备注里。",
         "需要演示时，退出当前 Aevum 账号并登录专用 Demo 账号；演示数据存在云端，不再使用本机内置 Demo 模式。",
-        "登录 Aevum 账号后，真实流水、分类预算和初始资金会与 Supabase 云端合并同步；空设备不会覆盖已有数据。",
+        "登录 Aevum 账号后，真实流水和分类预算会与 Supabase 云端合并同步；空设备不会覆盖已有数据。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
-        "Assets leads with the Assets Overview row. Long-press that row to edit the starting assets directly; the overview combines that amount with ledger flow.",
+        "Assets leads with the Assets Overview row. The amount is calculated from ledger flow only, without wallet or bank sub-accounts.",
         "Income can be saved from the primary category alone; describe gifts, refunds, and other income in the note when needed.",
         "For demos, sign out of your current Aevum account and sign in with the dedicated Demo account. Demo data now lives in the cloud instead of a bundled local mode.",
-        "After signing in to the Aevum account, real entries, category budgets, and starting assets merge with Supabase cloud data; an empty device will not overwrite existing data.",
+        "After signing in to the Aevum account, real entries and category budgets merge with Supabase cloud data; an empty device will not overwrite existing data.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
       ],
     },
@@ -1159,7 +1153,7 @@ const MESSAGES = {
     "stats.other": "其他",
     "assets.title": "资产概览",
     "assets.totalAssets": "我的总资产",
-    "assets.hint": "先基于流水汇总账户净额。",
+    "assets.hint": "基于当前流水净额汇总。",
     "assets.accountTitle": "账户金额",
     "assets.accountHint": "收入记正数，支出记负数。",
     "assets.categoryTitle": "预算",
@@ -1383,7 +1377,7 @@ const MESSAGES = {
     "stats.other": "Other",
     "assets.title": "Assets Overview",
     "assets.totalAssets": "Total Assets",
-    "assets.hint": "Starts from account net based on ledger entries.",
+    "assets.hint": "Based on current ledger net.",
     "assets.accountTitle": "Account Balances",
     "assets.accountHint": "Income is positive and expense is negative.",
     "assets.categoryTitle": "Budget",
@@ -1615,7 +1609,7 @@ function activeLedgerState() {
   return {
     transactions: state.transactions,
     budgets: state.budgets,
-    accounts: state.accounts,
+    accounts: [],
   };
 }
 
@@ -1623,7 +1617,7 @@ function localLedgerSnapshot() {
   return {
     transactions: state.transactions,
     budgets: state.budgets,
-    accounts: state.accounts,
+    accounts: [],
     preferences: state.preferences,
   };
 }
@@ -1631,7 +1625,6 @@ function localLedgerSnapshot() {
 function hasUsefulLedgerState(snapshot = {}) {
   return Boolean(
     (snapshot.transactions || []).length
-    || (snapshot.accounts || []).length
     || Object.keys(snapshot.budgets || {}).length
   );
 }
@@ -1662,7 +1655,7 @@ function applyLedgerState(nextState, { preserveLocale = true } = {}) {
   delete state.preferences.dataMode;
   if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
   if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
-  state.accounts = sanitizeVisibleAccounts(nextState.accounts || [], state.transactions);
+  state.accounts = [];
 }
 
 function persist({ sync = true } = {}) {
@@ -2108,34 +2101,24 @@ function deletedAccountSet() {
 }
 
 function visibleAccounts(accounts) {
-  const deleted = deletedAccountSet();
-  return accounts.filter((account) => !deleted.has(account.name));
+  void accounts;
+  return [];
 }
 
 function pruneLegacyDefaultAccounts(accounts, transactions = state.transactions) {
-  const usedAccounts = new Set(transactions.map((txn) => txn.account));
-  return accounts.filter((account) => {
-    if (!LEGACY_DEFAULT_ACCOUNTS.has(account.name)) return true;
-    return usedAccounts.has(account.name) || Number(account.openingBalance || 0) !== 0;
-  });
+  void accounts;
+  void transactions;
+  return [];
 }
 
 function sanitizeVisibleAccounts(accounts, transactions = state.transactions) {
-  return visibleAccounts(sanitizeLedgerAccounts(pruneLegacyDefaultAccounts(accounts, transactions), transactions));
-}
-
-function accountNames(transactions = activeLedgerState().transactions, accounts = activeLedgerState().accounts) {
-  const deleted = deletedAccountSet();
-  return uniqueItems([
-    ...accounts.map((account) => account.name),
-    ...ACCOUNTS.filter((account) => !deleted.has(account)),
-    ...transactions.map((txn) => txn.account).filter((account) => !deleted.has(account)),
-  ]);
+  void accounts;
+  void transactions;
+  return [];
 }
 
 function defaultAccountName() {
-  const names = accountNames();
-  return names.includes("微信") ? "微信" : names[0] || "其他";
+  return "ledger";
 }
 
 function defaultCaptureDraft() {
@@ -2359,28 +2342,13 @@ function signedMoney(amount) {
 }
 
 function assetTotals(ledgerState = activeLedgerState()) {
-  const accounts = sanitizeLedgerAccounts(ledgerState.accounts || [], ledgerState.transactions || []);
-  const opening = accounts.reduce((total, account) => total + Number(account.openingBalance || 0), 0);
   const flow = (ledgerState.transactions || []).reduce((total, txn) => (
     isProjectOnlyTransaction(txn) ? total : total + Number(txn.amount || 0) * transactionSign(txn.type)
   ), 0);
   return {
-    opening: Math.round(opening * 100) / 100,
+    opening: 0,
     flow: Math.round(flow * 100) / 100,
-    total: Math.round((opening + flow) * 100) / 100,
-  };
-}
-
-function assetSetupDefaults() {
-  const accounts = activeLedgerState().accounts;
-  const preferredName = defaultAccountName();
-  const existing = accounts.find((account) => Number(account.openingBalance || 0) !== 0)
-    || accounts.find((account) => account.name === preferredName)
-    || accounts[0]
-    || null;
-  return {
-    name: existing?.name || preferredName,
-    openingBalance: existing?.openingBalance ?? 0,
+    total: Math.round(flow * 100) / 100,
   };
 }
 
@@ -2445,10 +2413,7 @@ function openActionRow(row) {
 
 function runLongPressAction(node) {
   const action = node?.dataset?.longPressAction || "";
-  if (action === "toggle-account-form") {
-    state.accountFormOpen = true;
-    render();
-  }
+  void action;
 }
 
 function scheduleBootSplashDismiss() {
@@ -3196,14 +3161,12 @@ function renderCaptureTab(editingTransaction) {
 function renderAssetsTab(summary) {
   const totals = assetTotals();
   const assetTotal = totals.total;
-  const setupDefaults = assetSetupDefaults();
   return `
-    <section class="panel asset-overview-panel" data-long-press-action="toggle-account-form" role="button" tabindex="0" aria-label="${escapeHtml(t("assets.editAssets"))}">
+    <section class="panel asset-overview-panel">
       <div class="asset-total-card">
         <span>${escapeHtml(t("assets.title"))}</span>
         <strong class="amount ${assetTotal >= 0 ? "positive" : "negative"}">${escapeHtml(signedMoney(assetTotal))}</strong>
       </div>
-      ${state.accountFormOpen ? renderAccountSetupForm(setupDefaults) : ""}
     </section>
 
     <div class="workspace budget-workspace">
@@ -3877,31 +3840,6 @@ function renderAmountKey(key, isEditing) {
   `;
 }
 
-function renderAccountSetupForm(defaults = {}) {
-  const accountName = defaults.name || defaultAccountName();
-  const openingBalance = defaults.openingBalance ?? 0;
-  return `
-    <form id="account-form" class="account-form asset-account-form" autocomplete="off">
-      <input type="hidden" name="name" value="${escapeHtml(accountName)}">
-      <input type="hidden" name="openingBalance" value="${escapeHtml(openingBalance)}">
-      <div class="asset-form-head">
-        <span>${escapeHtml(t("assets.openingBalance"))}</span>
-        <strong data-asset-amount-display>${escapeHtml(captureAmountDisplay(openingBalance))}</strong>
-      </div>
-      <button class="btn secondary" type="submit">${escapeHtml(t("assets.addAccount"))}</button>
-      ${renderAssetAmountKeypad()}
-    </form>
-  `;
-}
-
-function renderAssetAmountKeypad() {
-  return `
-    <div class="amount-keypad asset-keypad" aria-label="${escapeHtml(t("capture.amountKeypad"))}">
-      ${ASSET_AMOUNT_KEY_ROWS.flatMap((row) => row).map(renderAssetAmountKey).join("")}
-    </div>
-  `;
-}
-
 function renderBudgetAmountKeypad() {
   return `
     <div class="amount-keypad budget-keypad" aria-label="${escapeHtml(t("capture.amountKeypad"))}">
@@ -4083,12 +4021,6 @@ function syncAmountDisplay(form) {
   if (display) display.textContent = captureAmountDisplay(amount, currency);
 }
 
-function syncAssetAmountDisplay(form) {
-  const amount = form?.elements?.namedItem("openingBalance")?.value || "";
-  const display = form?.querySelector("[data-asset-amount-display]");
-  if (display) display.textContent = captureAmountDisplay(amount);
-}
-
 function syncBudgetAmountDisplay(row) {
   const amount = row?.querySelector("[data-budget-input]")?.value || "";
   const display = row?.querySelector("[data-budget-amount-display]");
@@ -4229,13 +4161,10 @@ function applyAmountKey(button) {
   const form = button.closest("form");
   const budgetRow = button.closest("[data-budget-row]");
   const input = form?.elements?.namedItem("amount")
-    || form?.elements?.namedItem("openingBalance")
     || budgetRow?.querySelector("[data-budget-input]");
   if (!form || !input) return;
   input.value = nextAmountValue(String(input.value || ""), button.dataset.key || "");
-  if (input.name === "openingBalance") {
-    syncAssetAmountDisplay(form);
-  } else if (budgetRow) {
+  if (budgetRow) {
     syncBudgetAmountDisplay(budgetRow);
   } else {
     syncAmountDisplay(form);
@@ -4501,32 +4430,6 @@ document.addEventListener("submit", (event) => {
     handleProfileSave(form);
     return;
   }
-  if (form.getAttribute("id") === "account-form") {
-    try {
-      const data = Object.fromEntries(new FormData(form).entries());
-      const account = normalizeAccount(data);
-      const existingIndex = state.accounts.findIndex((item) => item.name === account.name);
-      if (existingIndex >= 0) {
-        state.accounts = state.accounts.map((item, index) => (
-          index === existingIndex
-            ? { ...item, openingBalance: account.openingBalance, updatedAt: account.updatedAt }
-            : item
-        ));
-      } else {
-        state.accounts = [...state.accounts, account];
-      }
-      state.preferences.deletedAccounts = (state.preferences.deletedAccounts || [])
-        .filter((name) => name !== account.name);
-      state.accounts = sanitizeVisibleAccounts(state.accounts, state.transactions);
-      state.accountFormOpen = false;
-      persist();
-      render();
-      toast(t("assets.accountSaved"));
-    } catch {
-      toast(t("assets.accountInvalid"));
-    }
-    return;
-  }
   if (form.getAttribute("id") !== "transaction-form") return;
   try {
     const data = formToTransaction(form);
@@ -4755,10 +4658,6 @@ document.addEventListener("click", (event) => {
     render();
     toast(t("settings.budgetResetDone"));
   }
-  if (action === "toggle-account-form") {
-    state.accountFormOpen = !state.accountFormOpen;
-    render();
-  }
   if (action === "cancel-edit") {
     state.editingTransactionId = null;
     state.captureProjectOpen = false;
@@ -4785,19 +4684,6 @@ document.addEventListener("click", (event) => {
     render();
     toast(t("toast.deleted"));
   }
-  if (action === "delete-account") {
-    const accountName = node.dataset.account || "";
-    if (!accountName || !confirm(t("confirm.deleteAccount", { account: accountName }))) return;
-    state.accounts = state.accounts.filter((account) => account.name !== accountName);
-    state.preferences.deletedAccounts = uniqueItems([
-      ...(state.preferences.deletedAccounts || []),
-      accountName,
-    ]);
-    if (state.filters.account === accountName) state.filters.account = "all";
-    persist();
-    render();
-    toast(t("assets.accountDeleted"));
-  }
   if (action === "export-csv") {
     download("viatica-transactions.csv", exportTransactionsCsv(state.transactions), "text/csv;charset=utf-8");
   }
@@ -4808,7 +4694,7 @@ document.addEventListener("click", (event) => {
     download("viatica-backup.json", exportState({
       transactions: state.transactions,
       budgets: state.budgets,
-      accounts: state.accounts,
+      accounts: [],
       preferences: state.preferences,
     }));
   }

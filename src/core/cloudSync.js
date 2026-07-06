@@ -1,11 +1,8 @@
 import { getCloudClient, getCloudUser } from "./cloud.js";
 import { DEMO_ACCOUNTS } from "./demoData.js";
 import {
-  normalizeAccount,
-  normalizeAccounts,
   normalizeBudgets,
   normalizeTransaction,
-  sanitizeLedgerAccounts,
 } from "./ledger.js";
 
 const TABLES = {
@@ -174,22 +171,6 @@ function shouldStripDemoSeedTransactions(user = {}) {
   return String(user.email || "").trim().toLowerCase() !== DEMO_ACCOUNT_EMAIL;
 }
 
-function normalizeCloudAccount(row, now = new Date()) {
-  const account = normalizeAccount({
-    id: row.client_id || row.local_id || row.id,
-    name: row.name,
-    openingBalance: row.opening_balance ?? row.openingBalance ?? 0,
-    isDefault: row.is_default ?? row.isDefault,
-    createdAt: row.created_at || row.createdAt,
-    updatedAt: row.updated_at || row.updatedAt,
-  }, now);
-  if (!hasTimestamp(row)) {
-    account.createdAt = "";
-    account.updatedAt = "";
-  }
-  return account;
-}
-
 function toTransactionRow(txn, userId, mode = "client_id") {
   const row = {
     user_id: userId,
@@ -198,7 +179,7 @@ function toTransactionRow(txn, userId, mode = "client_id") {
     amount: Number(txn.amount || 0),
     currency: txn.currency || "CNY",
     book: txn.book || "日常账本",
-    account: txn.account || "其他",
+    account: "ledger",
     category: txn.category || "其他",
     title: txn.title || txn.category || "流水",
     merchant: txn.merchant || "",
@@ -221,21 +202,6 @@ function toBudgetRow(category, amount, userId, amountField = "amount") {
     category,
     [amountField]: Number(amount || 0),
   };
-}
-
-function toAccountRow(account, userId, mode = "full") {
-  const row = {
-    user_id: userId,
-    name: account.name,
-    opening_balance: Number(account.openingBalance || 0),
-    created_at: asIso(account.createdAt || account.updatedAt),
-    updated_at: asIso(account.updatedAt || account.createdAt),
-  };
-  if (mode === "full") {
-    row.client_id = account.id;
-    row.is_default = Boolean(account.isDefault);
-  }
-  return row;
 }
 
 function normalizeBudgetRows(rows = []) {
@@ -282,33 +248,10 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
     ...remoteBudgets,
   });
 
-  const accountMap = new Map();
-  for (const account of normalizeAccounts(localState.accounts || [], [], now)) {
-    accountMap.set(account.name, account);
-  }
-  const remoteAccounts = (remoteState.accounts || []).flatMap((account) => {
-    try {
-      const normalized = normalizeAccount(account, now);
-      if (!hasTimestamp(account)) {
-        normalized.createdAt = "";
-        normalized.updatedAt = "";
-      }
-      return [normalized];
-    } catch {
-      return [];
-    }
-  });
-  for (const account of remoteAccounts) {
-    const existing = accountMap.get(account.name);
-    accountMap.set(account.name, existing ? newer(existing, account) : account);
-  }
-
-  const accounts = sanitizeLedgerAccounts([...accountMap.values()], transactions, now);
-
   return {
     transactions,
     budgets,
-    accounts,
+    accounts: [],
     preferences: {
       ...(localState.preferences || {}),
       deletedTransactionIds,
@@ -325,16 +268,15 @@ async function selectRows(supabase, table, userId, orderColumn = "updated_at") {
 }
 
 async function fetchCloudState(supabase, userId) {
-  const [transactionRows, budgetRows, accountRows] = await Promise.all([
+  const [transactionRows, budgetRows] = await Promise.all([
     selectRows(supabase, TABLES.transactions, userId, "occurred_at"),
     selectRows(supabase, TABLES.budgets, userId, "category"),
-    selectRows(supabase, TABLES.accounts, userId, "name"),
   ]);
 
   return {
     transactions: transactionRows.map((row) => normalizeCloudTransaction(row)),
     budgets: normalizeBudgetRows(budgetRows),
-    accounts: accountRows.map((row) => normalizeCloudAccount(row)),
+    accounts: [],
   };
 }
 
@@ -376,17 +318,6 @@ function transactionUpdateRows(txn, userId) {
   ];
 }
 
-function accountRows(account, userId) {
-  const rows = [
-    toAccountRow(account, userId, "full"),
-    toAccountRow(account, userId, "minimal"),
-  ];
-  return [
-    ...rows,
-    ...rows.map(({ created_at, updated_at, ...row }) => row),
-  ];
-}
-
 function budgetRows(category, amount, userId) {
   return [
     toBudgetRow(category, amount, userId, "amount"),
@@ -421,17 +352,6 @@ function budgetInsertRowVariants(entries, userId) {
     entries.map(([category, amount]) => toBudgetRow(category, amount, userId, "amount")),
     entries.map(([category, amount]) => toBudgetRow(category, amount, userId, "budget")),
     entries.map(([category, amount]) => toBudgetRow(category, amount, userId, "monthly_budget")),
-  ];
-}
-
-function accountInsertRowVariants(accounts, userId) {
-  const rows = [
-    accounts.map((account) => toAccountRow(account, userId, "full")),
-    accounts.map((account) => toAccountRow(account, userId, "minimal")),
-  ];
-  return [
-    ...rows,
-    ...rows.map((items) => items.map(withoutTimestamps)),
   ];
 }
 
@@ -584,43 +504,13 @@ async function deleteCloudAccountsByNames(supabase, userId, names = []) {
   if (result.error) throw result.error;
 }
 
-async function upsertAccounts(supabase, userId, accounts = [], transactions = []) {
-  const normalizedAccounts = sanitizeLedgerAccounts(accounts, transactions);
+async function deleteAllCloudAccounts(supabase, userId, localAccounts = []) {
   const existingRows = await selectRows(supabase, TABLES.accounts, userId, null);
-  const existingByName = indexRows(existingRows, (row) => [row.name]);
-  const desiredNames = new Set(normalizedAccounts.map((account) => account.name));
-  const staleNames = existingRows
-    .map((row) => String(row.name || "").trim())
-    .filter((name) => name && !desiredNames.has(name));
-  await deleteCloudAccountsByNames(supabase, userId, staleNames);
-  if (!normalizedAccounts.length) return;
-  const newAccounts = [];
-  for (const account of normalizedAccounts) {
-    const rows = accountRows(account, userId);
-    const existing = existingByName.get(account.name);
-    if (existing) {
-      if (!rowMatchesExisting(firstCompatibleRow(rows, existing), existing)) {
-        await updateRowByFilters(supabase, TABLES.accounts, rows, [["user_id", userId], ["name", account.name]]);
-      }
-    } else {
-      newAccounts.push(account);
-    }
-    existingByName.set(account.name, { name: account.name, user_id: userId });
-  }
-  try {
-    await insertRows(supabase, TABLES.accounts, accountInsertRowVariants(newAccounts, userId));
-  } catch (error) {
-    if (!isDuplicateKeyError(error)) throw error;
-    for (const account of newAccounts) {
-      const rows = accountRows(account, userId);
-      try {
-        await insertRow(supabase, TABLES.accounts, rows);
-      } catch (insertError) {
-        if (!isDuplicateKeyError(insertError)) throw insertError;
-        await updateRowByFilters(supabase, TABLES.accounts, rows, [["user_id", userId], ["name", account.name]]);
-      }
-    }
-  }
+  const names = [
+    ...existingRows.map((row) => row.name),
+    ...(localAccounts || []).map((account) => account?.name),
+  ];
+  await deleteCloudAccountsByNames(supabase, userId, names);
 }
 
 async function deleteCloudTransactionsByIds(supabase, userId, ids = []) {
@@ -650,7 +540,7 @@ export async function pushCloudState(supabase, userId, state) {
   await deleteCloudTransactionsByIds(supabase, userId, deletedTransactionIds);
   await upsertTransactions(supabase, userId, state.transactions || []);
   await upsertBudgets(supabase, userId, state.budgets || {});
-  await upsertAccounts(supabase, userId, state.accounts || [], state.transactions || []);
+  await deleteAllCloudAccounts(supabase, userId, state.accounts || []);
 }
 
 export async function syncViaticaLedger(localState, expectedUser = null) {
@@ -678,7 +568,7 @@ export async function syncViaticaLedger(localState, expectedUser = null) {
     summary: {
       transactions: mergedState.transactions.length,
       budgets: Object.keys(mergedState.budgets || {}).length,
-      accounts: mergedState.accounts.length,
+      accounts: 0,
     },
   };
 }

@@ -3,12 +3,9 @@ export const TRANSACTION_TYPES = [
   { id: "income", label: "收入" },
 ];
 
-export const ACCOUNTS = [
-  "微信",
-  "银行卡",
-  "支付宝",
-  "其他",
-];
+export const LEDGER_ACCOUNT_NAME = "ledger";
+
+export const ACCOUNTS = [];
 
 export const BOOKS = [
   "日常账本",

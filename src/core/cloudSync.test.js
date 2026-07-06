@@ -197,7 +197,7 @@ test("merges local and cloud transactions without dropping either side", () => {
   assert.deepEqual(merged.transactions.map((txn) => txn.id).sort(), ["txn_cloud", "txn_local"]);
   assert.equal(merged.budgets["餐饮"], 2000);
   assert.equal(merged.budgets["交通"], 600);
-  assert.deepEqual(merged.accounts.map((account) => account.name).sort(), ["其他", "微信"]);
+  assert.deepEqual(merged.accounts, []);
 });
 
 test("merges legacy sports budgets into the unified sports budget", () => {
@@ -333,7 +333,7 @@ test("does not let untimestamped cloud transactions overwrite local updates", ()
   assert.equal(merged.transactions[0].amount, 38);
 });
 
-test("does not let untimestamped cloud accounts reset local starting assets", () => {
+test("drops legacy cloud accounts during merge", () => {
   const merged = mergeLedgerStates({
     transactions: [],
     budgets: {},
@@ -358,9 +358,7 @@ test("does not let untimestamped cloud accounts reset local starting assets", ()
     ],
   }, new Date("2026-07-04T09:00:00+08:00"));
 
-  assert.equal(merged.accounts.length, 1);
-  assert.equal(merged.accounts[0].name, "微信");
-  assert.equal(merged.accounts[0].openingBalance, 560);
+  assert.deepEqual(merged.accounts, []);
 });
 
 test("does not resurrect locally deleted transactions during merge", () => {
@@ -423,7 +421,7 @@ test("carries signed-out pending transactions into an existing account cache", (
   assert.deepEqual(merged.transactions.map((txn) => txn.id).sort(), ["txn_account", "txn_pending"]);
   assert.equal(merged.budgets["餐饮"], 2000);
   assert.equal(merged.budgets["交通"], 600);
-  assert.deepEqual(merged.accounts.map((account) => account.name), ["其他"]);
+  assert.deepEqual(merged.accounts, []);
 });
 
 test("pending transaction carryover strips demo seeds and preserves deletes", () => {
@@ -488,7 +486,8 @@ test("pushes cloud state without requiring database conflict constraints", async
   await pushCloudState(supabase, "user_1", firstState);
   assert.equal(supabase.tables.viatica_transactions.length, 1);
   assert.equal(supabase.tables.viatica_budgets.length, 1);
-  assert.equal(supabase.tables.viatica_accounts.length, 1);
+  assert.equal(supabase.tables.viatica_accounts.length, 0);
+  assert.equal(supabase.tables.viatica_transactions[0].account, "ledger");
 
   await pushCloudState(supabase, "user_1", {
     ...firstState,
@@ -507,8 +506,7 @@ test("pushes cloud state without requiring database conflict constraints", async
   assert.equal(supabase.tables.viatica_transactions[0].title, "新早餐");
   assert.equal(supabase.tables.viatica_budgets.length, 1);
   assert.equal(supabase.tables.viatica_budgets[0].amount, 2400);
-  assert.equal(supabase.tables.viatica_accounts.length, 1);
-  assert.equal(supabase.tables.viatica_accounts[0].opening_balance, 150);
+  assert.equal(supabase.tables.viatica_accounts.length, 0);
   assert.equal(supabase.operations.some((operation) => operation.type === "upsert"), false);
 });
 
@@ -592,7 +590,7 @@ test("does not rewrite unchanged cloud rows during push", async () => {
   assert.equal(supabase.operations.some((operation) => operation.type === "update"), false);
 });
 
-test("updates existing account when insert hits the cloud user name constraint", async () => {
+test("deletes existing cloud accounts instead of updating them", async () => {
   const supabase = createMemorySupabase({
     viatica_accounts: [{
       user_id: "user_1",
@@ -610,13 +608,12 @@ test("updates existing account when insert hits the cloud user name constraint",
     preferences: {},
   });
 
-  assert.equal(supabase.tables.viatica_accounts.length, 1);
-  assert.equal(supabase.tables.viatica_accounts[0].opening_balance, 250);
-  assert.equal(supabase.operations.some((operation) => operation.type === "insert" && operation.table === "viatica_accounts"), true);
-  assert.equal(supabase.operations.some((operation) => operation.type === "update" && operation.table === "viatica_accounts"), true);
+  assert.equal(supabase.tables.viatica_accounts.length, 0);
+  assert.equal(supabase.operations.some((operation) => operation.type === "insert" && operation.table === "viatica_accounts"), false);
+  assert.equal(supabase.operations.some((operation) => operation.type === "update" && operation.table === "viatica_accounts"), false);
 });
 
-test("removes stale cloud accounts during starting-assets-only sync", async () => {
+test("removes all stale cloud accounts during ledger sync", async () => {
   const supabase = createMemorySupabase({
     viatica_accounts: [
       {
@@ -659,12 +656,12 @@ test("removes stale cloud accounts during starting-assets-only sync", async () =
     preferences: {},
   });
 
-  assert.deepEqual(supabase.tables.viatica_accounts.map((account) => account.name), ["微信"]);
-  assert.equal(supabase.tables.viatica_accounts[0].opening_balance, 1977.45);
+  assert.deepEqual(supabase.tables.viatica_accounts, []);
+  assert.equal(supabase.tables.viatica_transactions[0].account, "ledger");
   assert.equal(supabase.operations.some((operation) =>
     operation.type === "delete"
     && operation.table === "viatica_accounts"
     && operation.inFilters.some(([column, values]) =>
-      column === "name" && values.includes("1") && values.includes("银行卡"))
+      column === "name" && values.includes("1") && values.includes("银行卡") && values.includes("微信"))
   ), true);
 });

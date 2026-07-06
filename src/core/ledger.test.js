@@ -4,8 +4,6 @@ import {
   buildAevumOverview,
   filterTransactions,
   isProjectOnlyTransaction,
-  normalizeAccount,
-  normalizeAccounts,
   normalizeBudgets,
   normalizeTransaction,
   projectLabelFromTags,
@@ -27,25 +25,25 @@ test("normalizes an expense with book and legacy reimbursable fields", () => {
 
   assert.equal(txn.amount, 168);
   assert.equal(txn.book, "旅行账本");
-  assert.equal(normalizeTransaction({ amount: 50, account: "招商银行", title: "测试" }).account, "招商银行");
+  assert.equal(txn.account, "ledger");
+  assert.equal(normalizeTransaction({ amount: 50, account: "招商银行", title: "测试" }).account, "ledger");
   assert.equal(txn.reimbursable, true);
 });
 
-test("normalizes accounts and includes opening balances in account net", () => {
-  const accounts = normalizeAccounts([
-    normalizeAccount({ name: "招商银行", openingBalance: 1200 }, new Date("2026-06-24T08:00:00+08:00")),
-  ], []);
+test("summarizes ledger net without opening-balance accounts", () => {
   const txns = [
     normalizeTransaction({ amount: 200, category: "餐饮", account: "招商银行", title: "晚餐" }),
     normalizeTransaction({ type: "income", amount: 500, category: "薪酬", account: "微信", title: "收入" }),
   ];
-  const summary = summarizeLedger(txns, {}, new Date("2026-06-24T12:00"), accounts);
+  const summary = summarizeLedger(txns, {}, new Date("2026-06-24T12:00"), [
+    { name: "招商银行", openingBalance: 1200 },
+  ]);
 
-  assert.equal(summary.accountNet["招商银行"], 1000);
-  assert.equal(summary.accountNet["微信"], 500);
+  assert.equal(summary.accountNet.ledger, 300);
+  assert.equal(summary.accountNet["招商银行"], undefined);
 });
 
-test("sanitizes ledger accounts for starting-assets-only sync", () => {
+test("sanitizes ledger accounts by dropping all legacy accounts", () => {
   const sanitized = sanitizeLedgerAccounts([
     { id: "acct_numeric", name: "1", openingBalance: 1977.45 },
     { id: "acct_empty", name: "500", openingBalance: 0 },
@@ -55,8 +53,7 @@ test("sanitizes ledger accounts for starting-assets-only sync", () => {
     normalizeTransaction({ amount: 13.3, category: "餐饮", account: "微信", title: "早餐" }),
   ]);
 
-  assert.deepEqual(sanitized.map((account) => account.name), ["微信"]);
-  assert.equal(sanitized[0].openingBalance, 1977.45);
+  assert.deepEqual(sanitized, []);
 });
 
 test("summarizes current month and today totals", () => {

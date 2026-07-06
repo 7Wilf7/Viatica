@@ -6,7 +6,6 @@ const HEADERS = [
   "amount",
   "currency",
   "book",
-  "account",
   "category",
   "title",
   "merchant",
