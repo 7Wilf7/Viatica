@@ -68,7 +68,7 @@ const CLOUD_SYNC_FEEDBACK_MIN_MS = 600;
 const CLOUD_SYNC_DEFERRED_NOTICE_MIN_MS = 5 * 60 * 1000;
 const FOREGROUND_SYNC_MIN_MS = 3 * 60 * 1000;
 const FOREGROUND_SYNC_RETRY_MIN_MS = 60 * 1000;
-const BOOT_REVEAL_MS = 4400;
+const BOOT_REVEAL_MS = 4200;
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
 let releaseCheckCache = null;
@@ -76,6 +76,7 @@ let cloudSyncTimer = 0;
 let cloudSyncFeedbackTimer = 0;
 let cloudSyncFeedbackStartedAt = 0;
 let cloudSyncDeferredNoticeAt = 0;
+let ledgerRevision = 0;
 let lastTabTap = { tab: "", at: 0 };
 const cloudAuthConfigured = isCloudAuthConfigured();
 let bootSplashVisible = true;
@@ -1619,6 +1620,7 @@ function persist({ sync = true } = {}) {
     accounts: state.accounts,
     preferences: state.preferences,
   });
+  if (sync) ledgerRevision += 1;
   if (sync) scheduleCloudSync();
 }
 
@@ -1723,6 +1725,7 @@ async function syncCloudNow({ silent = false } = {}) {
   state.cloudSync.error = "";
   state.cloudSync.lastAttemptAt = new Date().toISOString();
   if (!silent) showCloudSyncFeedback();
+  const syncStartedAtRevision = ledgerRevision;
 
   try {
     const syncPromise = syncViaticaLedger(localLedgerSnapshot());
@@ -1732,6 +1735,13 @@ async function syncCloudNow({ silent = false } = {}) {
       CLOUD_SYNC_TIMEOUT_MS,
       "Cloud sync timed out"
     );
+    // A sync result is based on its start-time snapshot; newer local entries must not be overwritten.
+    if (ledgerRevision !== syncStartedAtRevision) {
+      state.cloudSync.status = "idle";
+      scheduleCloudSync(CLOUD_MUTATION_SYNC_DELAY_MS);
+      if (!silent) toast(t("toast.cloudSyncDeferred"));
+      return;
+    }
     applySyncedLedgerState(result.state);
     state.cloudSync.status = "synced";
     state.cloudSync.lastSyncedAt = new Date().toISOString();
@@ -3783,6 +3793,8 @@ function renderFilters() {
 function renderTransactionRow(txn) {
   const project = transactionProjectLabel(txn);
   const projectOnly = isProjectOnlyTransaction(txn);
+  const note = String(txn.note || "").trim();
+  const titleLine = [txn.title, note && note !== txn.title ? note : ""].filter(Boolean).join(" · ");
   const accountMeta = [
     projectOnly ? "" : formatWhen(txn.occurredAt),
     projectOnly ? "" : captureTimeSegmentLabel(txn.occurredAt),
@@ -3799,7 +3811,7 @@ function renderTransactionRow(txn) {
       <div class="txn-main">
         ${renderIconBadge(txn.category, "category")}
         <div class="txn-copy">
-          <strong>${escapeHtml(txn.title)}</strong>
+          <strong>${escapeHtml(titleLine || txn.title)}</strong>
           ${accountMeta ? `<span>${escapeHtml(accountMeta)}</span>` : ""}
           ${projectMeta}
         </div>

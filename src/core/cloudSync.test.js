@@ -14,6 +14,7 @@ function createMemorySupabase(initial = {}, options = {}) {
   };
   const operations = [];
   let hiddenAccountSelects = options.hideExistingAccountsOnce ? 1 : 0;
+  let hiddenTransactionSelects = options.hideExistingTransactionsOnce ? 1 : 0;
 
   function matches(row, filters, inFilters) {
     return filters.every(([column, value]) => row[column] === value)
@@ -23,6 +24,10 @@ function createMemorySupabase(initial = {}, options = {}) {
   function execute(table, state) {
     const rows = tables[table] || [];
     if (state.kind === "select") {
+      if (table === "viatica_transactions" && hiddenTransactionSelects > 0) {
+        hiddenTransactionSelects -= 1;
+        return Promise.resolve({ data: [], error: null });
+      }
       if (table === "viatica_accounts" && hiddenAccountSelects > 0) {
         hiddenAccountSelects -= 1;
         return Promise.resolve({ data: [], error: null });
@@ -92,6 +97,27 @@ function createMemorySupabase(initial = {}, options = {}) {
                 error: {
                   code: "23505",
                   message: 'duplicate key value violates unique constraint "viatica_accounts_user_id_name_key"',
+                },
+              });
+            }
+          }
+          if (table === "viatica_transactions") {
+            const conflict = rowsToInsert.some((item) =>
+              tables[table].some((existing) =>
+                existing.user_id === item.user_id
+                && (
+                  (item.client_id && existing.client_id === item.client_id)
+                  || (item.local_id && existing.local_id === item.local_id)
+                  || (item.id && existing.id === item.id)
+                )
+              )
+            );
+            if (conflict) {
+              return Promise.resolve({
+                data: null,
+                error: {
+                  code: "23505",
+                  message: 'duplicate key value violates unique constraint "viatica_transactions_user_id_client_id_key"',
                 },
               });
             }
@@ -342,6 +368,57 @@ test("pushes cloud state without requiring database conflict constraints", async
   assert.equal(supabase.tables.viatica_accounts.length, 1);
   assert.equal(supabase.tables.viatica_accounts[0].opening_balance, 150);
   assert.equal(supabase.operations.some((operation) => operation.type === "upsert"), false);
+});
+
+test("updates existing transaction when insert hits a hidden cloud duplicate", async () => {
+  const supabase = createMemorySupabase({
+    viatica_transactions: [{
+      user_id: "user_1",
+      client_id: "txn_local",
+      type: "expense",
+      occurred_at: "2026-07-01T08:00:00+08:00",
+      amount: 18,
+      currency: "CNY",
+      book: "日常账本",
+      account: "其他",
+      category: "餐饮",
+      title: "旧早餐",
+      merchant: "",
+      note: "",
+      tags: [],
+      reimbursable: false,
+      receipt_data_url: "",
+      created_at: "2026-07-01T08:00:00+08:00",
+      updated_at: "2026-07-01T08:00:00+08:00",
+    }],
+  }, { hideExistingTransactionsOnce: true });
+
+  await pushCloudState(supabase, "user_1", {
+    transactions: [{
+      id: "txn_local",
+      type: "expense",
+      occurredAt: "2026-07-01T08:00:00+08:00",
+      amount: 28,
+      currency: "CNY",
+      book: "日常账本",
+      account: "其他",
+      category: "餐饮",
+      title: "新早餐",
+      note: "豆浆",
+      tags: [],
+      updatedAt: "2026-07-01T09:01:00+08:00",
+    }],
+    budgets: {},
+    accounts: [],
+    preferences: {},
+  });
+
+  assert.equal(supabase.tables.viatica_transactions.length, 1);
+  assert.equal(supabase.tables.viatica_transactions[0].amount, 28);
+  assert.equal(supabase.tables.viatica_transactions[0].title, "新早餐");
+  assert.equal(supabase.tables.viatica_transactions[0].note, "豆浆");
+  assert.equal(supabase.operations.some((operation) => operation.type === "insert" && operation.table === "viatica_transactions"), true);
+  assert.equal(supabase.operations.some((operation) => operation.type === "update" && operation.table === "viatica_transactions"), true);
 });
 
 test("does not rewrite unchanged cloud rows during push", async () => {

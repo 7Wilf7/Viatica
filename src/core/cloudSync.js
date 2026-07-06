@@ -299,6 +299,10 @@ function transactionInsertRowVariants(transactions, userId) {
   ];
 }
 
+function singleTransactionInsertRows(txn, userId) {
+  return transactionInsertRowVariants([txn], userId).map((rows) => rows[0]).filter(Boolean);
+}
+
 function budgetInsertRowVariants(entries, userId) {
   return [
     entries.map(([category, amount]) => toBudgetRow(category, amount, userId, "amount")),
@@ -390,6 +394,30 @@ function existingClientIdFilters(existing, userId) {
   return [];
 }
 
+async function updateExistingTransaction(supabase, userId, txn, existing) {
+  const rows = transactionUpdateRows(txn, userId);
+  const idFilters = existingIdFilters(existing, userId);
+  const filters = idFilters.length ? idFilters : existingClientIdFilters(existing, userId);
+  if (!filters.length) return false;
+  if (!rowMatchesExisting(firstCompatibleRow(rows, existing), existing)) {
+    await updateRowByFilters(supabase, TABLES.transactions, rows, filters);
+  }
+  return true;
+}
+
+async function insertTransactionWithDuplicateFallback(supabase, userId, txn) {
+  try {
+    await insertRow(supabase, TABLES.transactions, singleTransactionInsertRows(txn, userId));
+    return;
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) throw error;
+    const existingRows = await selectRows(supabase, TABLES.transactions, userId, null);
+    const existingByKey = indexRows(existingRows, transactionRowKeys);
+    const existing = transactionKeys(txn).map((key) => existingByKey.get(key)).find(Boolean);
+    if (!existing || !(await updateExistingTransaction(supabase, userId, txn, existing))) throw error;
+  }
+}
+
 async function upsertTransactions(supabase, userId, transactions) {
   if (!transactions.length) return;
   const existingRows = await selectRows(supabase, TABLES.transactions, userId, null);
@@ -398,19 +426,18 @@ async function upsertTransactions(supabase, userId, transactions) {
   for (const txn of transactions) {
     const existing = transactionKeys(txn).map((key) => existingByKey.get(key)).find(Boolean);
     if (existing) {
-      const rows = transactionUpdateRows(txn, userId);
-      const idFilters = existingIdFilters(existing, userId);
-      const filters = idFilters.length ? idFilters : existingClientIdFilters(existing, userId);
-      if (filters.length) {
-        if (!rowMatchesExisting(firstCompatibleRow(rows, existing), existing)) {
-          await updateRowByFilters(supabase, TABLES.transactions, rows, filters);
-        }
-        continue;
-      }
+      if (await updateExistingTransaction(supabase, userId, txn, existing)) continue;
     }
     newTransactions.push(txn);
   }
-  await insertRows(supabase, TABLES.transactions, transactionInsertRowVariants(newTransactions, userId));
+  try {
+    await insertRows(supabase, TABLES.transactions, transactionInsertRowVariants(newTransactions, userId));
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) throw error;
+    for (const txn of newTransactions) {
+      await insertTransactionWithDuplicateFallback(supabase, userId, txn);
+    }
+  }
 }
 
 async function upsertBudgets(supabase, userId, budgets = {}) {
