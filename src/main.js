@@ -44,6 +44,14 @@ import {
   summarizeLedger,
 } from "./core/ledger.js";
 import {
+  DEFAULT_LEDGER_PERIOD,
+  ledgerPeriodRange,
+  ledgerPeriodsEqual,
+  normalizeLedgerPeriod,
+  pastMonths,
+  pastYears,
+} from "./core/period.js";
+import {
   EMPTY_STATE,
   exportState,
   hasStateForOwner,
@@ -113,7 +121,8 @@ const state = {
   budgetKeypadCategory: "",
   editingTransactionId: null,
   pwaRefreshInProgress: false,
-  dashboardRange: "month",
+  ledgerPeriod: { ...DEFAULT_LEDGER_PERIOD },
+  ledgerPeriodDropdown: "",
   ledgerView: "flow",
   settingsContent: "home",
   auth: {
@@ -177,11 +186,11 @@ const TABS = [
   { id: "settings", labelKey: "tab.settings" },
 ];
 
-const DASHBOARD_RANGES = [
-  { id: "month", labelKey: "range.month" },
-  { id: "week", labelKey: "range.week" },
-  { id: "year", labelKey: "range.year" },
-  { id: "all", labelKey: "range.all" },
+const LEDGER_PERIOD_SEGMENTS = [
+  { type: "month", labelKey: "range.month", dropdown: true },
+  { type: "week", labelKey: "range.week", dropdown: true },
+  { type: "year", labelKey: "range.year", dropdown: true },
+  { type: "all", labelKey: "range.all", dropdown: false },
 ];
 
 const PROFILE_GENDERS = [
@@ -1120,6 +1129,11 @@ const MESSAGES = {
     "ledger.flow": "流水",
     "ledger.chart": "图表",
     "ledger.period": "时间周期",
+    "period.thisWeek": "本周",
+    "period.lastWeek": "上周",
+    "period.weeksAgo": "{n} 周前",
+    "period.thisMonth": "本月",
+    "period.thisYear": "今年",
     "ledger.matchCount": "{count} 条匹配记录。",
     "ledger.empty": "还没有匹配流水。先记录一笔，或调整筛选条件。",
     "ledger.typeFilter": "流水类型",
@@ -1339,6 +1353,11 @@ const MESSAGES = {
     "ledger.flow": "Flow",
     "ledger.chart": "Charts",
     "ledger.period": "Time Period",
+    "period.thisWeek": "This Week",
+    "period.lastWeek": "Last Week",
+    "period.weeksAgo": "{n} Weeks Ago",
+    "period.thisMonth": "This Month",
+    "period.thisYear": "This Year",
     "ledger.matchCount": "{count} matching entries.",
     "ledger.empty": "No matching entries yet. Record one or adjust filters.",
     "ledger.typeFilter": "Entry Type",
@@ -2200,28 +2219,50 @@ function renderChoiceControl({ name = "", filterKey = "", value, options }) {
   `;
 }
 
-function startOfWeek(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  const day = d.getDay() || 7;
-  d.setDate(d.getDate() - day + 1);
-  return d;
-}
-
-function transactionInDashboardRange(txn, range, now = new Date()) {
-  if (isProjectOnlyTransaction(txn)) return range === "all";
+function transactionInLedgerPeriod(txn, period, now = new Date()) {
+  const normalizedPeriod = normalizeLedgerPeriod(period);
+  if (isProjectOnlyTransaction(txn)) return normalizedPeriod.type === "all";
   const d = new Date(txn.occurredAt);
   if (Number.isNaN(d.getTime())) return false;
-  if (range === "all") return true;
-  if (range === "week") return d >= startOfWeek(now);
-  if (range === "year") return d.getFullYear() === now.getFullYear();
-  return monthKey(d) === monthKey(now);
+  const [from, to] = ledgerPeriodRange(normalizedPeriod, now);
+  return d >= from && d < to;
+}
+
+function monthYearLabel(year, month) {
+  return new Intl.DateTimeFormat(displayLocale(), {
+    month: "short",
+    year: "numeric",
+  }).format(new Date(year, month, 1));
+}
+
+function ledgerPeriodLabel(period = state.ledgerPeriod, now = new Date()) {
+  const normalized = normalizeLedgerPeriod(period);
+  if (normalized.type === "all") return t("range.all");
+  if (normalized.type === "week") {
+    if (normalized.offset === 0) return t("period.thisWeek");
+    if (normalized.offset === -1) return t("period.lastWeek");
+    return t("period.weeksAgo", { n: Math.abs(normalized.offset) });
+  }
+  if (normalized.type === "year") {
+    const year = normalized.year ?? now.getFullYear();
+    return year === now.getFullYear() ? t("period.thisYear") : String(year);
+  }
+  const year = normalized.year ?? now.getFullYear();
+  const month = normalized.month ?? now.getMonth();
+  return year === now.getFullYear() && month === now.getMonth()
+    ? t("period.thisMonth")
+    : monthYearLabel(year, month);
+}
+
+function currentLedgerPeriodForType(type) {
+  if (type === "week") return { type, offset: 0 };
+  return { type };
 }
 
 function summarizeLedgerPeriod(transactions = [], budgets = DEFAULT_BUDGETS) {
   const normalizedBudgets = normalizeBudgets(budgets);
   const summary = {
-    monthKey: t(DASHBOARD_RANGES.find((item) => item.id === state.dashboardRange)?.labelKey || "range.month"),
+    monthKey: ledgerPeriodLabel(),
     todayExpense: 0,
     todayIncome: 0,
     monthExpense: 0,
@@ -2264,8 +2305,8 @@ function summarizeLedgerPeriod(transactions = [], budgets = DEFAULT_BUDGETS) {
   return summary;
 }
 
-function rangeFilterTransactions(transactions, range = "month") {
-  return transactions.filter((txn) => transactionInDashboardRange(txn, range));
+function rangeFilterTransactions(transactions, period = state.ledgerPeriod) {
+  return transactions.filter((txn) => transactionInLedgerPeriod(txn, period));
 }
 
 function ledgerTypeFilteredTransactions(transactions) {
@@ -2437,7 +2478,7 @@ function render() {
   const activeState = activeLedgerState();
   const summary = summarizeLedger(activeState.transactions, activeState.budgets, new Date(), activeState.accounts);
   const typeTransactions = ledgerTypeFilteredTransactions(activeState.transactions);
-  const periodTransactions = rangeFilterTransactions(typeTransactions, state.dashboardRange);
+  const periodTransactions = rangeFilterTransactions(typeTransactions, state.ledgerPeriod);
   const ledgerSummary = summarizeLedgerPeriod(periodTransactions, activeState.budgets);
   const filteredTransactions = ledgerFlowTransactions(periodTransactions)
     .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt));
@@ -2602,13 +2643,122 @@ function renderLedgerTopbar() {
 }
 
 function renderLedgerPeriodSwitch() {
+  const period = normalizeLedgerPeriod(state.ledgerPeriod);
   return `
-    <section class="time-switch ledger-period-switch" aria-label="${escapeHtml(t("ledger.period"))}">
-      ${DASHBOARD_RANGES.map((item) => `
-        <button type="button" class="${state.dashboardRange === item.id ? "active" : ""}" data-action="dashboard-range" data-range="${escapeHtml(item.id)}" aria-pressed="${state.dashboardRange === item.id ? "true" : "false"}">${escapeHtml(t(item.labelKey))}</button>
-      `).join("")}
+    <section class="time-switch ledger-period-switch" data-ledger-period-control aria-label="${escapeHtml(t("ledger.period"))}">
+      ${LEDGER_PERIOD_SEGMENTS.map((item) => {
+        const active = period.type === item.type;
+        const label = active ? ledgerPeriodLabel(period) : t(item.labelKey);
+        const open = state.ledgerPeriodDropdown === item.type;
+        return `
+        <div class="ledger-period-cell">
+          <button type="button" class="ledger-period-trigger ${active ? "active" : ""}" data-action="ledger-period-segment" data-period-type="${escapeHtml(item.type)}" aria-pressed="${active ? "true" : "false"}" aria-expanded="${item.dropdown ? (open ? "true" : "false") : "false"}">
+            <span>${escapeHtml(label)}</span>
+            ${item.dropdown ? `<span class="ledger-period-caret" aria-hidden="true">▾</span>` : ""}
+          </button>
+          ${open ? renderLedgerPeriodMenu(item.type, period) : ""}
+        </div>
+      `;
+      }).join("")}
     </section>
   `;
+}
+
+function renderLedgerPeriodMenu(type, activePeriod) {
+  const options = ledgerPeriodOptions(type);
+  return `
+    <div class="ledger-period-menu" role="menu" data-period-menu="${escapeHtml(type)}">
+      ${options.map((option) => renderLedgerPeriodOption(option, activePeriod)).join("")}
+    </div>
+  `;
+}
+
+function ledgerPeriodOptions(type) {
+  if (type === "week") {
+    return Array.from({ length: 12 }, (_, index) => {
+      const offset = -index;
+      return {
+        period: { type: "week", offset },
+        label: offset === 0 ? t("period.thisWeek") : offset === -1 ? t("period.lastWeek") : t("period.weeksAgo", { n: Math.abs(offset) }),
+      };
+    });
+  }
+  if (type === "year") {
+    return pastYears(6).map((year, index) => ({
+      period: index === 0 ? { type: "year" } : { type: "year", year },
+      label: index === 0 ? t("period.thisYear") : String(year),
+    }));
+  }
+  return pastMonths(24).map(({ year, month }, index) => ({
+    period: index === 0 ? { type: "month" } : { type: "month", year, month },
+    label: index === 0 ? t("period.thisMonth") : monthYearLabel(year, month),
+  }));
+}
+
+function renderLedgerPeriodOption(option, activePeriod) {
+  const period = normalizeLedgerPeriod(option.period);
+  const selected = ledgerPeriodsEqual(period, activePeriod);
+  return `
+    <button type="button" class="ledger-period-option ${selected ? "active" : ""}" data-action="ledger-period-option" data-period-type="${escapeHtml(period.type)}" data-period-offset="${escapeHtml(period.offset ?? "")}" data-period-year="${escapeHtml(period.year ?? "")}" data-period-month="${escapeHtml(period.month ?? "")}" role="menuitemradio" aria-checked="${selected ? "true" : "false"}">
+      ${escapeHtml(option.label)}
+    </button>
+  `;
+}
+
+function periodFromDataset(dataset = {}) {
+  const type = dataset.periodType || "month";
+  if (type === "all") return { type: "all" };
+  if (type === "week") {
+    const offset = Number(dataset.periodOffset || 0);
+    return { type: "week", offset: Number.isFinite(offset) ? Math.trunc(offset) : 0 };
+  }
+  if (type === "year") {
+    const year = Number(dataset.periodYear);
+    return Number.isInteger(year) ? { type: "year", year } : { type: "year" };
+  }
+  const year = Number(dataset.periodYear);
+  const month = Number(dataset.periodMonth);
+  if (Number.isInteger(year) && Number.isInteger(month)) return { type: "month", year, month };
+  return { type: "month" };
+}
+
+function closeLedgerPeriodMenu({ rerender = false } = {}) {
+  if (!state.ledgerPeriodDropdown) return;
+  state.ledgerPeriodDropdown = "";
+  if (rerender) {
+    render();
+    return;
+  }
+  document.querySelectorAll(".ledger-period-menu").forEach((menu) => menu.remove());
+  document.querySelectorAll(".ledger-period-trigger[aria-expanded=\"true\"]").forEach((button) => {
+    button.setAttribute("aria-expanded", "false");
+  });
+}
+
+function handleLedgerPeriodSegment(node, event) {
+  const type = node.dataset.periodType || "month";
+  const segment = LEDGER_PERIOD_SEGMENTS.find((item) => item.type === type);
+  if (!segment) return;
+  event.stopPropagation();
+  if (!segment.dropdown) {
+    state.ledgerPeriod = { type };
+    state.ledgerPeriodDropdown = "";
+    render();
+    return;
+  }
+  if (normalizeLedgerPeriod(state.ledgerPeriod).type !== type) {
+    state.ledgerPeriod = currentLedgerPeriodForType(type);
+    state.ledgerPeriodDropdown = "";
+  } else {
+    state.ledgerPeriodDropdown = state.ledgerPeriodDropdown === type ? "" : type;
+  }
+  render();
+}
+
+function handleLedgerPeriodOption(node) {
+  state.ledgerPeriod = periodFromDataset(node.dataset);
+  state.ledgerPeriodDropdown = "";
+  render();
 }
 
 function renderLedgerTab(filteredTransactions, summary, chartTransactions) {
@@ -4438,10 +4588,12 @@ document.addEventListener("click", (event) => {
   const node = event.target.closest("[data-action]");
   if (!node) {
     if (!event.target.closest("[data-choice]")) closeChoiceMenus();
+    if (!event.target.closest("[data-ledger-period-control]")) closeLedgerPeriodMenu({ rerender: true });
     if (!event.target.closest(".action-row.action-open")) closeActionRows();
     return;
   }
   const action = node.dataset.action;
+  if (!node.closest("[data-ledger-period-control]")) closeLedgerPeriodMenu();
 
   if (action === "toggle-choice") {
     toggleChoiceMenu(node.closest("[data-choice]"));
@@ -4543,11 +4695,11 @@ document.addEventListener("click", (event) => {
     state.ledgerView = view;
     render();
   }
-  if (action === "dashboard-range") {
-    const range = node.dataset.range;
-    if (!DASHBOARD_RANGES.some((item) => item.id === range)) return;
-    state.dashboardRange = range;
-    render();
+  if (action === "ledger-period-segment") {
+    handleLedgerPeriodSegment(node, event);
+  }
+  if (action === "ledger-period-option") {
+    handleLedgerPeriodOption(node);
   }
   if (action === "settings-content") {
     const content = node.dataset.content || "home";
