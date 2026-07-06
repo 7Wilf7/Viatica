@@ -72,11 +72,14 @@ const MIRROR_APK_URL = SUPABASE_PUBLIC_URL
   ? `${SUPABASE_PUBLIC_URL}/storage/v1/object/public/releases/viatica-latest.apk`
   : null;
 const AUTO_CHECK_CACHE_MS = 30 * 60 * 1000;
-const CLOUD_MUTATION_SYNC_DELAY_MS = 1400;
+const CLOUD_MUTATION_SYNC_DELAY_MS = 250;
 const CLOUD_BOOT_SYNC_DELAY_MS = 8000;
 const CLOUD_FOREGROUND_SYNC_DELAY_MS = 5000;
 const CLOUD_SYNC_TIMEOUT_MS = 12000;
 const CLOUD_SYNC_FEEDBACK_MIN_MS = 600;
+const CLOUD_SYNC_SUCCESS_HOLD_MS = 900;
+const CLOUD_SYNC_ERROR_HOLD_MS = 4000;
+const CLOUD_SYNC_RETRY_DELAY_MS = 15000;
 const CLOUD_SYNC_DEFERRED_NOTICE_MIN_MS = 5 * 60 * 1000;
 const FOREGROUND_SYNC_MIN_MS = 3 * 60 * 1000;
 const FOREGROUND_SYNC_RETRY_MIN_MS = 60 * 1000;
@@ -148,6 +151,7 @@ const state = {
     lastAttemptAt: "",
     error: "",
     feedback: false,
+    pendingMutation: false,
   },
   update: {
     status: "idle",
@@ -594,6 +598,7 @@ const CHANGELOG_ENTRIES = [
         "账号切换时本地缓存按 Aevum user 分开保存，非 Demo 账号同步时会忽略 `demo_txn_*` 演示流水和明显的 Demo 初始资产，避免 Demo 数据继续混进个人账本。",
         "开屏动画改为单一时间轴，启动期间发生页面重绘时不会从头重播或中途卡住。",
         "资产页恢复单一初始资金编辑：长按资产概览后用内置数字键盘修改，并同步到 Aevum 云端偏好。",
+        "本机数据变动后会更快触发云端写库，并用顶部小状态条显示上传中、已保存或稍后重试，避免静默同步失败造成 PWA 和 App 数据不一致。",
       ],
       en: [
         "Removed the bundled local Demo mode and Settings data-mode switch; Ledger, Calendar, Assets, and Budgets now read only the active Aevum account or real local data.",
@@ -601,6 +606,7 @@ const CHANGELOG_ENTRIES = [
         "Account switching now keeps local caches per Aevum user, and non-Demo accounts ignore `demo_txn_*` entries plus obvious Demo starting assets so Demo data does not leak into personal ledgers.",
         "The splash animation now uses one fixed timeline, so page rerenders during launch no longer restart or cut off the animation.",
         "Restored single starting-assets editing on Assets: long-press Assets Overview, edit with the built-in keypad, and sync it through Aevum cloud preferences.",
+        "Local data changes now trigger cloud writes sooner and show a compact top status for uploading, saved, or retrying states so silent sync failures do not make PWA and App data drift.",
       ],
     },
   },
@@ -1080,6 +1086,9 @@ const MESSAGES = {
     "app.sections": "Viatica 页面",
     "splash.label": "Viatica 正在启动",
     "sync.syncing": "正在同步数据",
+    "sync.uploading": "正在上传数据",
+    "sync.saved": "已保存到云端",
+    "sync.failed": "上传失败，稍后重试",
     "tab.capture": "添加",
     "tab.ledger": "账本",
     "tab.calendar": "日历",
@@ -1199,9 +1208,11 @@ const MESSAGES = {
     "settings.cloudSyncHint": "把本机账本和 Aevum 云端合并",
     "settings.cloudSyncSignIn": "先登录",
     "settings.cloudSyncIdle": "自动同步已开启",
+    "settings.cloudSyncPending": "等待上传",
     "settings.cloudSyncing": "同步中...",
     "settings.cloudSynced": "已同步",
     "settings.cloudSyncError": "同步失败",
+    "settings.cloudSyncRetrying": "上传失败，稍后重试",
     "settings.importExportTitle": "备份与迁移",
     "settings.importExportHint": "维护用途：用于手动迁移、恢复数据或保留离线备份。",
     "settings.exportCsv": "导出 CSV",
@@ -1305,6 +1316,9 @@ const MESSAGES = {
     "app.sections": "Viatica sections",
     "splash.label": "Viatica is starting",
     "sync.syncing": "Syncing Data",
+    "sync.uploading": "Uploading Data",
+    "sync.saved": "Saved To Cloud",
+    "sync.failed": "Upload Failed, Retrying",
     "tab.capture": "Add",
     "tab.ledger": "Ledger",
     "tab.calendar": "Calendar",
@@ -1424,9 +1438,11 @@ const MESSAGES = {
     "settings.cloudSyncHint": "Merge this ledger with Aevum cloud",
     "settings.cloudSyncSignIn": "Sign In First",
     "settings.cloudSyncIdle": "Auto Sync Ready",
+    "settings.cloudSyncPending": "Upload Pending",
     "settings.cloudSyncing": "Syncing...",
     "settings.cloudSynced": "Synced",
     "settings.cloudSyncError": "Sync Failed",
+    "settings.cloudSyncRetrying": "Upload Failed, Retrying",
     "settings.importExportTitle": "Backup and Migration",
     "settings.importExportHint": "Maintenance only: move devices manually, restore data, or keep an offline backup.",
     "settings.exportCsv": "Export CSV",
@@ -1669,8 +1685,14 @@ function applyLedgerState(nextState, { preserveLocale = true } = {}) {
 function persist({ sync = true } = {}) {
   if (sync && !ledgerStorageOwnerId) signedOutLedgerDirty = true;
   saveStateForOwner(localLedgerSnapshot(), ledgerStorageOwnerId);
-  if (sync) ledgerRevision += 1;
-  if (sync) scheduleCloudSync();
+  if (!sync) return;
+  ledgerRevision += 1;
+  if (canCloudSync()) {
+    state.cloudSync.pendingMutation = true;
+    state.cloudSync.error = "";
+    showCloudSyncFeedback();
+  }
+  scheduleCloudSync();
 }
 
 function applySyncedLedgerState(nextState) {
@@ -1710,6 +1732,10 @@ function switchLedgerStorageOwner(user) {
   const previousState = localLedgerSnapshot();
   const pendingSignedOutState = previousOwnerId === "" && signedOutLedgerDirty ? previousState : null;
   saveStateForOwner(previousState, ledgerStorageOwnerId);
+  window.clearTimeout(cloudSyncTimer);
+  window.clearTimeout(cloudSyncFeedbackTimer);
+  cloudSyncTimer = 0;
+  cloudSyncFeedbackTimer = 0;
   ledgerStorageOwnerId = nextOwnerId;
   applyLedgerState(storedStateForUser(user, pendingSignedOutState));
   if (nextOwnerId && !isDemoAccountUser(user)) signedOutLedgerDirty = false;
@@ -1722,6 +1748,8 @@ function switchLedgerStorageOwner(user) {
   state.cloudSync.error = "";
   state.cloudSync.lastAttemptAt = "";
   state.cloudSync.lastSyncedAt = "";
+  state.cloudSync.feedback = false;
+  state.cloudSync.pendingMutation = false;
   ledgerRevision += 1;
   persist({ sync: false });
 }
@@ -1761,7 +1789,7 @@ function showCloudSyncFeedback() {
   render();
 }
 
-function hideCloudSyncFeedback() {
+function hideCloudSyncFeedback(holdMs = 0) {
   if (!state.cloudSync.feedback) return;
   const remaining = Math.max(0, CLOUD_SYNC_FEEDBACK_MIN_MS - (Date.now() - cloudSyncFeedbackStartedAt));
   window.clearTimeout(cloudSyncFeedbackTimer);
@@ -1769,7 +1797,7 @@ function hideCloudSyncFeedback() {
     state.cloudSync.feedback = false;
     cloudSyncFeedbackTimer = 0;
     render();
-  }, remaining);
+  }, remaining + Math.max(0, holdMs));
 }
 
 function scheduleCloudSync(delay = CLOUD_MUTATION_SYNC_DELAY_MS) {
@@ -1793,6 +1821,8 @@ function scheduleForegroundCloudSync(delay = CLOUD_FOREGROUND_SYNC_DELAY_MS) {
 function cloudSyncLabel() {
   if (!state.auth.configured || !state.auth.user) return t("settings.cloudSyncSignIn");
   if (state.cloudSync.status === "syncing") return t("settings.cloudSyncing");
+  if (state.cloudSync.pendingMutation && state.cloudSync.status === "error") return t("settings.cloudSyncRetrying");
+  if (state.cloudSync.pendingMutation) return t("settings.cloudSyncPending");
   if (state.cloudSync.status === "error") return t("settings.cloudSyncError");
   if (state.cloudSync.lastSyncedAt) return t("settings.cloudSynced");
   return t("settings.cloudSyncIdle");
@@ -1804,15 +1834,16 @@ async function syncCloudNow({ silent = false } = {}) {
     return;
   }
   if (state.cloudSync.status === "syncing") {
-    if (!silent) showCloudSyncFeedback();
+    if (!silent || state.cloudSync.pendingMutation) showCloudSyncFeedback();
     return;
   }
 
   window.clearTimeout(cloudSyncTimer);
+  const mutationSync = state.cloudSync.pendingMutation;
   state.cloudSync.status = "syncing";
   state.cloudSync.error = "";
   state.cloudSync.lastAttemptAt = new Date().toISOString();
-  if (!silent) showCloudSyncFeedback();
+  if (!silent || mutationSync) showCloudSyncFeedback();
   const syncStartedAtRevision = ledgerRevision;
   const expectedUser = state.auth.user
     ? { id: state.auth.user.id, email: state.auth.user.email }
@@ -1829,12 +1860,14 @@ async function syncCloudNow({ silent = false } = {}) {
     // A sync result is based on its start-time snapshot; newer local entries must not be overwritten.
     if (ledgerRevision !== syncStartedAtRevision) {
       state.cloudSync.status = "idle";
+      state.cloudSync.pendingMutation = true;
       scheduleCloudSync(CLOUD_MUTATION_SYNC_DELAY_MS);
       if (!silent) toast(t("toast.cloudSyncDeferred"));
       return;
     }
     applySyncedLedgerState(result.state);
     state.cloudSync.status = "synced";
+    state.cloudSync.pendingMutation = false;
     state.cloudSync.lastSyncedAt = new Date().toISOString();
     persist({ sync: false });
     if (!silent) toast(t("toast.cloudSyncDone"));
@@ -1842,6 +1875,7 @@ async function syncCloudNow({ silent = false } = {}) {
     if (isCloudUserChangedError(error)) {
       state.cloudSync.status = "idle";
       state.cloudSync.error = "";
+      state.cloudSync.pendingMutation = false;
       return;
     }
     state.cloudSync.status = "error";
@@ -1854,8 +1888,15 @@ async function syncCloudNow({ silent = false } = {}) {
     } else if (!silent) {
       toast(t("toast.cloudSyncFailed", { message: state.cloudSync.error || t("settings.cloudSyncError") }));
     }
+    if (state.cloudSync.pendingMutation) scheduleCloudSync(CLOUD_SYNC_RETRY_DELAY_MS);
   } finally {
-    hideCloudSyncFeedback();
+    if (state.cloudSync.status === "synced" && !state.cloudSync.pendingMutation) {
+      hideCloudSyncFeedback(CLOUD_SYNC_SUCCESS_HOLD_MS);
+    } else if (state.cloudSync.status === "error") {
+      hideCloudSyncFeedback(CLOUD_SYNC_ERROR_HOLD_MS);
+    } else if (!state.cloudSync.pendingMutation && state.cloudSync.status !== "syncing") {
+      hideCloudSyncFeedback();
+    }
     render();
   }
 }
@@ -2479,12 +2520,29 @@ function render() {
   maybeAutoCheckAppUpdate();
 }
 
+function cloudSyncFeedbackKind() {
+  if (state.cloudSync.status === "error") return "error";
+  if (state.cloudSync.status === "synced" && !state.cloudSync.pendingMutation) return "done";
+  return "uploading";
+}
+
+function cloudSyncFeedbackLabel() {
+  const kind = cloudSyncFeedbackKind();
+  if (kind === "done") return t("sync.saved");
+  if (kind === "error") return t("sync.failed");
+  return t("sync.uploading");
+}
+
 function renderCloudSyncFeedback() {
   if (!state.cloudSync.feedback) return "";
+  const kind = cloudSyncFeedbackKind();
+  const statusIcon = kind === "done" ? "✓" : "!";
   return `
-    <div class="sync-feedback" role="status" aria-live="polite">
-      <span class="sync-spinner" aria-hidden="true"></span>
-      <span>${escapeHtml(t("sync.syncing"))}</span>
+    <div class="sync-feedback sync-feedback-${kind}" role="status" aria-live="polite">
+      ${kind === "uploading"
+        ? `<span class="sync-spinner" aria-hidden="true"></span>`
+        : `<span class="sync-status-icon" aria-hidden="true">${statusIcon}</span>`}
+      <span>${escapeHtml(cloudSyncFeedbackLabel())}</span>
     </div>
   `;
 }
