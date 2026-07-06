@@ -6,6 +6,7 @@ const TABLES = {
   budgets: "viatica_budgets",
   accounts: "viatica_accounts",
 };
+const DEMO_ACCOUNT_EMAIL = "demo@demo.com";
 
 function isSchemaFallbackError(error) {
   const message = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`.toLowerCase();
@@ -61,6 +62,22 @@ function normalizeCloudTransaction(row, now = new Date()) {
     transaction.updatedAt = "";
   }
   return transaction;
+}
+
+export function isDemoSeedTransaction(value = {}) {
+  return [value.id, value.client_id, value.local_id]
+    .some((id) => String(id || "").startsWith("demo_txn_"));
+}
+
+export function stripDemoSeedTransactions(state = {}) {
+  return {
+    ...state,
+    transactions: (state.transactions || []).filter((txn) => !isDemoSeedTransaction(txn)),
+  };
+}
+
+function shouldStripDemoSeedTransactions(user = {}) {
+  return String(user.email || "").trim().toLowerCase() !== DEMO_ACCOUNT_EMAIL;
 }
 
 function normalizeCloudAccount(row, now = new Date()) {
@@ -530,8 +547,11 @@ export async function syncViaticaLedger(localState) {
   const user = await getCloudUser();
   if (!user) throw new Error("Not authenticated");
 
+  const stripDemoSeeds = shouldStripDemoSeedTransactions(user);
+  const localStateForMerge = stripDemoSeeds ? stripDemoSeedTransactions(localState) : localState;
   const remoteState = await fetchCloudState(supabase, user.id);
-  const mergedState = mergeLedgerStates(localState, remoteState);
+  const remoteStateForMerge = stripDemoSeeds ? stripDemoSeedTransactions(remoteState) : remoteState;
+  const mergedState = mergeLedgerStates(localStateForMerge, remoteStateForMerge);
   await pushCloudState(supabase, user.id, mergedState);
 
   return {

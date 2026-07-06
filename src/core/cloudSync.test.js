@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mergeLedgerStates, pushCloudState } from "./cloudSync.js";
+import {
+  isDemoSeedTransaction,
+  mergeLedgerStates,
+  pushCloudState,
+  stripDemoSeedTransactions,
+} from "./cloudSync.js";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -203,6 +208,24 @@ test("merges legacy sports budgets into the unified sports budget", () => {
   assert.equal(merged.budgets["运动"], 1800);
   assert.equal("运动装备" in merged.budgets, false);
   assert.equal("比赛/训练" in merged.budgets, false);
+});
+
+test("can strip demo seed transactions before non-demo account sync", () => {
+  const state = {
+    transactions: [
+      { id: "demo_txn_20260602_breakfast", title: "Demo Breakfast" },
+      { id: "real_txn_1", title: "Real Breakfast" },
+    ],
+    budgets: { "餐饮": 2000 },
+    accounts: [{ id: "acct_1", name: "微信" }],
+  };
+  const stripped = stripDemoSeedTransactions(state);
+
+  assert.equal(isDemoSeedTransaction(state.transactions[0]), true);
+  assert.equal(isDemoSeedTransaction(state.transactions[1]), false);
+  assert.deepEqual(stripped.transactions.map((txn) => txn.id), ["real_txn_1"]);
+  assert.equal(stripped.budgets, state.budgets);
+  assert.equal(stripped.accounts, state.accounts);
 });
 
 test("keeps the newest transaction when local and cloud share an id", () => {

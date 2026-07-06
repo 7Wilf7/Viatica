@@ -101,3 +101,7 @@ dedicated Aevum account in Supabase, seeded from `src/core/demoData.js`, so Wilf
 can show the app through the same login and cloud-sync path used by real data.
 The app itself should always read and write the active Aevum account or local
 `viatica:v1` cache; it should not branch into a bundled local demo ledger.
+When a user signs in, the PWA stores that ledger under an account-specific
+localStorage key, so switching between the Demo account and Wilf's personal
+account does not merge their local caches. Non-Demo accounts should also ignore
+seed transaction ids beginning with `demo_txn_` during cloud sync.

@@ -53,6 +53,11 @@ account records for compatibility. The current UI treats accounts as hidden
 internals: Assets shows one starting-assets value plus ledger income/expense
 flow, and transaction rows do not show account names.
 
+Signed-in ledgers are cached under account-specific localStorage keys shaped as
+`viatica:v1:user:<Aevum user id>`. The signed-out local ledger keeps using
+`viatica:v1`. This keeps the cloud Demo account from leaking into Wilf's
+personal account when switching users on the same PWA install.
+
 ## Cloud Demo Account
 
 Viatica no longer has an in-app Personal / Demo mode switch. Product demos use a

@@ -38,7 +38,14 @@ import {
   projectLabelFromTags,
   summarizeLedger,
 } from "./core/ledger.js";
-import { exportState, loadState, saveState } from "./core/storage.js";
+import {
+  EMPTY_STATE,
+  exportState,
+  hasStateForOwner,
+  loadState,
+  loadStateForOwner,
+  saveStateForOwner,
+} from "./core/storage.js";
 
 const app = document.querySelector("#app");
 const LOCALES = [
@@ -63,6 +70,7 @@ const CLOUD_SYNC_DEFERRED_NOTICE_MIN_MS = 5 * 60 * 1000;
 const FOREGROUND_SYNC_MIN_MS = 3 * 60 * 1000;
 const FOREGROUND_SYNC_RETRY_MIN_MS = 60 * 1000;
 const BOOT_REVEAL_MS = 4200;
+const DEMO_ACCOUNT_EMAIL = "demo@demo.com";
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
 let releaseCheckCache = null;
@@ -75,6 +83,7 @@ let lastTabTap = { tab: "", at: 0 };
 const cloudAuthConfigured = isCloudAuthConfigured();
 let bootSplashVisible = true;
 let bootSplashDismissTimer = 0;
+let ledgerStorageOwnerId = "";
 const storedState = loadState();
 const storedTransactions = normalizeTransactionList(storedState.transactions);
 const state = {
@@ -567,10 +576,12 @@ const CHANGELOG_ENTRIES = [
       zh: [
         "移除本机内置 Demo 模式和设置页数据模式开关，账本、日历、资产和预算都只读取当前 Aevum 账号或本机真实数据。",
         "演示数据改为写入专用 Aevum Demo 账号；需要给朋友展示时，退出当前账号后登录 Demo 账号即可。",
+        "账号切换时本地缓存按 Aevum user 分开保存，非 Demo 账号同步时会忽略 `demo_txn_*` 演示流水，避免 Demo 数据继续混进个人账本。",
       ],
       en: [
         "Removed the bundled local Demo mode and Settings data-mode switch; Ledger, Calendar, Assets, and Budgets now read only the active Aevum account or real local data.",
         "Demo data now lives in a dedicated Aevum Demo account. Sign out and use that account when showing the app to friends.",
+        "Account switching now keeps local caches per Aevum user, and non-Demo accounts ignore `demo_txn_*` seed entries during sync so Demo entries do not leak into personal ledgers.",
       ],
     },
   },
@@ -1586,6 +1597,31 @@ function localLedgerSnapshot() {
   };
 }
 
+function hasUsefulLedgerState(snapshot = {}) {
+  return Boolean(
+    (snapshot.transactions || []).length
+    || (snapshot.accounts || []).length
+    || Object.keys(snapshot.budgets || {}).length
+  );
+}
+
+function hasDemoSeedTransactions(snapshot = {}) {
+  const transactions = snapshot.transactions || [];
+  return transactions.some((txn) => String(txn?.id || "").startsWith("demo_txn_"));
+}
+
+function stripDemoSeedTransactionsFromState(snapshot = {}) {
+  return {
+    ...snapshot,
+    transactions: (snapshot.transactions || [])
+      .filter((txn) => !String(txn?.id || "").startsWith("demo_txn_")),
+  };
+}
+
+function isDemoAccountUser(user = null) {
+  return normalizeEmail(user?.email) === DEMO_ACCOUNT_EMAIL;
+}
+
 function normalizeTransactionList(transactions = [], now = new Date()) {
   return (Array.isArray(transactions) ? transactions : []).flatMap((txn) => {
     try {
@@ -1596,29 +1632,65 @@ function normalizeTransactionList(transactions = [], now = new Date()) {
   });
 }
 
-function persist({ sync = true } = {}) {
-  saveState({
-    transactions: state.transactions,
-    budgets: state.budgets,
-    accounts: state.accounts,
-    preferences: state.preferences,
-  });
-  if (sync) ledgerRevision += 1;
-  if (sync) scheduleCloudSync();
-}
-
-function applySyncedLedgerState(nextState) {
+function applyLedgerState(nextState, { preserveLocale = true } = {}) {
+  const locale = state.preferences.locale;
   state.transactions = normalizeTransactionList(nextState.transactions);
   state.budgets = normalizeBudgets(nextState.budgets);
   state.preferences = {
     ...state.preferences,
     ...(nextState.preferences || {}),
-    locale: state.preferences.locale,
+    locale: preserveLocale ? locale : (nextState.preferences?.locale || locale),
   };
   delete state.preferences.dataMode;
   if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
   if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
   state.accounts = visibleAccounts(normalizeAccounts(pruneLegacyDefaultAccounts(nextState.accounts || [])));
+}
+
+function persist({ sync = true } = {}) {
+  saveStateForOwner(localLedgerSnapshot(), ledgerStorageOwnerId);
+  if (sync) ledgerRevision += 1;
+  if (sync) scheduleCloudSync();
+}
+
+function applySyncedLedgerState(nextState) {
+  applyLedgerState(nextState);
+}
+
+function storedStateForUser(user) {
+  const ownerId = user?.id || "";
+  if (!ownerId) return loadStateForOwner("");
+  if (hasStateForOwner(ownerId)) return loadStateForOwner(ownerId);
+
+  const localState = loadStateForOwner("");
+  if (isDemoAccountUser(user)) {
+    return structuredClone(EMPTY_STATE);
+  }
+  if (hasDemoSeedTransactions(localState)) {
+    const strippedLocalState = stripDemoSeedTransactionsFromState(localState);
+    return strippedLocalState.transactions.length ? strippedLocalState : structuredClone(EMPTY_STATE);
+  }
+  return hasUsefulLedgerState(localState) ? localState : structuredClone(EMPTY_STATE);
+}
+
+function switchLedgerStorageOwner(user) {
+  const nextOwnerId = user?.id || "";
+  if (nextOwnerId === ledgerStorageOwnerId) return;
+
+  saveStateForOwner(localLedgerSnapshot(), ledgerStorageOwnerId);
+  ledgerStorageOwnerId = nextOwnerId;
+  applyLedgerState(storedStateForUser(user));
+  state.editingTransactionId = null;
+  state.captureDraft = null;
+  state.captureProjectOpen = false;
+  state.searchOpen = false;
+  state.actionRowId = "";
+  state.cloudSync.status = "idle";
+  state.cloudSync.error = "";
+  state.cloudSync.lastAttemptAt = "";
+  state.cloudSync.lastSyncedAt = "";
+  ledgerRevision += 1;
+  persist({ sync: false });
 }
 
 function canCloudSync() {
@@ -1866,6 +1938,7 @@ async function handleProfileSave(form) {
 }
 
 function setCloudSession(session) {
+  switchLedgerStorageOwner(session?.user || null);
   state.auth.session = session;
   state.auth.user = session?.user || null;
   state.auth.ready = true;
