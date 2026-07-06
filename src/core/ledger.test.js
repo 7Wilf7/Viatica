@@ -9,6 +9,7 @@ import {
   normalizeBudgets,
   normalizeTransaction,
   projectLabelFromTags,
+  sanitizeLedgerAccounts,
   summarizeLedger,
   tagsWithProject,
 } from "./ledger.js";
@@ -42,6 +43,20 @@ test("normalizes accounts and includes opening balances in account net", () => {
 
   assert.equal(summary.accountNet["招商银行"], 1000);
   assert.equal(summary.accountNet["微信"], 500);
+});
+
+test("sanitizes ledger accounts for starting-assets-only sync", () => {
+  const sanitized = sanitizeLedgerAccounts([
+    { id: "acct_numeric", name: "1", openingBalance: 1977.45 },
+    { id: "acct_empty", name: "500", openingBalance: 0 },
+    { id: "acct_wechat", name: "微信", openingBalance: 1977.45 },
+    { id: "acct_bank", name: "银行卡", openingBalance: 0 },
+  ], [
+    normalizeTransaction({ amount: 13.3, category: "餐饮", account: "微信", title: "早餐" }),
+  ]);
+
+  assert.deepEqual(sanitized.map((account) => account.name), ["微信"]);
+  assert.equal(sanitized[0].openingBalance, 1977.45);
 });
 
 test("summarizes current month and today totals", () => {

@@ -1,6 +1,12 @@
 import { getCloudClient, getCloudUser } from "./cloud.js";
 import { DEMO_ACCOUNTS } from "./demoData.js";
-import { normalizeAccount, normalizeAccounts, normalizeBudgets, normalizeTransaction } from "./ledger.js";
+import {
+  normalizeAccount,
+  normalizeAccounts,
+  normalizeBudgets,
+  normalizeTransaction,
+  sanitizeLedgerAccounts,
+} from "./ledger.js";
 
 const TABLES = {
   transactions: "viatica_transactions",
@@ -297,10 +303,12 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
     accountMap.set(account.name, existing ? newer(existing, account) : account);
   }
 
+  const accounts = sanitizeLedgerAccounts([...accountMap.values()], transactions, now);
+
   return {
     transactions,
     budgets,
-    accounts: [...accountMap.values()],
+    accounts,
     preferences: {
       ...(localState.preferences || {}),
       deletedTransactionIds,
@@ -565,11 +573,27 @@ async function upsertBudgets(supabase, userId, budgets = {}) {
   await insertRows(supabase, TABLES.budgets, budgetInsertRowVariants(newEntries, userId));
 }
 
-async function upsertAccounts(supabase, userId, accounts = []) {
-  const normalizedAccounts = normalizeAccounts(accounts, []);
-  if (!normalizedAccounts.length) return;
+async function deleteCloudAccountsByNames(supabase, userId, names = []) {
+  const uniqueNames = [...new Set(names.map(String).map((name) => name.trim()).filter(Boolean))];
+  if (!uniqueNames.length) return;
+  const result = await supabase
+    .from(TABLES.accounts)
+    .delete()
+    .eq("user_id", userId)
+    .in("name", uniqueNames);
+  if (result.error) throw result.error;
+}
+
+async function upsertAccounts(supabase, userId, accounts = [], transactions = []) {
+  const normalizedAccounts = sanitizeLedgerAccounts(accounts, transactions);
   const existingRows = await selectRows(supabase, TABLES.accounts, userId, null);
   const existingByName = indexRows(existingRows, (row) => [row.name]);
+  const desiredNames = new Set(normalizedAccounts.map((account) => account.name));
+  const staleNames = existingRows
+    .map((row) => String(row.name || "").trim())
+    .filter((name) => name && !desiredNames.has(name));
+  await deleteCloudAccountsByNames(supabase, userId, staleNames);
+  if (!normalizedAccounts.length) return;
   const newAccounts = [];
   for (const account of normalizedAccounts) {
     const rows = accountRows(account, userId);
@@ -626,7 +650,7 @@ export async function pushCloudState(supabase, userId, state) {
   await deleteCloudTransactionsByIds(supabase, userId, deletedTransactionIds);
   await upsertTransactions(supabase, userId, state.transactions || []);
   await upsertBudgets(supabase, userId, state.budgets || {});
-  await upsertAccounts(supabase, userId, state.accounts || []);
+  await upsertAccounts(supabase, userId, state.accounts || [], state.transactions || []);
 }
 
 export async function syncViaticaLedger(localState, expectedUser = null) {

@@ -43,6 +43,7 @@ import {
   normalizeProjectLabel,
   normalizeTransaction,
   projectLabelFromTags,
+  sanitizeLedgerAccounts,
   summarizeLedger,
 } from "./core/ledger.js";
 import {
@@ -175,7 +176,7 @@ state.preferences = {
 delete state.preferences.dataMode;
 if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
 if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
-state.accounts = visibleAccounts(normalizeAccounts(pruneLegacyDefaultAccounts(state.accounts)));
+state.accounts = sanitizeVisibleAccounts(state.accounts, state.transactions);
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
 state.filters.book = "all";
 state.filters.account = "all";
@@ -1661,7 +1662,7 @@ function applyLedgerState(nextState, { preserveLocale = true } = {}) {
   delete state.preferences.dataMode;
   if (!Array.isArray(state.preferences.deletedAccounts)) state.preferences.deletedAccounts = [];
   if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
-  state.accounts = visibleAccounts(normalizeAccounts(pruneLegacyDefaultAccounts(nextState.accounts || [])));
+  state.accounts = sanitizeVisibleAccounts(nextState.accounts || [], state.transactions);
 }
 
 function persist({ sync = true } = {}) {
@@ -2111,12 +2112,16 @@ function visibleAccounts(accounts) {
   return accounts.filter((account) => !deleted.has(account.name));
 }
 
-function pruneLegacyDefaultAccounts(accounts) {
-  const usedAccounts = new Set(state.transactions.map((txn) => txn.account));
+function pruneLegacyDefaultAccounts(accounts, transactions = state.transactions) {
+  const usedAccounts = new Set(transactions.map((txn) => txn.account));
   return accounts.filter((account) => {
     if (!LEGACY_DEFAULT_ACCOUNTS.has(account.name)) return true;
     return usedAccounts.has(account.name) || Number(account.openingBalance || 0) !== 0;
   });
+}
+
+function sanitizeVisibleAccounts(accounts, transactions = state.transactions) {
+  return visibleAccounts(sanitizeLedgerAccounts(pruneLegacyDefaultAccounts(accounts, transactions), transactions));
 }
 
 function accountNames(transactions = activeLedgerState().transactions, accounts = activeLedgerState().accounts) {
@@ -2354,7 +2359,7 @@ function signedMoney(amount) {
 }
 
 function assetTotals(ledgerState = activeLedgerState()) {
-  const accounts = normalizeAccounts(ledgerState.accounts || [], []);
+  const accounts = sanitizeLedgerAccounts(ledgerState.accounts || [], ledgerState.transactions || []);
   const opening = accounts.reduce((total, account) => total + Number(account.openingBalance || 0), 0);
   const flow = (ledgerState.transactions || []).reduce((total, txn) => (
     isProjectOnlyTransaction(txn) ? total : total + Number(txn.amount || 0) * transactionSign(txn.type)
@@ -4512,7 +4517,7 @@ document.addEventListener("submit", (event) => {
       }
       state.preferences.deletedAccounts = (state.preferences.deletedAccounts || [])
         .filter((name) => name !== account.name);
-      state.accounts = visibleAccounts(normalizeAccounts(state.accounts));
+      state.accounts = sanitizeVisibleAccounts(state.accounts, state.transactions);
       state.accountFormOpen = false;
       persist();
       render();

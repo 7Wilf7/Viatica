@@ -615,3 +615,56 @@ test("updates existing account when insert hits the cloud user name constraint",
   assert.equal(supabase.operations.some((operation) => operation.type === "insert" && operation.table === "viatica_accounts"), true);
   assert.equal(supabase.operations.some((operation) => operation.type === "update" && operation.table === "viatica_accounts"), true);
 });
+
+test("removes stale cloud accounts during starting-assets-only sync", async () => {
+  const supabase = createMemorySupabase({
+    viatica_accounts: [
+      {
+        user_id: "user_1",
+        id: "acct_legacy_numeric",
+        name: "1",
+        opening_balance: 1977.45,
+      },
+      {
+        user_id: "user_1",
+        id: "acct_legacy_zero",
+        name: "银行卡",
+        opening_balance: 0,
+      },
+      {
+        user_id: "user_1",
+        id: "acct_wechat",
+        name: "微信",
+        opening_balance: 1977.45,
+      },
+    ],
+  });
+
+  await pushCloudState(supabase, "user_1", {
+    transactions: [{
+      id: "txn_real",
+      type: "expense",
+      occurredAt: "2026-07-06T08:47:00+08:00",
+      amount: 13.3,
+      account: "微信",
+      category: "餐饮",
+      title: "早餐",
+    }],
+    budgets: {},
+    accounts: [
+      { id: "acct_numeric", name: "1", openingBalance: 1977.45 },
+      { id: "acct_empty", name: "银行卡", openingBalance: 0 },
+      { id: "acct_wechat", name: "微信", openingBalance: 1977.45 },
+    ],
+    preferences: {},
+  });
+
+  assert.deepEqual(supabase.tables.viatica_accounts.map((account) => account.name), ["微信"]);
+  assert.equal(supabase.tables.viatica_accounts[0].opening_balance, 1977.45);
+  assert.equal(supabase.operations.some((operation) =>
+    operation.type === "delete"
+    && operation.table === "viatica_accounts"
+    && operation.inFilters.some(([column, values]) =>
+      column === "name" && values.includes("1") && values.includes("银行卡"))
+  ), true);
+});

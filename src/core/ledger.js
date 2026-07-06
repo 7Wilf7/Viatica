@@ -154,6 +154,26 @@ export function normalizeAccounts(accounts = [], defaultNames = ACCOUNTS, now = 
   return [...byName.values()];
 }
 
+function isNumericAccountName(value = "") {
+  return /^\d+(?:\.\d+)?$/.test(String(value || "").trim());
+}
+
+export function sanitizeLedgerAccounts(accounts = [], transactions = [], now = new Date()) {
+  const usedAccounts = new Set(
+    (transactions || [])
+      .map((txn) => String(txn?.account || "").trim())
+      .filter(Boolean)
+  );
+  return normalizeAccounts(accounts, [], now).filter((account) => {
+    const name = String(account.name || "").trim();
+    const openingBalance = Number(account.openingBalance || 0);
+    const openingCents = Math.round(openingBalance * 100);
+    if (openingCents === 0) return false;
+    if (isNumericAccountName(name) && !usedAccounts.has(name)) return false;
+    return true;
+  });
+}
+
 export function normalizeTransaction(input = {}, now = new Date()) {
   const type = ["expense", "income", "transfer"].includes(input.type) ? input.type : "expense";
   const amount = Number(input.amount);
