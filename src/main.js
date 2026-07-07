@@ -2826,6 +2826,16 @@ function renderIconBadge(label, kind = "category", size = "", parentLabel = "") 
   `;
 }
 
+function renderTransactionIconBadge(txn) {
+  const category = txn.category || "其他";
+  const title = String(txn.title || "").trim();
+  const hasSubcategoryIcon = title
+    && (SUBCATEGORY_META[`${category}:${title}`] || SUBCATEGORY_META[title]);
+  return hasSubcategoryIcon
+    ? renderIconBadge(title, "subcategory", "", category)
+    : renderIconBadge(category, "category");
+}
+
 function renderTabButton(tab) {
   const active = state.activeTab === tab.id;
   const primary = tab.id === "capture";
@@ -4238,7 +4248,7 @@ function renderTransactionRow(txn) {
   return `
     <article class="txn-row action-row ${escapeHtml(transactionTone(txn))} ${projectOnly ? "project-only" : ""}" data-long-press-actions>
       <div class="txn-main">
-        ${renderIconBadge(txn.category, "category")}
+        ${renderTransactionIconBadge(txn)}
         <div class="txn-copy">
           <strong>${escapeHtml(titleLine || txn.title)}</strong>
           ${accountMeta ? `<span>${escapeHtml(accountMeta)}</span>` : ""}
