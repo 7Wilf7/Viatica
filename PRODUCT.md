@@ -6,17 +6,19 @@ product
 
 ## Users
 Wilf uses Viatica on mobile first to record daily expenses quickly and reliably.
-The app must be ready for real daily accounting by 2026-07-01.
+The app has moved past the 2026-07-01 readiness target; the current priority is
+reliable daily use, cross-device sync confidence, and fast capture.
 Because Wilf has not used a dedicated ledger app for a long time, the product
 should help him restart bookkeeping without requiring a complex setup ritual.
 
 ## Product Purpose
 Viatica is the standalone personal ledger in Wilf's Aevum / Ultreia family of
 personal tools. It owns transaction capture, editing, import/export, budgets,
-accounts, and local ledger records. The legacy book field may stay in local
-data for compatibility, but the current product should not expose multi-book
-workflow unless a real need appears. Aevum should only receive overview
-snapshots and reviewed events from Viatica.
+categories, legacy account compatibility, starting assets, and local ledger
+records. The legacy book field may stay in local data for compatibility, but the
+current product should not expose multi-book or visible account workflow unless a
+real need appears. Aevum should only receive overview snapshots and reviewed
+events from Viatica.
 
 ## Brand Personality
 Precise, calm, practical. It should feel like a durable ledger tool rather than
@@ -67,6 +69,9 @@ a gamified finance app.
   `viatica_transactions`. On sign-in, Viatica merges device data with cloud
   data instead of replacing either side. The APK, mobile PWA, and desktop PWA
   should converge through the Aevum account.
+- Save feedback is part of the sync contract: local writes may complete first,
+  but signed-in mutations should show uploading/saved/retry status so Wilf can
+  distinguish a local save from a completed cloud write.
 - Data must remain portable, but CSV import/export and full JSON backup are
   maintenance capabilities rather than default Settings-home actions while the
   product moves toward Aevum account sync.
@@ -90,9 +95,9 @@ a gamified finance app.
   separate Web-only maintenance action.
 
 ## Current Milestone
-The active milestone is to make the PWA ready for real daily accounting by
-2026-07-01. The priority is not AI features yet; it is speed, clarity, account
-setup, backup, and confidence in the transaction workflow.
+The active milestone after `v0.2.5` is reliable daily accounting: keep capture
+fast, make sync status visible, prevent Demo and personal cache contamination,
+and preserve the accountless Assets model. AI features remain later work.
 
 ## Demo Account
 Viatica does not expose an in-app Personal / Demo data mode. Product demos use a

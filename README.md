@@ -21,8 +21,8 @@ GitHub repository, not as a subfolder inside Aevum or Ultreia.
   spending against editable monthly targets in Settings.
 - Settings uses compact list rows; Manual, Changelog, and Category budgets open
   as second-level pages.
-- Books, legacy account compatibility, starting assets, categories, and editable
-  category budgets.
+- Legacy book/account compatibility, one starting-assets value, categories, and
+  editable category budgets.
 - Local browser persistence under `viatica:v1`, with Aevum-account cloud sync
   when signed in.
 - CSV import/export and JSON backup remain maintenance capabilities, but they
@@ -64,6 +64,10 @@ the old account's local snapshot to the new account. If entries are saved before
 the restored Aevum session is ready, those pending signed-out transactions are
 merged into the real account cache on sign-in, while Demo seed transactions are
 still ignored.
+
+Signed-in data mutations show compact upload/saved/retry feedback. A local save
+should not be presented as a completed cloud write until the matching Supabase
+sync finishes.
 
 ## Cloud Demo Account
 

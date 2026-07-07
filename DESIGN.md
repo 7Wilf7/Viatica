@@ -121,18 +121,18 @@ transaction rows, and data-first cards that feel useful rather than decorative.
 - The login screen follows Ultreia's auth composition: centered product logo,
   small 中 / EN language pill, restrained email/password form, and compact
   secondary actions. Viatica must not store saved passwords in localStorage.
-- The Personal / Demo data mode switch belongs in Settings. It uses the same
-  compact capsule vocabulary as the language switch. Demo mode is a display
-  privacy layer, not a second data model: it shows bundled sample ledger data
-  in the current review month and blocks real-data actions with a clear toast
-  reminder.
-- Settings owns Aevum account entry, data mode, the guide/changelog, editable
-  budgets, app updates, cloud sync, and PWA/storage notes. The cloud sync row
-  should be compact: show whether the user needs to sign in, is syncing, has
-  synced, or hit an error; tapping it runs a manual merge sync. Do not foreground
-  CSV import, CSV export, or JSON backup on the Settings home while the product
-  direction is Aevum account sync; keep backup-style actions as maintenance
-  capabilities unless Wilf asks to surface them again.
+- Product demos use a dedicated Aevum Demo account, not an in-app Personal /
+  Demo data mode switch. Settings should never present Demo as a second local
+  data model; it should only expose the active Aevum account state.
+- Settings owns Aevum account entry, shared profile fields, the guide/changelog,
+  editable budgets, app updates, cloud sync, and PWA/storage notes. The cloud
+  sync row should be compact: show whether the user needs to sign in, is
+  syncing, has synced, or hit an error; tapping it runs a manual merge sync.
+  Mutations made while signed in also need compact upload/saved/retry feedback
+  outside Settings. Do not foreground CSV import, CSV export, or JSON backup on
+  the Settings home while the product direction is Aevum account sync; keep
+  backup-style actions as maintenance capabilities unless Wilf asks to surface
+  them again.
 - Budget rows and transaction rows use dense panels, not oversized cards.
   Transaction rows prioritize category icon, title, time/type context, and
   amount; account names stay hidden unless account switching is reintroduced.

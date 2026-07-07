@@ -3,9 +3,9 @@
 ## Project Purpose
 Viatica is Wilf's standalone personal ledger and resource-management app in the
 Aevum ecosystem. It owns transaction capture, editing, import/export, budgets,
-accounts, categories, and local financial records. The legacy book field may
-remain in local data for compatibility, but multi-book workflow should not be
-foregrounded unless Wilf explicitly asks for it again.
+categories, legacy account compatibility, and local financial records. The
+legacy book field may remain in local data for compatibility, but multi-book
+workflow should not be foregrounded unless Wilf explicitly asks for it again.
 Aevum only keeps overview data, app entry points, and reviewed cross-product
 events.
 
@@ -77,6 +77,9 @@ of copying training-specific behavior.
   `viatica_transactions`. Sync must preserve local data: first pull cloud rows,
   merge by transaction id, keep the newest `updatedAt` when ids match, then
   upsert the merged state.
+- Data mutations save to local cache immediately. When signed in, mark cloud
+  write pending, show compact upload/saved/retry feedback, and retry failed
+  writes instead of silently treating local save as cloud success.
 - Local account records and opening balances may remain inside the `viatica:v1`
   model for backwards compatibility, but the current UI should not foreground a
   user-facing account workflow. Treat Assets as one starting-assets value plus
@@ -123,10 +126,11 @@ of copying training-specific behavior.
   guide page. Budget editing and other long explanatory content also open as
   second-level pages. Do not foreground CSV import, CSV export, or JSON backup
   on the Settings home while the active direction is Aevum account sync.
-- Viatica may provide a Personal / Demo data mode switch for safe demos. Demo
-  mode must use bundled sample ledger data for display only, must not overwrite
-  `viatica:v1`, and must block add/edit/delete/import/export-style real-data
-  actions with a clear reminder to switch back to Personal mode first.
+- Viatica should not expose an in-app Personal / Demo data mode switch. Product
+  demos use a dedicated Aevum Demo account seeded from `src/core/demoData.js`;
+  runtime UI reads and writes only the active Aevum account or the signed-out
+  local cache. Non-Demo accounts strip `demo_txn_*` and likely demo seed
+  artifacts during sync.
 - Assets owns total assets, the hidden starting-assets value, legacy account
   compatibility, and category budgets. Starting-assets editing stays behind a
   long-press on Assets Overview, uses Viatica's built-in amount keypad, and
@@ -194,6 +198,9 @@ of copying training-specific behavior.
   available across devices.
 - After every `git pull`, list the updates pulled from remote before continuing,
   including commit subjects and changed files when available.
+- On this macOS checkout, HTTPS Git operations may fail with local issuer
+  certificate errors; use `git@github.com-personal:7Wilf7/Viatica.git` for
+  fetch/push when needed without changing the configured remote unless asked.
 
 ## Deployment
 - After any verified project change is committed and pushed, deploy the current
