@@ -1,5 +1,6 @@
 import "./styles.css";
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { thiingsIconUrls } from "./assets/thiings/index.js";
 import { productLogoUrl } from "./assets/logo.js";
 import {
   CATEGORIES,
@@ -520,67 +521,67 @@ const GLYPHS = {
 };
 
 const CATEGORY_META = {
-  "餐饮": { icon: "food", fg: "oklch(0.70 0.11 50)", bg: "oklch(0.70 0.11 50 / 0.16)" },
-  "交通": { icon: "transport", fg: "oklch(0.68 0.11 230)", bg: "oklch(0.68 0.11 230 / 0.15)" },
-  "购物": { icon: "shopping", fg: "oklch(0.72 0.10 330)", bg: "oklch(0.72 0.10 330 / 0.15)" },
-  "运动": { icon: "training", fg: "oklch(0.70 0.09 160)", bg: "oklch(0.70 0.09 160 / 0.15)" },
-  "生活": { icon: "home", fg: "oklch(0.74 0.07 72)", bg: "oklch(0.74 0.07 72 / 0.15)" },
-  "健康": { icon: "health", fg: "oklch(0.72 0.13 24)", bg: "oklch(0.72 0.13 24 / 0.15)" },
-  "AI 工具": { icon: "ai", fg: "oklch(0.73 0.10 275)", bg: "oklch(0.73 0.10 275 / 0.15)" },
-  "订阅": { icon: "app", fg: "oklch(0.72 0.10 85)", bg: "oklch(0.72 0.10 85 / 0.16)" },
-  "学习": { icon: "learning", fg: "oklch(0.73 0.09 245)", bg: "oklch(0.73 0.09 245 / 0.15)" },
-  "娱乐": { icon: "entertainment", fg: "oklch(0.76 0.10 95)", bg: "oklch(0.76 0.10 95 / 0.16)" },
-  "旅行": { icon: "travel", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
-  "工作": { icon: "work", fg: "oklch(0.76 0.08 82)", bg: "oklch(0.76 0.08 82 / 0.16)" },
-  "薪酬": { icon: "salary", fg: "oklch(0.76 0.08 120)", bg: "oklch(0.76 0.08 120 / 0.15)" },
-  "红包": { icon: "gift", fg: "oklch(0.72 0.13 28)", bg: "oklch(0.72 0.13 28 / 0.14)" },
-  "转入": { icon: "transferIn", fg: "oklch(0.72 0.10 165)", bg: "oklch(0.72 0.10 165 / 0.14)" },
-  "退款": { icon: "refund", fg: "oklch(0.74 0.08 205)", bg: "oklch(0.74 0.08 205 / 0.14)" },
-  "其他收入": { icon: "cash", fg: "oklch(0.76 0.05 118)", bg: "oklch(0.76 0.05 118 / 0.13)" },
-  "其他": { icon: "more", fg: "oklch(0.76 0.05 85)", bg: "oklch(0.76 0.05 85 / 0.13)" },
+  "餐饮": { icon: "food", thing: "hamburger", fg: "oklch(0.70 0.11 50)", bg: "oklch(0.70 0.11 50 / 0.16)" },
+  "交通": { icon: "transport", thing: "car", fg: "oklch(0.68 0.11 230)", bg: "oklch(0.68 0.11 230 / 0.15)" },
+  "购物": { icon: "shopping", thing: "shoppingBag", fg: "oklch(0.72 0.10 330)", bg: "oklch(0.72 0.10 330 / 0.15)" },
+  "运动": { icon: "training", thing: "gear", fg: "oklch(0.70 0.09 160)", bg: "oklch(0.70 0.09 160 / 0.15)" },
+  "生活": { icon: "home", thing: "house", fg: "oklch(0.74 0.07 72)", bg: "oklch(0.74 0.07 72 / 0.15)" },
+  "健康": { icon: "health", thing: "heart", fg: "oklch(0.72 0.13 24)", bg: "oklch(0.72 0.13 24 / 0.15)" },
+  "AI 工具": { icon: "ai", thing: "robot", fg: "oklch(0.73 0.10 275)", bg: "oklch(0.73 0.10 275 / 0.15)" },
+  "订阅": { icon: "app", thing: "subscription", fg: "oklch(0.72 0.10 85)", bg: "oklch(0.72 0.10 85 / 0.16)" },
+  "学习": { icon: "learning", thing: "book", fg: "oklch(0.73 0.09 245)", bg: "oklch(0.73 0.09 245 / 0.15)" },
+  "娱乐": { icon: "entertainment", thing: "gameController", fg: "oklch(0.76 0.10 95)", bg: "oklch(0.76 0.10 95 / 0.16)" },
+  "旅行": { icon: "travel", thing: "airplane", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
+  "工作": { icon: "work", thing: "briefcase", fg: "oklch(0.76 0.08 82)", bg: "oklch(0.76 0.08 82 / 0.16)" },
+  "薪酬": { icon: "salary", thing: "money", fg: "oklch(0.76 0.08 120)", bg: "oklch(0.76 0.08 120 / 0.15)" },
+  "红包": { icon: "gift", thing: "gift", fg: "oklch(0.72 0.13 28)", bg: "oklch(0.72 0.13 28 / 0.14)" },
+  "转入": { icon: "transferIn", thing: "cash", fg: "oklch(0.72 0.10 165)", bg: "oklch(0.72 0.10 165 / 0.14)" },
+  "退款": { icon: "refund", thing: "refund", fg: "oklch(0.74 0.08 205)", bg: "oklch(0.74 0.08 205 / 0.14)" },
+  "其他收入": { icon: "cash", thing: "cash", fg: "oklch(0.76 0.05 118)", bg: "oklch(0.76 0.05 118 / 0.13)" },
+  "其他": { icon: "more", thing: "box", fg: "oklch(0.76 0.05 85)", bg: "oklch(0.76 0.05 85 / 0.13)" },
 };
 
 const SUBCATEGORY_META = {
-  "早餐": { icon: "food" },
-  "午餐": { icon: "food" },
-  "晚餐": { icon: "food" },
-  "宵夜": { icon: "food" },
-  "咖啡奶茶": { icon: "cash" },
-  "水果": { icon: "food" },
-  "零食": { icon: "food" },
-  "共享单车": { icon: "bike" },
-  "地铁": { icon: "metro" },
-  "打车": { icon: "taxi" },
-  "日用品": { icon: "shopping" },
-  "服饰": { icon: "shirt" },
-  "数码": { icon: "device" },
-  "家居": { icon: "sofa" },
-  "装备": { icon: "gear" },
-  "补给": { icon: "food" },
-  "康复": { icon: "health" },
-  "训练课": { icon: "training" },
-  "赛事报名": { icon: "ticket" },
-  "房租": { icon: "home" },
-  "理发": { icon: "scissors" },
-  "话费": { icon: "phone" },
-  "保险": { icon: "shield" },
-  "医疗": { icon: "health" },
-  "药品": { icon: "capsule" },
-  "ChatGPT": { icon: "ai" },
-  "Aevum": { icon: "ai" },
-  "App": { icon: "app" },
-  "课程": { icon: "learning" },
-  "书籍": { icon: "book" },
-  "资料": { icon: "file" },
-  "工具": { icon: "device" },
-  "电影": { icon: "movie" },
-  "游戏": { icon: "game" },
-  "交通": { icon: "transport" },
-  "住宿": { icon: "hotel" },
-  "门票": { icon: "ticket" },
-  "提现手续费": { icon: "fee" },
-  "工资": { icon: "salary" },
-  "家教费": { icon: "learning" },
+  "早餐": { icon: "food", thing: "hamburger" },
+  "午餐": { icon: "food", thing: "hamburger" },
+  "晚餐": { icon: "food", thing: "hamburger" },
+  "宵夜": { icon: "food", thing: "hamburger" },
+  "咖啡奶茶": { icon: "cash", thing: "coffee" },
+  "水果": { icon: "food", thing: "hamburger" },
+  "零食": { icon: "food", thing: "hamburger" },
+  "共享单车": { icon: "bike", thing: "car" },
+  "地铁": { icon: "metro", thing: "train" },
+  "打车": { icon: "taxi", thing: "taxi" },
+  "日用品": { icon: "shopping", thing: "shoppingBag" },
+  "服饰": { icon: "shirt", thing: "shoppingBag" },
+  "数码": { icon: "device", thing: "creditCard" },
+  "家居": { icon: "sofa", thing: "sofa" },
+  "装备": { icon: "gear", thing: "gear" },
+  "补给": { icon: "food", thing: "hamburger" },
+  "康复": { icon: "health", thing: "heart" },
+  "训练课": { icon: "training", thing: "gear" },
+  "赛事报名": { icon: "ticket", thing: "gear" },
+  "房租": { icon: "home", thing: "house" },
+  "理发": { icon: "scissors", thing: "scissors" },
+  "话费": { icon: "phone", thing: "phone" },
+  "保险": { icon: "shield", thing: "shield" },
+  "医疗": { icon: "health", thing: "heart" },
+  "药品": { icon: "capsule", thing: "heart" },
+  "ChatGPT": { icon: "ai", thing: "robot" },
+  "Aevum": { icon: "ai", thing: "robot" },
+  "App": { icon: "app", thing: "subscription" },
+  "课程": { icon: "learning", thing: "book" },
+  "书籍": { icon: "book", thing: "book" },
+  "资料": { icon: "file", thing: "book" },
+  "工具": { icon: "device", thing: "creditCard" },
+  "电影": { icon: "movie", thing: "gameController" },
+  "游戏": { icon: "game", thing: "gameController" },
+  "交通": { icon: "transport", thing: "car" },
+  "住宿": { icon: "hotel", thing: "suitcase" },
+  "门票": { icon: "ticket", thing: "airplane" },
+  "提现手续费": { icon: "fee", thing: "cash" },
+  "工资": { icon: "salary", thing: "money" },
+  "家教费": { icon: "learning", thing: "book" },
 };
 
 const ACCOUNT_META = {
@@ -1355,6 +1356,8 @@ const MESSAGES = {
     "settings.dataSection": "数据",
     "settings.productSection": "产品",
     "settings.localSection": "本机",
+    "settings.iconCreditTitle": "分类图标",
+    "settings.iconCreditHint": "部分分类图标来自",
     "settings.cloudSyncTitle": "云同步",
     "settings.cloudSyncHint": "把本机账本和 Aevum 云端合并",
     "settings.cloudSyncSignIn": "先登录",
@@ -1585,6 +1588,8 @@ const MESSAGES = {
     "settings.dataSection": "Data",
     "settings.productSection": "Product",
     "settings.localSection": "Local",
+    "settings.iconCreditTitle": "Category Icons",
+    "settings.iconCreditHint": "Some category icons by",
     "settings.cloudSyncTitle": "Cloud Sync",
     "settings.cloudSyncHint": "Merge this ledger with Aevum cloud",
     "settings.cloudSyncSignIn": "Sign In First",
@@ -2806,9 +2811,12 @@ function iconMeta(label, kind = "category", parentLabel = "") {
 function renderIconBadge(label, kind = "category", size = "", parentLabel = "") {
   const meta = iconMeta(label, kind, parentLabel);
   const sizeClass = size ? ` ${size}` : "";
+  const thingUrl = meta.thing ? thiingsIconUrls[meta.thing] : "";
   return `
     <span class="icon-badge${sizeClass}" style="--icon-bg: ${meta.bg}; --icon-fg: ${meta.fg};" aria-hidden="true">
-      ${glyphSvg(meta.icon)}
+      ${thingUrl
+        ? `<img class="thing-icon" src="${thingUrl}" alt="" loading="lazy" decoding="async">`
+        : glyphSvg(meta.icon)}
     </span>
   `;
 }
@@ -3475,6 +3483,7 @@ function renderSettingsTab() {
         renderSettingsCell(t("settings.languageTitle"), "", renderLanguageSwitch()),
         renderSettingsCell(t("settings.manualTitle"), "", "", "manual"),
         renderAppUpdateChecker(),
+        renderIconCreditCell(),
       ])}
 
       ${isNativeApp() ? "" : renderSettingsSection(t("settings.localSection"), [
@@ -3684,6 +3693,20 @@ function renderSettingsCell(primary, secondary = "", right = "", action = "", di
     <button class="settings-cell" data-action="${escapeHtml(isSettingsContent ? "settings-content" : action)}" ${isSettingsContent ? `data-content="${escapeHtml(action)}"` : ""} ${disabled ? "disabled aria-busy=\"true\"" : ""}>
       ${content}
     </button>
+  `;
+}
+
+function renderIconCreditCell() {
+  return `
+    <div class="settings-cell icon-credit-cell">
+      <span class="settings-cell-copy">
+        <strong>${escapeHtml(t("settings.iconCreditTitle"))}</strong>
+        <span>
+          ${escapeHtml(t("settings.iconCreditHint"))}
+          <a href="https://www.thiings.co" target="_blank" rel="noreferrer">Thiings.co</a>
+        </span>
+      </span>
+    </div>
   `;
 }
 
