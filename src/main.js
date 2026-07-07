@@ -120,6 +120,7 @@ const state = {
   captureDraft: null,
   captureProjectOpen: false,
   budgetKeypadCategory: "",
+  budgetDraft: null,
   startingAssetsFormOpen: false,
   editingTransactionId: null,
   pwaRefreshInProgress: false,
@@ -318,6 +319,113 @@ const GLYPHS = {
     <path d="M5 5 C5 3.4 5.8 2.5 7 2.5 C8.2 2.5 9 3.4 9 5" />
     <path d="M5.2 7.7 H8.8" />
   `,
+  home: `
+    <path d="M2.3 6.5 L7 2.7 L11.7 6.5" />
+    <path d="M3.5 6.1 V11.2 H10.5 V6.1" />
+    <path d="M5.8 11.2 V8.2 H8.2 V11.2" />
+  `,
+  phone: `
+    <rect x="4.3" y="1.9" width="5.4" height="10.2" rx="1.2" />
+    <path d="M6.2 3.4 H7.8" />
+    <path d="M6.8 10.4 H7.2" />
+  `,
+  scissors: `
+    <circle cx="4.1" cy="10" r="1.3" />
+    <circle cx="9.9" cy="10" r="1.3" />
+    <path d="M5.1 9 L10.6 3.5" />
+    <path d="M8.9 9 L3.4 3.5" />
+  `,
+  bike: `
+    <circle cx="4" cy="9.2" r="2" />
+    <circle cx="10" cy="9.2" r="2" />
+    <path d="M4 9.2 L6.2 5.6 H8 L10 9.2" />
+    <path d="M6.2 5.6 L8.1 9.2 H5.2" />
+    <path d="M7.8 4.2 H9.2" />
+  `,
+  metro: `
+    <rect x="3.1" y="2.4" width="7.8" height="7.8" rx="1.5" />
+    <path d="M4.8 4.6 H9.2" />
+    <path d="M4.7 7.1 H4.75" />
+    <path d="M9.2 7.1 H9.25" />
+    <path d="M5.2 10.2 L4.3 11.6" />
+    <path d="M8.8 10.2 L9.7 11.6" />
+  `,
+  taxi: `
+    <path d="M2.5 7.5 L3.8 4.7 C4.1 4.1 4.6 3.8 5.3 3.8 H8.7 C9.4 3.8 9.9 4.1 10.2 4.7 L11.5 7.5" />
+    <rect x="2.3" y="6.8" width="9.4" height="3.2" rx="1" />
+    <path d="M5.7 3.8 V2.8 H8.3 V3.8" />
+    <path d="M4.2 8.4 H4.25" />
+    <path d="M9.8 8.4 H9.85" />
+  `,
+  shirt: `
+    <path d="M5 2.8 C5.5 3.4 6.1 3.7 7 3.7 C7.9 3.7 8.5 3.4 9 2.8 L11.5 4.2 L10.2 6.4 L9.2 5.8 V11.4 H4.8 V5.8 L3.8 6.4 L2.5 4.2 Z" />
+  `,
+  device: `
+    <rect x="3.1" y="3.2" width="7.8" height="7.1" rx="1.1" />
+    <path d="M5.2 11.5 H8.8" />
+    <path d="M7 10.3 V11.5" />
+  `,
+  sofa: `
+    <path d="M3.2 7.1 V5.2 C3.2 4.4 3.8 3.9 4.6 3.9 H9.4 C10.2 3.9 10.8 4.4 10.8 5.2 V7.1" />
+    <path d="M2.4 7.1 H11.6 V10.5 H2.4 Z" />
+    <path d="M4.2 10.5 V11.5" />
+    <path d="M9.8 10.5 V11.5" />
+  `,
+  shield: `
+    <path d="M7 2.2 L11 3.8 V6.8 C11 9.2 9.4 10.8 7 11.8 C4.6 10.8 3 9.2 3 6.8 V3.8 Z" />
+    <path d="M5.2 7 L6.4 8.2 L8.9 5.5" />
+  `,
+  capsule: `
+    <path d="M4.2 9.8 C3.2 8.8 3.2 7.2 4.2 6.2 L6.2 4.2 C7.2 3.2 8.8 3.2 9.8 4.2 C10.8 5.2 10.8 6.8 9.8 7.8 L7.8 9.8 C6.8 10.8 5.2 10.8 4.2 9.8 Z" />
+    <path d="M5.6 5.6 L8.4 8.4" />
+  `,
+  app: `
+    <rect x="2.6" y="2.6" width="3.2" height="3.2" rx="0.8" />
+    <rect x="8.2" y="2.6" width="3.2" height="3.2" rx="0.8" />
+    <rect x="2.6" y="8.2" width="3.2" height="3.2" rx="0.8" />
+    <rect x="8.2" y="8.2" width="3.2" height="3.2" rx="0.8" />
+  `,
+  book: `
+    <path d="M3 2.7 H6.2 C6.7 2.7 7 3.1 7 3.6 V11.2 C7 10.7 6.6 10.4 6 10.4 H3 Z" />
+    <path d="M11 2.7 H7.8 C7.3 2.7 7 3.1 7 3.6 V11.2 C7 10.7 7.4 10.4 8 10.4 H11 Z" />
+  `,
+  file: `
+    <path d="M4 2.3 H8.4 L10.6 4.6 V11.7 H4 Z" />
+    <path d="M8.4 2.3 V4.6 H10.6" />
+    <path d="M5.6 7.1 H8.6" />
+    <path d="M5.6 9 H8.2" />
+  `,
+  movie: `
+    <rect x="2.5" y="3.1" width="9" height="7.8" rx="1.2" />
+    <path d="M4.4 3.1 V10.9" />
+    <path d="M9.6 3.1 V10.9" />
+    <path d="M2.5 5.4 H11.5" />
+    <path d="M2.5 8.6 H11.5" />
+  `,
+  game: `
+    <path d="M4.1 6 H9.9 C11.1 6 11.9 6.8 12.1 8.1 L12.3 9.7 C12.4 10.6 11.4 11.2 10.7 10.5 L9.5 9.3 H4.5 L3.3 10.5 C2.6 11.2 1.6 10.6 1.7 9.7 L1.9 8.1 C2.1 6.8 2.9 6 4.1 6 Z" />
+    <path d="M4.7 7.6 V9" />
+    <path d="M4 8.3 H5.4" />
+    <path d="M9.3 8 H9.35" />
+    <path d="M10.5 8.7 H10.55" />
+  `,
+  hotel: `
+    <rect x="2.8" y="3" width="8.4" height="8.4" rx="1.1" />
+    <path d="M5 11.4 V8.6 H9 V11.4" />
+    <path d="M4.8 5.4 H4.85" />
+    <path d="M7 5.4 H7.05" />
+    <path d="M9.2 5.4 H9.25" />
+  `,
+  ticket: `
+    <path d="M2.6 4.4 H11.4 V6.1 C10.6 6.1 10 6.5 10 7 C10 7.5 10.6 7.9 11.4 7.9 V9.6 H2.6 V7.9 C3.4 7.9 4 7.5 4 7 C4 6.5 3.4 6.1 2.6 6.1 Z" />
+    <path d="M6.8 5.2 V8.8" />
+  `,
+  fee: `
+    <path d="M4.2 3.4 H9.8 V11.2 H4.2 Z" />
+    <path d="M5.6 5.4 H8.4" />
+    <path d="M5.6 7.2 H8.4" />
+    <path d="M5.6 9 H7.2" />
+  `,
   gear: `
     <path d="M3 9.5 C4.6 8.1 5.4 5.6 6.1 3.1 L8.1 3.7 C7.9 5.2 8.5 6.5 10.2 7.9 C11.3 8.8 11.1 10.8 9.4 11.2 C7.3 11.7 4.6 10.9 3 9.5 Z" />
     <path d="M5.4 8.3 L8.9 9.3" />
@@ -416,10 +524,10 @@ const CATEGORY_META = {
   "交通": { icon: "transport", fg: "oklch(0.68 0.11 230)", bg: "oklch(0.68 0.11 230 / 0.15)" },
   "购物": { icon: "shopping", fg: "oklch(0.72 0.10 330)", bg: "oklch(0.72 0.10 330 / 0.15)" },
   "运动": { icon: "training", fg: "oklch(0.70 0.09 160)", bg: "oklch(0.70 0.09 160 / 0.15)" },
-  "生活": { icon: "work", fg: "oklch(0.74 0.07 72)", bg: "oklch(0.74 0.07 72 / 0.15)" },
+  "生活": { icon: "home", fg: "oklch(0.74 0.07 72)", bg: "oklch(0.74 0.07 72 / 0.15)" },
   "健康": { icon: "health", fg: "oklch(0.72 0.13 24)", bg: "oklch(0.72 0.13 24 / 0.15)" },
   "AI 工具": { icon: "ai", fg: "oklch(0.73 0.10 275)", bg: "oklch(0.73 0.10 275 / 0.15)" },
-  "订阅": { icon: "subscription", fg: "oklch(0.72 0.10 85)", bg: "oklch(0.72 0.10 85 / 0.16)" },
+  "订阅": { icon: "app", fg: "oklch(0.72 0.10 85)", bg: "oklch(0.72 0.10 85 / 0.16)" },
   "学习": { icon: "learning", fg: "oklch(0.73 0.09 245)", bg: "oklch(0.73 0.09 245 / 0.15)" },
   "娱乐": { icon: "entertainment", fg: "oklch(0.76 0.10 95)", bg: "oklch(0.76 0.10 95 / 0.16)" },
   "旅行": { icon: "travel", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
@@ -430,6 +538,49 @@ const CATEGORY_META = {
   "退款": { icon: "refund", fg: "oklch(0.74 0.08 205)", bg: "oklch(0.74 0.08 205 / 0.14)" },
   "其他收入": { icon: "cash", fg: "oklch(0.76 0.05 118)", bg: "oklch(0.76 0.05 118 / 0.13)" },
   "其他": { icon: "more", fg: "oklch(0.76 0.05 85)", bg: "oklch(0.76 0.05 85 / 0.13)" },
+};
+
+const SUBCATEGORY_META = {
+  "早餐": { icon: "food" },
+  "午餐": { icon: "food" },
+  "晚餐": { icon: "food" },
+  "宵夜": { icon: "food" },
+  "咖啡奶茶": { icon: "cash" },
+  "水果": { icon: "food" },
+  "零食": { icon: "food" },
+  "共享单车": { icon: "bike" },
+  "地铁": { icon: "metro" },
+  "打车": { icon: "taxi" },
+  "日用品": { icon: "shopping" },
+  "服饰": { icon: "shirt" },
+  "数码": { icon: "device" },
+  "家居": { icon: "sofa" },
+  "装备": { icon: "gear" },
+  "补给": { icon: "food" },
+  "康复": { icon: "health" },
+  "训练课": { icon: "training" },
+  "赛事报名": { icon: "ticket" },
+  "房租": { icon: "home" },
+  "理发": { icon: "scissors" },
+  "话费": { icon: "phone" },
+  "保险": { icon: "shield" },
+  "医疗": { icon: "health" },
+  "药品": { icon: "capsule" },
+  "ChatGPT": { icon: "ai" },
+  "Aevum": { icon: "ai" },
+  "App": { icon: "app" },
+  "课程": { icon: "learning" },
+  "书籍": { icon: "book" },
+  "资料": { icon: "file" },
+  "工具": { icon: "device" },
+  "电影": { icon: "movie" },
+  "游戏": { icon: "game" },
+  "交通": { icon: "transport" },
+  "住宿": { icon: "hotel" },
+  "门票": { icon: "ticket" },
+  "提现手续费": { icon: "fee" },
+  "工资": { icon: "salary" },
+  "家教费": { icon: "learning" },
 };
 
 const ACCOUNT_META = {
@@ -446,7 +597,7 @@ const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
   { category: "交通", items: ["共享单车", "地铁", "打车"] },
   { category: "购物", items: ["日用品", "服饰", "数码", "家居"] },
   { category: "运动", items: ["装备", "补给", "康复", "训练课", "赛事报名"] },
-  { category: "生活", items: ["房租", "理发"] },
+  { category: "生活", items: ["房租", "理发", "话费"] },
   { category: "健康", items: ["保险", "医疗", "药品"] },
   { category: "AI 工具", items: ["ChatGPT", "Aevum"] },
   { category: "订阅", items: ["App"] },
@@ -1636,6 +1787,24 @@ function activeLedgerState() {
   };
 }
 
+function editableBudgets() {
+  return state.budgetDraft || state.budgets;
+}
+
+function ensureBudgetDraft() {
+  if (!state.budgetDraft) state.budgetDraft = { ...state.budgets };
+  return state.budgetDraft;
+}
+
+function syncBudgetDraftFromForm(form) {
+  if (!form || form.getAttribute("id") !== "budget-form") return;
+  const draft = ensureBudgetDraft();
+  for (const category of CATEGORIES) {
+    const field = form.elements.namedItem(category);
+    if (field) draft[category] = field.value;
+  }
+}
+
 function localLedgerSnapshot() {
   return {
     transactions: state.transactions,
@@ -2619,13 +2788,23 @@ function renderTabIcon(tabId) {
   return glyphSvg(tabId === "capture" ? "plus" : tabId, "tab-svg");
 }
 
-function iconMeta(label, kind = "category") {
+function iconMeta(label, kind = "category", parentLabel = "") {
   if (kind === "account") return ACCOUNT_META[label] || ACCOUNT_META["其他"];
+  if (kind === "subcategory") {
+    const categoryMeta = CATEGORY_META[parentLabel] || CATEGORY_META["其他"];
+    const meta = SUBCATEGORY_META[`${parentLabel}:${label}`] || SUBCATEGORY_META[label] || {};
+    return {
+      ...categoryMeta,
+      ...meta,
+      fg: meta.fg || categoryMeta.fg,
+      bg: meta.bg || categoryMeta.bg,
+    };
+  }
   return CATEGORY_META[label] || CATEGORY_META["其他"];
 }
 
-function renderIconBadge(label, kind = "category", size = "") {
-  const meta = iconMeta(label, kind);
+function renderIconBadge(label, kind = "category", size = "", parentLabel = "") {
+  const meta = iconMeta(label, kind, parentLabel);
   const sizeClass = size ? ` ${size}` : "";
   return `
     <span class="icon-badge${sizeClass}" style="--icon-bg: ${meta.bg}; --icon-fg: ${meta.fg};" aria-hidden="true">
@@ -3680,7 +3859,7 @@ function renderLanguageSwitch() {
 }
 
 function renderBudgetSettings() {
-  const { budgets } = activeLedgerState();
+  const budgets = editableBudgets();
   return `
     <form id="budget-form" class="budget-form">
       <p class="settings-page-hint">${escapeHtml(t("settings.budgetPageHint"))}</p>
@@ -3857,7 +4036,8 @@ function renderCaptureCategoryBoard(txn) {
         <div class="capture-subcategory-grid active" data-subcategory-group="${escapeHtml(selectedCategory)}">
           ${selectedItems.map((item) => `
             <button class="capture-subcategory-button ${selectedTitle === item ? "active" : ""}" type="button" data-action="pick-subcategory" data-category="${escapeHtml(selectedCategory)}" data-title="${escapeHtml(item)}">
-              ${escapeHtml(item)}
+              ${renderIconBadge(item, "subcategory", "tiny", selectedCategory)}
+              <span>${escapeHtml(item)}</span>
             </button>
           `).join("")}
         </div>
@@ -4244,6 +4424,8 @@ function applyAmountKey(button) {
   if (!input) return;
   input.value = nextAmountValue(String(input.value || ""), button.dataset.key || "");
   if (budgetRow) {
+    const category = budgetRow.dataset.budgetCategory || "";
+    if (category) ensureBudgetDraft()[category] = input.value;
     syncBudgetAmountDisplay(budgetRow);
   } else if (startingAssetsInput) {
     syncStartingAssetsDisplay(form);
@@ -4491,14 +4673,18 @@ document.addEventListener("submit", (event) => {
   }
   if (form.getAttribute("id") === "budget-form") {
     try {
+      syncBudgetDraftFromForm(form);
+      const budgetSource = editableBudgets();
       const nextBudgets = {};
       for (const category of CATEGORIES) {
-        const value = Number(form.elements.namedItem(category)?.value || 0);
+        const value = Number(budgetSource[category] || 0);
         if (!Number.isFinite(value) || value < 0) throw new Error(t("settings.budgetInvalid"));
         nextBudgets[category] = Math.round(value * 100) / 100;
       }
       state.budgets = nextBudgets;
+      state.preferences.updatedAt = new Date().toISOString();
       state.budgetKeypadCategory = "";
+      state.budgetDraft = null;
       persist();
       render();
       toast(t("settings.budgetSaved"));
@@ -4648,6 +4834,7 @@ document.addEventListener("click", (event) => {
     render();
   }
   if (action === "activate-budget-keypad") {
+    syncBudgetDraftFromForm(node.closest("form"));
     state.budgetKeypadCategory = state.budgetKeypadCategory === node.dataset.category
       ? ""
       : node.dataset.category || "";
@@ -4752,6 +4939,8 @@ document.addEventListener("click", (event) => {
   if (action === "reset-budgets") {
     state.budgets = { ...DEFAULT_BUDGETS };
     state.budgetKeypadCategory = "";
+    state.budgetDraft = null;
+    state.preferences.updatedAt = new Date().toISOString();
     persist();
     render();
     toast(t("settings.budgetResetDone"));

@@ -231,6 +231,16 @@ function normalizeBudgetRows(rows = []) {
   return budgets;
 }
 
+function mergeBudgetsByFreshness(localState = {}, remoteState = {}) {
+  const localBudgets = localState.budgets || {};
+  const remoteBudgets = remoteState.budgets || {};
+  const localTime = timeValue(localState.preferences?.updatedAt);
+  const remoteTime = timeValue(remoteState.preferences?.updatedAt);
+  return normalizeBudgets(localTime > remoteTime
+    ? { ...remoteBudgets, ...localBudgets }
+    : { ...localBudgets, ...remoteBudgets });
+}
+
 export function mergeLedgerStates(localState = {}, remoteState = {}, now = new Date()) {
   const deletedTransactionIds = uniqueDeletedIds(localState.preferences);
   const deleted = new Set(deletedTransactionIds);
@@ -256,13 +266,7 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
   const transactions = [...byId.values()]
     .sort((a, b) => Number(new Date(b.occurredAt)) - Number(new Date(a.occurredAt)));
 
-  const remoteBudgets = remoteState.budgets && Object.keys(remoteState.budgets).length
-    ? remoteState.budgets
-    : {};
-  const budgets = normalizeBudgets({
-    ...(localState.budgets || {}),
-    ...remoteBudgets,
-  });
+  const budgets = mergeBudgetsByFreshness(localState, remoteState);
 
   const localPreferences = localState.preferences || {};
   const remotePreferences = remoteState.preferences || {};

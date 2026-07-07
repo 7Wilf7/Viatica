@@ -48,6 +48,7 @@ export const CATEGORIES = EXPENSE_CATEGORIES;
 export const EXPENSE_CATEGORY_ALIASES = {
   "运动装备": "运动",
   "比赛/训练": "运动",
+  "话费": "生活",
 };
 
 export const DEFAULT_BUDGETS = {

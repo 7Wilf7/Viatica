@@ -215,6 +215,36 @@ test("merges local and cloud transactions without dropping either side", () => {
   assert.deepEqual(merged.accounts, []);
 });
 
+test("keeps newer local budget values during cloud merge", () => {
+  const merged = mergeLedgerStates({
+    transactions: [],
+    budgets: { "餐饮": 2400 },
+    preferences: { updatedAt: "2026-07-07T10:00:00+08:00" },
+  }, {
+    transactions: [],
+    budgets: { "餐饮": 2000, "交通": 600 },
+    preferences: { updatedAt: "2026-07-06T10:00:00+08:00" },
+  });
+
+  assert.equal(merged.budgets["餐饮"], 2400);
+  assert.equal(merged.budgets["交通"], 600);
+});
+
+test("keeps newer cloud budget values during cloud merge", () => {
+  const merged = mergeLedgerStates({
+    transactions: [],
+    budgets: { "餐饮": 2400, "交通": 500 },
+    preferences: { updatedAt: "2026-07-06T10:00:00+08:00" },
+  }, {
+    transactions: [],
+    budgets: { "餐饮": 2000 },
+    preferences: { updatedAt: "2026-07-07T10:00:00+08:00" },
+  });
+
+  assert.equal(merged.budgets["餐饮"], 2000);
+  assert.equal(merged.budgets["交通"], 500);
+});
+
 test("keeps local starting assets when cloud only has the default zero", () => {
   const merged = mergeLedgerStates({
     transactions: [],

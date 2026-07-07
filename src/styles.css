@@ -1736,10 +1736,11 @@ label span {
 
 .capture-subcategory-button {
   min-height: 36px;
-  padding: 3px 5px;
+  padding: 4px 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 5px;
   overflow: hidden;
   font-size: 11px;
   line-height: 1.14;
@@ -1748,6 +1749,18 @@ label span {
   white-space: normal;
   word-break: keep-all;
   overflow-wrap: anywhere;
+}
+
+.capture-subcategory-button .icon-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+}
+
+.capture-subcategory-button > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .capture-subcategory-button:hover,
