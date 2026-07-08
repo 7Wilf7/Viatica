@@ -13,10 +13,12 @@ import chatBubbleUrl from "./chatBubble.png";
 import chipsUrl from "./chips.png";
 import cloudUrl from "./cloud.png";
 import coffeeUrl from "./coffee.png";
+import creditCardUrl from "./creditCard.png";
 import croissantUrl from "./croissant.png";
 import desktopComputerUrl from "./desktopComputer.png";
 import diceUrl from "./dice.png";
 import dumbbellUrl from "./dumbbell.png";
+import energyDrinkUrl from "./energyDrink.png";
 import fileUrl from "./file.png";
 import forkUrl from "./fork.png";
 import gameControllerUrl from "./gameController.png";
@@ -30,6 +32,7 @@ import keyUrl from "./key.png";
 import mobilePhoneUrl from "./mobilePhone.png";
 import moneyUrl from "./money.png";
 import moonUrl from "./moon.png";
+import mobileGameUrl from "./mobileGame.png";
 import movieUrl from "./movie.png";
 import openBookUrl from "./openBook.png";
 import partyPopperUrl from "./partyPopper.png";
@@ -43,9 +46,11 @@ import receiptUrl from "./receipt.png";
 import redEnvelopeUrl from "./redEnvelope.png";
 import refundUrl from "./refund.png";
 import restaurantUrl from "./restaurant.png";
+import riceBowlUrl from "./riceBowl.png";
 import robotUrl from "./robot.png";
 import sandwichUrl from "./sandwich.png";
 import scissorsUrl from "./scissors.png";
+import shishKebabUrl from "./shishKebab.png";
 import shieldUrl from "./shield.png";
 import shoppingBagUrl from "./shoppingBag.png";
 import shoppingBasketUrl from "./shoppingBasket.png";
@@ -78,10 +83,12 @@ export const thiingsIconUrls = {
   chips: chipsUrl,
   cloud: cloudUrl,
   coffee: coffeeUrl,
+  creditCard: creditCardUrl,
   croissant: croissantUrl,
   desktopComputer: desktopComputerUrl,
   dice: diceUrl,
   dumbbell: dumbbellUrl,
+  energyDrink: energyDrinkUrl,
   file: fileUrl,
   fork: forkUrl,
   gameController: gameControllerUrl,
@@ -95,6 +102,7 @@ export const thiingsIconUrls = {
   mobilePhone: mobilePhoneUrl,
   money: moneyUrl,
   moon: moonUrl,
+  mobileGame: mobileGameUrl,
   movie: movieUrl,
   openBook: openBookUrl,
   partyPopper: partyPopperUrl,
@@ -108,9 +116,11 @@ export const thiingsIconUrls = {
   redEnvelope: redEnvelopeUrl,
   refund: refundUrl,
   restaurant: restaurantUrl,
+  riceBowl: riceBowlUrl,
   robot: robotUrl,
   sandwich: sandwichUrl,
   scissors: scissorsUrl,
+  shishKebab: shishKebabUrl,
   shield: shieldUrl,
   shoppingBag: shoppingBagUrl,
   shoppingBasket: shoppingBasketUrl,

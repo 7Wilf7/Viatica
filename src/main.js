@@ -2,6 +2,7 @@ import "./styles.css";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { thiingsIconUrls } from "./assets/thiings/index.js";
 import { productLogoUrl } from "./assets/logo.js";
+import aevumLogoUrl from "../resources/brand/aevum-logo-display.png";
 import {
   CATEGORIES,
   DEFAULT_BUDGETS,
@@ -78,6 +79,10 @@ const LOCALES = [
 const PRODUCT_NAME = "Viatica";
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "0.1.0";
 const GITHUB_RELEASES_API = "https://api.github.com/repos/7Wilf7/Viatica/releases/latest";
+const BRAND_ICON_URLS = {
+  viatica: productLogoUrl,
+  aevum: aevumLogoUrl,
+};
 const SUPABASE_PUBLIC_URL = (import.meta.env?.VITE_SUPABASE_URL || "").replace(/\/+$/, "");
 const MIRROR_APK_URL = SUPABASE_PUBLIC_URL
   ? `${SUPABASE_PUBLIC_URL}/storage/v1/object/public/releases/viatica-latest.apk`
@@ -568,9 +573,9 @@ const CATEGORY_META = {
   "健康": { icon: "health", thing: "heart", fg: "oklch(0.72 0.13 24)", bg: "oklch(0.72 0.13 24 / 0.15)" },
   "AI 工具": { icon: "ai", thing: "robot", fg: "oklch(0.73 0.10 275)", bg: "oklch(0.73 0.10 275 / 0.15)" },
   "订阅": { icon: "app", thing: "subscription", fg: "oklch(0.72 0.10 85)", bg: "oklch(0.72 0.10 85 / 0.16)" },
-  "学习": { icon: "learning", thing: "book", fg: "oklch(0.73 0.09 245)", bg: "oklch(0.73 0.09 245 / 0.15)" },
   "娱乐": { icon: "entertainment", thing: "gameController", fg: "oklch(0.76 0.10 95)", bg: "oklch(0.76 0.10 95 / 0.16)" },
   "旅行": { icon: "travel", thing: "airplane", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
+  "学习": { icon: "learning", thing: "book", fg: "oklch(0.73 0.09 245)", bg: "oklch(0.73 0.09 245 / 0.15)" },
   "工作": { icon: "work", thing: "calendar", fg: "oklch(0.76 0.08 82)", bg: "oklch(0.76 0.08 82 / 0.16)" },
   "薪酬": { icon: "salary", thing: "money", fg: "oklch(0.76 0.08 120)", bg: "oklch(0.76 0.08 120 / 0.15)" },
   "红包": { icon: "gift", thing: "redEnvelope", fg: "oklch(0.72 0.13 28)", bg: "oklch(0.72 0.13 28 / 0.14)" },
@@ -581,14 +586,14 @@ const CATEGORY_META = {
 };
 
 const SUBCATEGORY_META = {
-  "早餐": { icon: "food", thing: "croissant" },
-  "午餐": { icon: "food", thing: "sandwich" },
+  "早餐": { icon: "food", thing: "sandwich" },
+  "午餐": { icon: "food", thing: "riceBowl" },
   "晚餐": { icon: "food", thing: "ramen" },
-  "宵夜": { icon: "food", thing: "moon" },
+  "宵夜": { icon: "food", thing: "shishKebab" },
   "咖啡奶茶": { icon: "cash", thing: "coffee" },
   "水果": { icon: "food", thing: "apple" },
   "零食": { icon: "food", thing: "chips" },
-  "餐饮:其他": { icon: "more", thing: "plate" },
+  "餐饮:其他": { icon: "food", thing: "fork" },
   "共享单车": { icon: "bike", thing: "bicycle" },
   "地铁": { icon: "metro", thing: "train" },
   "打车": { icon: "taxi", thing: "taxi" },
@@ -597,32 +602,37 @@ const SUBCATEGORY_META = {
   "数码": { icon: "device", thing: "desktopComputer" },
   "家居": { icon: "sofa", thing: "sofa" },
   "装备": { icon: "gear", thing: "gear" },
-  "补给": { icon: "food", thing: "proteinBar" },
-  "康复": { icon: "health", thing: "bandAid" },
+  "补给": { icon: "food", thing: "energyDrink" },
+  "运动饮料": { icon: "food", thing: "energyDrink" },
+  "康复": { icon: "health", thing: "" },
+  "按摩": { icon: "health", thing: "" },
   "训练课": { icon: "training", thing: "stopwatch" },
   "赛事报名": { icon: "ticket", thing: "trophy" },
   "房租": { icon: "home", thing: "key" },
   "理发": { icon: "scissors", thing: "scissors" },
-  "话费": { icon: "phone", thing: "phone" },
+  "话费": { icon: "phone", thing: "mobilePhone" },
   "保险": { icon: "shield", thing: "shield" },
   "医疗": { icon: "health", thing: "stethoscope" },
   "药品": { icon: "capsule", thing: "pillBottle" },
-  "ChatGPT": { icon: "ai", thing: "chatBubble" },
-  "Aevum": { icon: "ai", thing: "cloud" },
+  "ChatGPT": { icon: "ai", thing: "" },
+  "Aevum": { icon: "ai", logo: "aevum" },
+  "第一本": { icon: "ledger", logo: "viatica" },
   "App": { icon: "app", thing: "mobilePhone" },
   "课程": { icon: "learning", thing: "graduationCap" },
   "书籍": { icon: "book", thing: "openBook" },
   "资料": { icon: "file", thing: "file" },
   "工具": { icon: "device", thing: "toolbox" },
   "电影": { icon: "movie", thing: "movie" },
-  "游戏": { icon: "game", thing: "dice" },
-  "娱乐:餐饮": { icon: "food", thing: "restaurant" },
+  "游戏": { icon: "game", thing: "mobileGame" },
+  "娱乐:餐饮": { icon: "food", thing: "fork" },
   "娱乐:其他": { icon: "more", thing: "partyPopper" },
-  "旅行:交通": { icon: "transport", thing: "bus" },
+  "旅行:交通": { icon: "transport", thing: "train" },
   "住宿": { icon: "hotel", thing: "hotel" },
   "旅行:餐饮": { icon: "food", thing: "fork" },
   "门票": { icon: "ticket", thing: "ticket" },
   "提现手续费": { icon: "fee", thing: "receipt" },
+  "手续费": { icon: "fee", thing: "receipt" },
+  "还款": { icon: "subscription", thing: "creditCard" },
   "其他:其他": { icon: "more", thing: "questionMark" },
   "工资": { icon: "salary", thing: "briefcase" },
   "家教费": { icon: "learning", thing: "teacher" },
@@ -641,15 +651,15 @@ const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
   { category: "餐饮", items: ["早餐", "午餐", "晚餐", "宵夜", "咖啡奶茶", "水果", "零食", "其他"] },
   { category: "交通", items: ["共享单车", "地铁", "打车"] },
   { category: "购物", items: ["日用品", "服饰", "数码", "家居"] },
-  { category: "运动", items: ["装备", "补给", "康复", "训练课", "赛事报名"] },
+  { category: "运动", items: ["装备", "运动饮料", "按摩", "训练课", "赛事报名"] },
   { category: "生活", items: ["房租", "理发", "话费"] },
   { category: "健康", items: ["保险", "医疗", "药品"] },
   { category: "AI 工具", items: ["ChatGPT", "Aevum"] },
   { category: "订阅", items: ["App"] },
-  { category: "学习", items: ["课程", "书籍", "资料", "工具"] },
   { category: "娱乐", items: ["电影", "游戏", "餐饮", "其他"] },
   { category: "旅行", items: ["交通", "住宿", "餐饮", "门票"] },
-  { category: "其他", items: ["提现手续费", "其他"] },
+  { category: "学习", items: ["课程", "书籍", "资料", "工具"] },
+  { category: "其他", items: ["手续费", "还款", "其他"] },
 ];
 
 const ASSET_AMOUNT_KEY_ROWS = [
@@ -3467,10 +3477,13 @@ function iconMeta(label, kind = "category", parentLabel = "") {
 function renderIconBadge(label, kind = "category", size = "", parentLabel = "") {
   const meta = iconMeta(label, kind, parentLabel);
   const sizeClass = size ? ` ${size}` : "";
+  const logoUrl = meta.logo ? BRAND_ICON_URLS[meta.logo] : "";
   const thingUrl = meta.thing ? thiingsIconUrls[meta.thing] : "";
   return `
     <span class="icon-badge${sizeClass}" style="--icon-bg: ${meta.bg}; --icon-fg: ${meta.fg};" aria-hidden="true">
-      ${thingUrl
+      ${logoUrl
+        ? `<img class="brand-mini-icon" src="${logoUrl}" alt="" loading="lazy" decoding="async">`
+        : thingUrl
         ? `<img class="thing-icon" src="${thingUrl}" alt="" loading="lazy" decoding="async">`
         : glyphSvg(meta.icon)}
     </span>
