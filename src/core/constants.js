@@ -32,7 +32,7 @@ export const EXPENSE_CATEGORIES = [
   "订阅",
   "娱乐",
   "旅行",
-  "学习",
+  "还款",
   "其他",
 ];
 
@@ -49,6 +49,7 @@ export const EXPENSE_CATEGORY_ALIASES = {
   "运动装备": "运动",
   "比赛/训练": "运动",
   "话费": "生活",
+  "学习": "其他",
 };
 
 export const DEFAULT_BUDGETS = {
@@ -62,6 +63,6 @@ export const DEFAULT_BUDGETS = {
   "订阅": 300,
   "娱乐": 500,
   "旅行": 1500,
-  "学习": 600,
+  "还款": 2000,
   "其他": 500,
 };

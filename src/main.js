@@ -575,7 +575,7 @@ const CATEGORY_META = {
   "订阅": { icon: "app", thing: "subscription", fg: "oklch(0.72 0.10 85)", bg: "oklch(0.72 0.10 85 / 0.16)" },
   "娱乐": { icon: "entertainment", thing: "gameController", fg: "oklch(0.76 0.10 95)", bg: "oklch(0.76 0.10 95 / 0.16)" },
   "旅行": { icon: "travel", thing: "airplane", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
-  "学习": { icon: "learning", thing: "book", fg: "oklch(0.73 0.09 245)", bg: "oklch(0.73 0.09 245 / 0.15)" },
+  "还款": { icon: "subscription", thing: "creditCard", fg: "oklch(0.72 0.10 25)", bg: "oklch(0.72 0.10 25 / 0.14)" },
   "工作": { icon: "work", thing: "calendar", fg: "oklch(0.76 0.08 82)", bg: "oklch(0.76 0.08 82 / 0.16)" },
   "薪酬": { icon: "salary", thing: "money", fg: "oklch(0.76 0.08 120)", bg: "oklch(0.76 0.08 120 / 0.15)" },
   "红包": { icon: "gift", thing: "redEnvelope", fg: "oklch(0.72 0.13 28)", bg: "oklch(0.72 0.13 28 / 0.14)" },
@@ -618,10 +618,6 @@ const SUBCATEGORY_META = {
   "Aevum": { icon: "ai", logo: "aevum" },
   "第一本": { icon: "ledger", logo: "viatica" },
   "App": { icon: "app", thing: "mobilePhone" },
-  "课程": { icon: "learning", thing: "graduationCap" },
-  "书籍": { icon: "book", thing: "openBook" },
-  "资料": { icon: "file", thing: "file" },
-  "工具": { icon: "device", thing: "toolbox" },
   "电影": { icon: "movie", thing: "movie" },
   "游戏": { icon: "game", thing: "mobileGame" },
   "娱乐:餐饮": { icon: "food", thing: "fork" },
@@ -658,8 +654,8 @@ const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
   { category: "订阅", items: ["App"] },
   { category: "娱乐", items: ["电影", "游戏", "餐饮", "其他"] },
   { category: "旅行", items: ["交通", "住宿", "餐饮", "门票"] },
-  { category: "学习", items: ["课程", "书籍", "资料", "工具"] },
-  { category: "其他", items: ["手续费", "还款", "其他"] },
+  { category: "还款", items: [] },
+  { category: "其他", items: ["手续费", "其他"] },
 ];
 
 const ASSET_AMOUNT_KEY_ROWS = [

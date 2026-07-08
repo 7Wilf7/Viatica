@@ -108,6 +108,21 @@ test("normalizes phone bill expense records into lifestyle", () => {
   assert.equal(summary.categoryExpense["生活"], 99);
 });
 
+test("keeps repayment as an expense category and retires learning to other", () => {
+  const repayment = normalizeTransaction({ amount: 1800, category: "还款", title: "还款" });
+  const legacyLearning = normalizeTransaction({ amount: 98, category: "学习", title: "技术书" });
+  const budgets = normalizeBudgets({ "还款": 2000, "学习": 600 }, { defaults: {} });
+  const summary = summarizeLedger([repayment, legacyLearning], budgets, new Date());
+
+  assert.equal(repayment.category, "还款");
+  assert.equal(legacyLearning.category, "其他");
+  assert.equal(summary.categoryExpense["还款"], 1800);
+  assert.equal(summary.categoryExpense["其他"], 98);
+  assert.equal(budgets["还款"], 2000);
+  assert.equal(budgets["其他"], 600);
+  assert.equal("学习" in budgets, false);
+});
+
 test("filters transactions by book and query", () => {
   const txns = [
     normalizeTransaction({ amount: 20, category: "餐饮", account: "微信", title: "咖啡", book: "日常账本" }),
