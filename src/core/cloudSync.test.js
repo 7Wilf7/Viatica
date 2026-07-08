@@ -9,6 +9,7 @@ import {
   mergeLedgerStates,
   mergePendingLocalTransactions,
   pushCloudState,
+  pushCloudTransaction,
   stripDemoSeedArtifacts,
   stripDemoSeedTransactions,
 } from "./cloudSync.js";
@@ -51,10 +52,14 @@ function createMemorySupabase(initial = {}, options = {}) {
     }
     if (state.kind === "update") {
       operations.push({ type: "update", table, row: clone(state.payload), filters: clone(state.filters) });
+      const updated = [];
       for (const row of rows) {
-        if (matches(row, state.filters, state.inFilters)) Object.assign(row, clone(state.payload));
+        if (matches(row, state.filters, state.inFilters)) {
+          Object.assign(row, clone(state.payload));
+          updated.push(clone(row));
+        }
       }
-      return Promise.resolve({ data: null, error: null });
+      return Promise.resolve({ data: state.returnRows ? updated : null, error: null });
     }
     if (state.kind === "delete") {
       operations.push({ type: "delete", table, filters: clone(state.filters), inFilters: clone(state.inFilters) });
@@ -85,10 +90,17 @@ function createMemorySupabase(initial = {}, options = {}) {
           };
         },
         update(row) {
-          const state = { kind: "update", payload: row, filters: [], inFilters: [] };
+          const state = { kind: "update", payload: row, filters: [], inFilters: [], returnRows: false };
           return {
             eq(column, value) {
               state.filters.push([column, value]);
+              return this;
+            },
+            select() {
+              state.returnRows = true;
+              return this;
+            },
+            limit() {
               return this;
             },
             then(resolve, reject) {
@@ -615,6 +627,73 @@ test("pushes cloud state without requiring database conflict constraints", async
   assert.equal(supabase.tables.viatica_preferences[0].starting_assets, 2100);
   assert.equal(supabase.tables.viatica_accounts.length, 0);
   assert.equal(supabase.operations.some((operation) => operation.type === "upsert"), false);
+});
+
+test("pushes a new transaction with a single insert path", async () => {
+  const supabase = createMemorySupabase();
+
+  await pushCloudTransaction(supabase, "user_1", {
+    id: "txn_fast_add",
+    type: "expense",
+    occurredAt: "2026-07-01T08:00:00+08:00",
+    amount: 18,
+    currency: "CNY",
+    book: "日常账本",
+    account: "其他",
+    category: "餐饮",
+    title: "早餐",
+    updatedAt: "2026-07-01T08:01:00+08:00",
+  }, { mode: "insert" });
+
+  assert.equal(supabase.tables.viatica_transactions.length, 1);
+  assert.equal(supabase.tables.viatica_transactions[0].client_id, "txn_fast_add");
+  assert.equal(supabase.tables.viatica_transactions[0].account, "ledger");
+  assert.deepEqual(supabase.operations.map((operation) => operation.type), ["insert"]);
+});
+
+test("updates an existing transaction without a full ledger push", async () => {
+  const supabase = createMemorySupabase({
+    viatica_transactions: [{
+      user_id: "user_1",
+      client_id: "txn_fast_edit",
+      type: "expense",
+      occurred_at: "2026-07-01T08:00:00+08:00",
+      amount: 18,
+      currency: "CNY",
+      book: "日常账本",
+      account: "ledger",
+      category: "餐饮",
+      title: "旧早餐",
+      merchant: "",
+      note: "",
+      tags: [],
+      reimbursable: false,
+      receipt_data_url: "",
+      created_at: "2026-07-01T08:00:00+08:00",
+      updated_at: "2026-07-01T08:00:00+08:00",
+    }],
+  });
+
+  await pushCloudTransaction(supabase, "user_1", {
+    id: "txn_fast_edit",
+    type: "expense",
+    occurredAt: "2026-07-01T08:00:00+08:00",
+    amount: 28,
+    currency: "CNY",
+    book: "日常账本",
+    account: "其他",
+    category: "餐饮",
+    title: "新早餐",
+    note: "豆浆",
+    tags: [],
+    updatedAt: "2026-07-01T09:01:00+08:00",
+  }, { mode: "update" });
+
+  assert.equal(supabase.tables.viatica_transactions.length, 1);
+  assert.equal(supabase.tables.viatica_transactions[0].amount, 28);
+  assert.equal(supabase.tables.viatica_transactions[0].title, "新早餐");
+  assert.equal(supabase.tables.viatica_transactions[0].note, "豆浆");
+  assert.deepEqual(supabase.operations.map((operation) => operation.type), ["update"]);
 });
 
 test("updates existing transaction when insert hits a hidden cloud duplicate", async () => {

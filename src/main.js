@@ -25,6 +25,7 @@ import {
   hasDemoSeedArtifacts,
   isCloudUserChangedError,
   mergePendingLocalTransactions,
+  saveCloudTransaction,
   stripDemoSeedArtifacts,
   syncViaticaLedger,
 } from "./core/cloudSync.js";
@@ -1861,7 +1862,7 @@ function applyLedgerState(nextState, { preserveLocale = true } = {}) {
   state.accounts = [];
 }
 
-function persist({ sync = true } = {}) {
+function persist({ sync = true, schedule = true } = {}) {
   if (sync && !ledgerStorageOwnerId) signedOutLedgerDirty = true;
   saveStateForOwner(localLedgerSnapshot(), ledgerStorageOwnerId);
   if (!sync) return;
@@ -1870,7 +1871,7 @@ function persist({ sync = true } = {}) {
     state.cloudSync.pendingMutation = true;
     state.cloudSync.error = "";
   }
-  scheduleCloudSync();
+  if (schedule) scheduleCloudSync();
 }
 
 function applySyncedLedgerState(nextState) {
@@ -2076,6 +2077,83 @@ async function syncCloudNow({ silent = false, feedback = !silent } = {}) {
     }
     render();
   }
+}
+
+function expectedCloudUserSnapshot() {
+  return state.auth.user
+    ? { id: state.auth.user.id, email: state.auth.user.email }
+    : null;
+}
+
+async function syncCloudMutation(write, { feedback = false, preservePending = false } = {}) {
+  if (!canCloudSync()) return;
+  if (state.cloudSync.status === "syncing") {
+    scheduleCloudSync(CLOUD_MUTATION_SYNC_DELAY_MS);
+    return;
+  }
+
+  window.clearTimeout(cloudSyncTimer);
+  const syncStartedAtRevision = ledgerRevision;
+  state.cloudSync.status = "syncing";
+  state.cloudSync.error = "";
+  state.cloudSync.lastAttemptAt = new Date().toISOString();
+  if (feedback) showCloudSyncFeedback();
+
+  try {
+    const syncPromise = Promise.resolve(write(expectedCloudUserSnapshot()));
+    syncPromise.catch(() => {});
+    await withClientTimeout(
+      syncPromise,
+      CLOUD_SYNC_TIMEOUT_MS,
+      "Cloud sync timed out"
+    );
+    if (ledgerRevision !== syncStartedAtRevision) {
+      state.cloudSync.status = "idle";
+      state.cloudSync.pendingMutation = true;
+      scheduleCloudSync(CLOUD_MUTATION_SYNC_DELAY_MS);
+      return;
+    }
+    if (preservePending) {
+      state.cloudSync.status = "idle";
+      state.cloudSync.pendingMutation = true;
+      scheduleCloudSync(CLOUD_MUTATION_SYNC_DELAY_MS);
+      return;
+    }
+    state.cloudSync.status = "synced";
+    state.cloudSync.pendingMutation = false;
+    state.cloudSync.lastSyncedAt = new Date().toISOString();
+    persist({ sync: false });
+  } catch (error) {
+    if (isCloudUserChangedError(error)) {
+      state.cloudSync.status = "idle";
+      state.cloudSync.error = "";
+      state.cloudSync.pendingMutation = false;
+      return;
+    }
+    state.cloudSync.status = "error";
+    state.cloudSync.error = isCloudTimeoutError(error)
+      ? t("toast.cloudSyncDeferred")
+      : error?.message || "";
+    if (isCloudTimeoutError(error)) maybeToastCloudSyncDeferred();
+    if (state.cloudSync.pendingMutation) scheduleCloudSync(CLOUD_SYNC_RETRY_DELAY_MS);
+  } finally {
+    if (state.cloudSync.status === "synced" && !state.cloudSync.pendingMutation) {
+      hideCloudSyncFeedback(CLOUD_SYNC_SUCCESS_HOLD_MS);
+    } else if (state.cloudSync.status === "error") {
+      hideCloudSyncFeedback(CLOUD_SYNC_ERROR_HOLD_MS);
+    } else if (!state.cloudSync.pendingMutation && state.cloudSync.status !== "syncing") {
+      hideCloudSyncFeedback();
+    }
+    render();
+  }
+}
+
+function syncTransactionMutation(txn, mode, options = {}) {
+  syncCloudMutation((expectedUser) => saveCloudTransaction(txn, expectedUser, { mode }), options);
+}
+
+function syncTransactionDelete(id, options = {}) {
+  syncCloudMutation((expectedUser) => deleteCloudTransaction(id, expectedUser), options);
 }
 
 function tabStageScrollTop() {
@@ -4752,6 +4830,8 @@ document.addEventListener("submit", (event) => {
   try {
     const data = formToTransaction(form);
     const existing = data.id ? state.transactions.find((txn) => txn.id === data.id) : null;
+    let cloudTransaction = data;
+    let cloudMode = "insert";
     if (existing) {
       const txn = normalizeTransaction({
         ...existing,
@@ -4762,6 +4842,8 @@ document.addEventListener("submit", (event) => {
       });
       state.transactions = state.transactions.map((item) => item.id === txn.id ? txn : item);
       state.editingTransactionId = null;
+      cloudTransaction = txn;
+      cloudMode = "update";
       toast(t("toast.updated"));
     } else {
       state.transactions.unshift(data);
@@ -4771,8 +4853,10 @@ document.addEventListener("submit", (event) => {
     state.captureProjectOpen = false;
     state.activeTab = "ledger";
     state.ledgerView = "flow";
-    persist();
+    const preservePending = Boolean(state.cloudSync.pendingMutation);
+    persist({ schedule: false });
     render();
+    syncTransactionMutation(cloudTransaction, cloudMode, { preservePending });
   } catch (err) {
     toast(t("toast.saveFailed", { message: err.message }));
   }
@@ -5002,8 +5086,9 @@ document.addEventListener("click", (event) => {
       ...(state.preferences.deletedTransactionIds || []),
       deletedId,
     ]);
-    persist();
-    deleteCloudTransaction(deletedId).catch(() => {});
+    const preservePending = Boolean(state.cloudSync.pendingMutation);
+    persist({ schedule: false });
+    syncTransactionDelete(deletedId, { preservePending });
     render();
     toast(t("toast.deleted"));
   }

@@ -48,6 +48,15 @@ export function cloudUserMatchesExpected(user = null, expectedUser = null) {
   return !expectedId || String(user?.id || "") === expectedId;
 }
 
+async function verifiedCloudContext(expectedUser = null) {
+  const supabase = getCloudClient();
+  if (!supabase) throw new Error("Supabase is not configured");
+  const user = await getCloudUser();
+  if (!user) throw new Error("Not authenticated");
+  if (!cloudUserMatchesExpected(user, expectedUser)) throw createCloudUserChangedError();
+  return { supabase, user };
+}
+
 function asIso(value, fallback = new Date()) {
   const date = value ? new Date(value) : fallback;
   return Number.isNaN(date.getTime()) ? fallback.toISOString() : date.toISOString();
@@ -474,6 +483,34 @@ async function updateExistingTransaction(supabase, userId, txn, existing) {
   return true;
 }
 
+async function updateTransactionByKnownKeys(supabase, userId, txn) {
+  const id = String(txn.id || "").trim();
+  if (!id) return false;
+  let supportedColumn = false;
+  let lastSchemaError = null;
+
+  for (const column of ["client_id", "local_id", "id"]) {
+    for (const row of transactionUpdateRows(txn, userId)) {
+      const result = await supabase
+        .from(TABLES.transactions)
+        .update(row)
+        .eq("user_id", userId)
+        .eq(column, id)
+        .select(column);
+      if (!result.error) {
+        supportedColumn = true;
+        if ((result.data || []).length) return true;
+        break;
+      }
+      if (!isSchemaFallbackError(result.error)) throw result.error;
+      lastSchemaError = result.error;
+    }
+  }
+
+  if (!supportedColumn && lastSchemaError) throw lastSchemaError;
+  return false;
+}
+
 async function insertTransactionWithDuplicateFallback(supabase, userId, txn) {
   try {
     await insertRow(supabase, TABLES.transactions, singleTransactionInsertRows(txn, userId));
@@ -613,12 +650,20 @@ export async function pushCloudState(supabase, userId, state) {
   await deleteAllCloudAccounts(supabase, userId, state.accounts || []);
 }
 
+export async function pushCloudTransaction(supabase, userId, txn, { mode = "upsert" } = {}) {
+  const normalized = normalizeTransaction(txn);
+  if (mode !== "insert" && await updateTransactionByKnownKeys(supabase, userId, normalized)) return;
+  await insertTransactionWithDuplicateFallback(supabase, userId, normalized);
+}
+
+export async function saveCloudTransaction(txn, expectedUser = null, options = {}) {
+  const { supabase, user } = await verifiedCloudContext(expectedUser);
+  if (shouldStripDemoSeedTransactions(user) && isDemoSeedTransaction(txn)) return;
+  await pushCloudTransaction(supabase, user.id, txn, options);
+}
+
 export async function syncViaticaLedger(localState, expectedUser = null) {
-  const supabase = getCloudClient();
-  if (!supabase) throw new Error("Supabase is not configured");
-  const user = await getCloudUser();
-  if (!user) throw new Error("Not authenticated");
-  if (!cloudUserMatchesExpected(user, expectedUser)) throw createCloudUserChangedError();
+  const { supabase, user } = await verifiedCloudContext(expectedUser);
 
   const stripDemoSeeds = shouldStripDemoSeedTransactions(user);
   const remoteState = await fetchCloudState(supabase, user.id);
@@ -643,10 +688,7 @@ export async function syncViaticaLedger(localState, expectedUser = null) {
   };
 }
 
-export async function deleteCloudTransaction(id) {
-  const supabase = getCloudClient();
-  if (!supabase) return;
-  const user = await getCloudUser();
-  if (!user) return;
+export async function deleteCloudTransaction(id, expectedUser = null) {
+  const { supabase, user } = await verifiedCloudContext(expectedUser);
   await deleteCloudTransactionsByIds(supabase, user.id, [id]);
 }
