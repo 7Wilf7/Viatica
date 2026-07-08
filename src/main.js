@@ -1869,7 +1869,6 @@ function persist({ sync = true } = {}) {
   if (canCloudSync()) {
     state.cloudSync.pendingMutation = true;
     state.cloudSync.error = "";
-    showCloudSyncFeedback();
   }
   scheduleCloudSync();
 }
@@ -1979,11 +1978,11 @@ function hideCloudSyncFeedback(holdMs = 0) {
   }, remaining + Math.max(0, holdMs));
 }
 
-function scheduleCloudSync(delay = CLOUD_MUTATION_SYNC_DELAY_MS) {
+function scheduleCloudSync(delay = CLOUD_MUTATION_SYNC_DELAY_MS, { feedback = false } = {}) {
   if (!canCloudSync()) return;
   window.clearTimeout(cloudSyncTimer);
   cloudSyncTimer = window.setTimeout(() => {
-    syncCloudNow({ silent: true });
+    syncCloudNow({ silent: true, feedback });
   }, delay);
 }
 
@@ -2007,22 +2006,21 @@ function cloudSyncLabel() {
   return t("settings.cloudSyncIdle");
 }
 
-async function syncCloudNow({ silent = false } = {}) {
+async function syncCloudNow({ silent = false, feedback = !silent } = {}) {
   if (!state.auth.user) {
     if (!silent) toast(t("toast.cloudSyncSignIn"));
     return;
   }
   if (state.cloudSync.status === "syncing") {
-    if (!silent || state.cloudSync.pendingMutation) showCloudSyncFeedback();
+    if (feedback) showCloudSyncFeedback();
     return;
   }
 
   window.clearTimeout(cloudSyncTimer);
-  const mutationSync = state.cloudSync.pendingMutation;
   state.cloudSync.status = "syncing";
   state.cloudSync.error = "";
   state.cloudSync.lastAttemptAt = new Date().toISOString();
-  if (!silent || mutationSync) showCloudSyncFeedback();
+  if (feedback) showCloudSyncFeedback();
   const syncStartedAtRevision = ledgerRevision;
   const expectedUser = state.auth.user
     ? { id: state.auth.user.id, email: state.auth.user.email }
