@@ -53,6 +53,15 @@ import {
   pastYears,
 } from "./core/period.js";
 import {
+  getMobilePagerJumpWindow,
+  getMobilePagerRenderWindow,
+  getMobilePagerTapWindow,
+  mergeTabWindows,
+  resolveMobilePagerTouchStart,
+  shouldOuterPagerHandleSwipe,
+  shouldRenderMobilePagerPane,
+} from "./core/mobilePager.js";
+import {
   EMPTY_STATE,
   exportState,
   hasStateForOwner,
@@ -86,6 +95,15 @@ const CLOUD_SYNC_DEFERRED_NOTICE_MIN_MS = 5 * 60 * 1000;
 const FOREGROUND_SYNC_MIN_MS = 3 * 60 * 1000;
 const FOREGROUND_SYNC_RETRY_MIN_MS = 60 * 1000;
 const BOOT_REVEAL_MS = 4200;
+const TAB_HAPTIC_MS = 8;
+const PAGER_SETTLE_MIN_MS = 360;
+const PAGER_SETTLE_MAX_MS = 720;
+const PAGER_DRAG_AXIS_LOCK_PX = 8;
+const PAGER_DRAG_AXIS_RATIO = 1.12;
+const PAGER_DRAG_DISTANCE_FRACTION = 0.18;
+const PAGER_DRAG_MAX_DISTANCE_PX = 86;
+const PAGER_DRAG_VELOCITY_PX_PER_MS = 0.38;
+const PAGER_EDGE_RESISTANCE = 0.32;
 const DEMO_ACCOUNT_EMAIL = "demo@demo.com";
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
@@ -192,6 +210,21 @@ const TABS = [
   { id: "assets", labelKey: "tab.assets" },
   { id: "settings", labelKey: "tab.settings" },
 ];
+
+const tabIds = TABS.map((tab) => tab.id);
+const pagerState = {
+  visualTab: 0,
+  renderedTabs: getMobilePagerRenderWindow(0, TABS.length),
+  trackLeft: 0,
+  pendingTrackLeft: null,
+  dragFrame: 0,
+  settleFrame: 0,
+  settleTarget: null,
+  initialRenderIndex: null,
+  gesture: null,
+  suppressClickUntil: 0,
+  touching: false,
+};
 
 const LEDGER_PERIOD_SEGMENTS = [
   { type: "month", labelKey: "range.month", dropdown: true },
@@ -743,6 +776,25 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-07-08",
+    title: {
+      zh: "加入滑动切换 Tab",
+      en: "Added Swipe Tab Switching",
+    },
+    items: {
+      zh: [
+        "照 Ultreia 的移动端 pager 逻辑加入左右滑动切换底部 Tab，手指拖动时页面会跟随移动。",
+        "当前页和相邻页会预挂载，滑动过程只移动外层条带，减少重绘造成的卡顿。",
+        "输入框、选择器和可横向滚动区域不会抢手势，纵向滚动仍保持原来的惯性体验。",
+      ],
+      en: [
+        "Added left-right swipe switching for bottom tabs using Ultreia's mobile pager pattern, with the page following the finger during drag.",
+        "The current and neighboring panes stay pre-mounted, so swiping only moves the outer strip and avoids heavy rerenders.",
+        "Inputs, pickers, and horizontal scrollers keep their own gestures while vertical scrolling keeps its native momentum.",
+      ],
+    },
+  },
   {
     date: "2026-07-06",
     title: {
@@ -2156,14 +2208,18 @@ function syncTransactionDelete(id, options = {}) {
   syncCloudMutation((expectedUser) => deleteCloudTransaction(id, expectedUser), options);
 }
 
+function activePagerPane() {
+  return document.querySelector(".tab-pager-pane[data-active=\"true\"]");
+}
+
 function tabStageScrollTop() {
-  const stage = document.querySelector(".tab-stage");
-  return Math.max(stage?.scrollTop || 0, window.scrollY || document.documentElement.scrollTop || 0);
+  const pane = activePagerPane();
+  return Math.max(pane?.scrollTop || 0, window.scrollY || document.documentElement.scrollTop || 0);
 }
 
 function scrollTabStageToTop() {
-  const stage = document.querySelector(".tab-stage");
-  if (stage?.scrollTo) stage.scrollTo({ top: 0, behavior: "smooth" });
+  const pane = activePagerPane();
+  if (pane?.scrollTo) pane.scrollTo({ top: 0, behavior: "smooth" });
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -2173,6 +2229,310 @@ function refreshLedgerFromTab() {
     return;
   }
   syncCloudNow({ silent: false });
+}
+
+function applyActiveTabSideEffects(tabId) {
+  if (tabId !== "capture") state.captureProjectOpen = false;
+  if (tabId === "settings") state.settingsContent = "home";
+}
+
+function maybeScheduleForegroundSyncForTab(tabId) {
+  if (["ledger", "assets", "settings"].includes(tabId)) scheduleForegroundCloudSync();
+}
+
+function triggerTabHaptic() {
+  try {
+    navigator.vibrate?.(TAB_HAPTIC_MS);
+  } catch {
+    // Best effort only.
+  }
+}
+
+function pagerTrackElement() {
+  return document.querySelector("[data-tab-pager-track]");
+}
+
+function pagerTrackWidth(track = pagerTrackElement()) {
+  return Math.max(1, track?.clientWidth || window.innerWidth || 1);
+}
+
+function pagerMaxLeft(width) {
+  return (TABS.length - 1) * width;
+}
+
+function resistedPagerLeft(left, width) {
+  const maxLeft = pagerMaxLeft(width);
+  if (left < 0) return left * PAGER_EDGE_RESISTANCE;
+  if (left > maxLeft) return maxLeft + (left - maxLeft) * PAGER_EDGE_RESISTANCE;
+  return left;
+}
+
+function setPagerMovingAttribute(active) {
+  const shell = document.querySelector(".app-shell");
+  if (!shell) return;
+  if (active) shell.setAttribute("data-pager-moving", "true");
+  else shell.removeAttribute("data-pager-moving");
+}
+
+function applyPagerTrackOffset(left, track = pagerTrackElement()) {
+  const strip = track?.querySelector("[data-tab-pager-strip]");
+  if (!strip) return;
+  pagerState.trackLeft = left;
+  strip.style.transform = `translate3d(${-left}px, 0, 0)`;
+}
+
+function queuePagerTrackOffset(left, track) {
+  pagerState.pendingTrackLeft = left;
+  if (pagerState.dragFrame) return;
+  pagerState.dragFrame = requestAnimationFrame(() => {
+    pagerState.dragFrame = 0;
+    const nextLeft = pagerState.pendingTrackLeft;
+    pagerState.pendingTrackLeft = null;
+    if (Number.isFinite(nextLeft)) applyPagerTrackOffset(nextLeft, track);
+  });
+}
+
+function clearPagerFrames() {
+  if (pagerState.dragFrame) cancelAnimationFrame(pagerState.dragFrame);
+  if (pagerState.settleFrame) cancelAnimationFrame(pagerState.settleFrame);
+  pagerState.dragFrame = 0;
+  pagerState.settleFrame = 0;
+  pagerState.pendingTrackLeft = null;
+}
+
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function pagerSettleDuration(distance, width) {
+  if (prefersReducedMotion()) return 0;
+  const ratio = Math.min(1, Math.abs(distance) / Math.max(1, width));
+  return PAGER_SETTLE_MIN_MS + (PAGER_SETTLE_MAX_MS - PAGER_SETTLE_MIN_MS) * ratio;
+}
+
+function finishPagerSettle(targetIndex, { commit = true } = {}) {
+  const nextTab = tabIdAt(targetIndex);
+  pagerState.visualTab = targetIndex;
+  pagerState.renderedTabs = getMobilePagerRenderWindow(targetIndex, TABS.length);
+  pagerState.settleTarget = null;
+  pagerState.initialRenderIndex = null;
+  pagerState.touching = false;
+  setPagerMovingAttribute(false);
+  if (commit && state.activeTab !== nextTab) {
+    state.activeTab = nextTab;
+    applyActiveTabSideEffects(nextTab);
+    maybeScheduleForegroundSyncForTab(nextTab);
+  }
+  render();
+}
+
+function animatePagerToTabIndex(targetIndex, options = {}) {
+  const track = pagerTrackElement();
+  const width = pagerTrackWidth(track);
+  const targetLeft = targetIndex * width;
+  const fromLeft = Number.isFinite(options.fromLeft) ? options.fromLeft : pagerState.trackLeft;
+  const distance = targetLeft - fromLeft;
+  clearPagerFrames();
+  pagerState.settleTarget = targetIndex;
+  setPagerMovingAttribute(true);
+
+  const duration = pagerSettleDuration(distance, width);
+  if (duration <= 0 || Math.abs(distance) < 0.5) {
+    applyPagerTrackOffset(targetLeft, track);
+    finishPagerSettle(targetIndex, options);
+    return;
+  }
+
+  const startedAt = performance.now();
+  const tick = (now) => {
+    const progress = Math.min(1, (now - startedAt) / duration);
+    const eased = easeOutCubic(progress);
+    const nextLeft = fromLeft + distance * eased;
+    applyPagerTrackOffset(nextLeft, track);
+    if (progress < 1) {
+      pagerState.settleFrame = requestAnimationFrame(tick);
+      return;
+    }
+    pagerState.settleFrame = 0;
+    applyPagerTrackOffset(targetLeft, track);
+    finishPagerSettle(targetIndex, options);
+  };
+  pagerState.settleFrame = requestAnimationFrame(tick);
+}
+
+function activateTab(nextTab, options = {}) {
+  if (!tabIds.includes(nextTab)) return;
+  const fromIndex = activeTabIndex();
+  const toIndex = tabIds.indexOf(nextTab);
+  if (fromIndex === toIndex) return;
+
+  clearPagerFrames();
+  const animate = options.animate && !prefersReducedMotion();
+  state.activeTab = nextTab;
+  applyActiveTabSideEffects(nextTab);
+  maybeScheduleForegroundSyncForTab(nextTab);
+  triggerTabHaptic();
+
+  if (!animate) {
+    pagerState.initialRenderIndex = null;
+    pagerState.visualTab = toIndex;
+    pagerState.renderedTabs = getMobilePagerTapWindow(fromIndex, toIndex, TABS.length);
+    render();
+    return;
+  }
+
+  pagerState.initialRenderIndex = fromIndex;
+  pagerState.visualTab = toIndex;
+  pagerState.renderedTabs = getMobilePagerJumpWindow(fromIndex, toIndex, TABS.length);
+  render();
+  requestAnimationFrame(() => {
+    const track = pagerTrackElement();
+    const width = pagerTrackWidth(track);
+    pagerState.initialRenderIndex = null;
+    applyPagerTrackOffset(fromIndex * width, track);
+    animatePagerToTabIndex(toIndex, { commit: false, fromLeft: fromIndex * width });
+  });
+}
+
+function shouldSkipPagerDrag(target) {
+  return Boolean(target?.closest?.("input, textarea, select, [contenteditable=\"true\"], [data-choice], [data-dropdown-menu]"));
+}
+
+function findHorizontalScroller(target, track) {
+  for (let node = target; node && node !== track; node = node.parentElement) {
+    if (!(node instanceof HTMLElement)) continue;
+    const style = window.getComputedStyle(node);
+    const canScroll = node.scrollWidth > node.clientWidth + 1;
+    const overflowX = style.overflowX;
+    if (canScroll && ["auto", "scroll", "overlay"].includes(overflowX)) return node;
+  }
+  return null;
+}
+
+function horizontalScrollerOwnsGesture(scroller, dx) {
+  if (!scroller) return false;
+  if (dx < 0) return scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1;
+  if (dx > 0) return scroller.scrollLeft > 1;
+  return false;
+}
+
+function innerSwipeOwnsGesture(target, track, dx) {
+  return horizontalScrollerOwnsGesture(findHorizontalScroller(target, track), dx);
+}
+
+function handlePagerTouchStart(event) {
+  if (event.touches.length !== 1) return;
+  const track = event.target.closest?.("[data-tab-pager-track]");
+  if (!track || shouldSkipPagerDrag(event.target)) return;
+  const width = pagerTrackWidth(track);
+  const start = resolveMobilePagerTouchStart({
+    visualTab: pagerState.visualTab,
+    trackLeft: pagerState.trackLeft,
+    width,
+    tabCount: TABS.length,
+    settleTarget: pagerState.settleTarget,
+  });
+  clearPagerFrames();
+  pagerState.settleTarget = null;
+
+  const touch = event.touches[0];
+  const now = event.timeStamp || performance.now();
+  pagerState.gesture = {
+    current: start.current,
+    startLeft: start.startLeft,
+    startX: touch.clientX,
+    startY: touch.clientY,
+    lastLeft: start.startLeft,
+    lastAt: now,
+    velocity: 0,
+    mode: "pending",
+    didDrag: false,
+    target: event.target,
+    track,
+    width,
+  };
+}
+
+function handlePagerTouchMove(event) {
+  const gesture = pagerState.gesture;
+  if (!gesture || event.touches.length !== 1) return;
+  const touch = event.touches[0];
+  const dx = touch.clientX - gesture.startX;
+  const dy = touch.clientY - gesture.startY;
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+
+  if (gesture.mode === "pending") {
+    if (Math.max(absX, absY) < PAGER_DRAG_AXIS_LOCK_PX) return;
+    if (absY > absX * PAGER_DRAG_AXIS_RATIO) {
+      gesture.mode = "inner";
+      return;
+    }
+    if (absX <= absY * PAGER_DRAG_AXIS_RATIO) return;
+
+    const direction = dx < 0 ? 1 : -1;
+    const innerCanMove = innerSwipeOwnsGesture(gesture.target, gesture.track, dx);
+    if (!shouldOuterPagerHandleSwipe({
+      direction,
+      currentTab: gesture.current,
+      tabCount: TABS.length,
+      innerCanMove,
+    })) {
+      gesture.mode = "inner";
+      return;
+    }
+
+    gesture.mode = "outer";
+    pagerState.touching = true;
+    setPagerMovingAttribute(true);
+    event.preventDefault();
+  }
+
+  if (gesture.mode !== "outer") return;
+  event.preventDefault();
+  const nextLeft = resistedPagerLeft(gesture.startLeft - dx, gesture.width);
+  const now = event.timeStamp || performance.now();
+  const dt = Math.max(1, now - gesture.lastAt);
+  gesture.velocity = (nextLeft - gesture.lastLeft) / dt;
+  gesture.lastLeft = nextLeft;
+  gesture.lastAt = now;
+  gesture.didDrag = true;
+  queuePagerTrackOffset(nextLeft, gesture.track);
+}
+
+function handlePagerTouchEnd(event) {
+  const gesture = pagerState.gesture;
+  if (!gesture) return;
+  pagerState.gesture = null;
+
+  if (gesture.mode !== "outer") {
+    pagerState.touching = false;
+    setPagerMovingAttribute(false);
+    return;
+  }
+
+  event.preventDefault();
+  const width = pagerTrackWidth(gesture.track);
+  const currentLeft = Number.isFinite(pagerState.pendingTrackLeft)
+    ? pagerState.pendingTrackLeft
+    : pagerState.trackLeft;
+  const distance = currentLeft - gesture.current * width;
+  const threshold = Math.min(width * PAGER_DRAG_DISTANCE_FRACTION, PAGER_DRAG_MAX_DISTANCE_PX);
+  let targetIndex = gesture.current;
+  if (distance > threshold || gesture.velocity > PAGER_DRAG_VELOCITY_PX_PER_MS) targetIndex += 1;
+  if (distance < -threshold || gesture.velocity < -PAGER_DRAG_VELOCITY_PX_PER_MS) targetIndex -= 1;
+  targetIndex = Math.max(0, Math.min(TABS.length - 1, targetIndex));
+
+  if (gesture.didDrag) pagerState.suppressClickUntil = performance.now() + 450;
+  if (targetIndex !== gesture.current) triggerTabHaptic();
+  pagerState.touching = false;
+  animatePagerToTabIndex(targetIndex, { commit: true, fromLeft: currentLeft });
+}
+
+function suppressClickAfterPagerDrag(event) {
+  if (performance.now() > pagerState.suppressClickUntil) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
 }
 
 function normalizeEmail(value) {
@@ -2744,8 +3104,47 @@ function bootSplashFrameMs() {
   }
 }
 
+function activeTabIndex() {
+  const idx = tabIds.indexOf(state.activeTab);
+  return idx >= 0 ? idx : 0;
+}
+
+function tabIdAt(index) {
+  return tabIds[Math.max(0, Math.min(TABS.length - 1, index))] || "ledger";
+}
+
+function pagerPanePercent() {
+  return 100 / TABS.length;
+}
+
+function prefersReducedMotion() {
+  return Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
+}
+
+function syncPagerForRender() {
+  const activeIndex = activeTabIndex();
+  if (Number.isFinite(pagerState.initialRenderIndex)) return;
+  if (pagerState.touching || Number.isFinite(pagerState.settleTarget)) {
+    pagerState.renderedTabs = mergeTabWindows(
+      pagerState.renderedTabs,
+      getMobilePagerRenderWindow(activeIndex, TABS.length),
+    );
+    return;
+  }
+  pagerState.visualTab = activeIndex;
+  pagerState.renderedTabs = getMobilePagerRenderWindow(activeIndex, TABS.length);
+}
+
+function renderPagerStripStyle() {
+  const baseIndex = Number.isFinite(pagerState.initialRenderIndex)
+    ? pagerState.initialRenderIndex
+    : pagerState.visualTab;
+  return `--tab-count: ${TABS.length}; transform: translate3d(-${baseIndex * pagerPanePercent()}%, 0, 0);`;
+}
+
 function render() {
   document.documentElement.lang = state.preferences.locale === "en" ? "en" : "zh-CN";
+  syncPagerForRender();
   const activeState = activeLedgerState();
   const summary = summarizeLedger(activeState.transactions, activeState.budgets, new Date(), activeState.accounts);
   const typeTransactions = ledgerTypeFilteredTransactions(activeState.transactions);
@@ -2760,9 +3159,7 @@ function render() {
     ${bootSplashVisible ? renderBootSplash() : ""}
     <main class="app-shell tab-${escapeHtml(state.activeTab)}${syncFeedbackClass}">
       ${renderCloudSyncFeedback()}
-      <section class="tab-stage">
-        ${renderActiveTab(summary, ledgerSummary, filteredTransactions, editingTransaction, periodTransactions)}
-      </section>
+      ${renderTabPager(summary, ledgerSummary, filteredTransactions, editingTransaction, periodTransactions)}
 
       <nav class="bottom-tabs" aria-label="${escapeHtml(t("app.sections"))}">
         ${TABS.map(renderTabButton).join("")}
@@ -2853,12 +3250,42 @@ function renderBootSplash() {
   `;
 }
 
-function renderActiveTab(summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions) {
-  if (state.activeTab === "capture") return renderCaptureTab(editingTransaction);
-  if (state.activeTab === "calendar") return renderCalendarTab(summary);
-  if (state.activeTab === "assets") return renderAssetsTab(summary);
-  if (state.activeTab === "settings") return renderSettingsTab();
+function renderTabContent(tabId, summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions) {
+  if (tabId === "capture") return renderCaptureTab(editingTransaction);
+  if (tabId === "calendar") return renderCalendarTab(summary);
+  if (tabId === "assets") return renderAssetsTab(summary);
+  if (tabId === "settings") return renderSettingsTab();
   return renderLedgerTab(filteredTransactions, ledgerSummary, chartTransactions);
+}
+
+function renderTabPager(summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions) {
+  const activeIndex = activeTabIndex();
+  return `
+    <section class="tab-pager" data-tab-pager data-active-tab="${escapeHtml(state.activeTab)}">
+      <div class="tab-pager-track" data-tab-pager-track>
+        <div class="tab-pager-strip" data-tab-pager-strip style="${renderPagerStripStyle()}">
+          ${TABS.map((tab, idx) => {
+            if (!shouldRenderMobilePagerPane(idx, pagerState.renderedTabs, pagerState.visualTab, activeIndex)) return "";
+            const active = tab.id === state.activeTab;
+            return `
+              <article
+                class="tab-pager-pane tab-pane-${escapeHtml(tab.id)}${active ? " active" : ""}"
+                data-tab-id="${escapeHtml(tab.id)}"
+                data-tab-index="${idx}"
+                data-active="${active ? "true" : "false"}"
+                aria-hidden="${active ? "false" : "true"}"
+                style="--pane-index: ${idx}; --pane-width: ${pagerPanePercent()}%;"
+              >
+                <section class="tab-stage tab-stage-${escapeHtml(tab.id)}">
+                  ${renderTabContent(tab.id, summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions)}
+                </section>
+              </article>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    </section>
+  `;
 }
 
 function glyphSvg(name, className = "glyph") {
@@ -4766,6 +5193,12 @@ document.addEventListener("pointermove", (event) => {
   }
 });
 
+document.addEventListener("touchstart", handlePagerTouchStart, { capture: true, passive: true });
+document.addEventListener("touchmove", handlePagerTouchMove, { capture: true, passive: false });
+document.addEventListener("touchend", handlePagerTouchEnd, { capture: true, passive: false });
+document.addEventListener("touchcancel", handlePagerTouchEnd, { capture: true, passive: false });
+document.addEventListener("click", suppressClickAfterPagerDrag, true);
+
 document.addEventListener("keydown", (event) => {
   const target = event.target.closest?.("[data-long-press-action]");
   if (!target || !["Enter", " "].includes(event.key)) return;
@@ -4975,11 +5408,7 @@ document.addEventListener("click", (event) => {
       }
       return;
     }
-    state.activeTab = nextTab;
-    if (state.activeTab !== "capture") state.captureProjectOpen = false;
-    if (state.activeTab === "settings") state.settingsContent = "home";
-    render();
-    if (["ledger", "assets", "settings"].includes(state.activeTab)) scheduleForegroundCloudSync();
+    activateTab(nextTab, { animate: true });
   }
   if (action === "open-capture") {
     state.editingTransactionId = null;

@@ -54,6 +54,10 @@ body {
   overflow-x: hidden;
 }
 
+#app {
+  min-height: 100dvh;
+}
+
 body::before,
 body::after {
   position: fixed;
@@ -206,9 +210,13 @@ label span {
 
 .app-shell {
   width: min(1180px, calc(100% - 24px));
+  height: 100dvh;
   margin: 0 auto;
-  min-height: 100dvh;
+  min-height: 0;
   padding: max(12px, env(safe-area-inset-top)) 0 calc(88px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .sync-feedback {
@@ -271,7 +279,7 @@ label span {
   font-weight: 800;
 }
 
-.sync-feedback-active .tab-stage {
+.sync-feedback-active .tab-pager {
   transform: translate3d(0, 44px, 0);
   transition: transform 300ms cubic-bezier(0.2, 0.82, 0.18, 1);
   will-change: transform;
@@ -635,11 +643,71 @@ label span {
   100% { opacity: 1; clip-path: inset(0 0 0 0); transform: translate3d(0, 0, 0); }
 }
 
+.tab-pager {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 12px;
+  isolation: isolate;
+  overflow: hidden;
+  transform: translate3d(0, 0, 0);
+}
+
+.tab-pager-track {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior-x: contain;
+  touch-action: pan-y;
+  backface-visibility: hidden;
+}
+
+.tab-pager-strip {
+  position: relative;
+  width: calc(var(--tab-count) * 100%);
+  height: 100%;
+  min-height: 0;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+}
+
+.tab-pager-pane {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--pane-index) * var(--pane-width));
+  width: var(--pane-width);
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 1px 18px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-x: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  contain: layout style paint;
+  pointer-events: none;
+  scrollbar-width: thin;
+}
+
+.tab-pager-pane.active {
+  pointer-events: auto;
+}
+
+.app-shell[data-pager-moving="true"] .tab-pager-strip {
+  will-change: transform;
+}
+
+.app-shell[data-pager-moving="true"] .tab-pager-pane {
+  pointer-events: none;
+  user-select: none;
+}
+
 .tab-stage {
   display: grid;
   gap: 12px;
-  margin-top: 12px;
-  transition: transform 300ms cubic-bezier(0.2, 0.82, 0.18, 1);
 }
 
 .ledger-hero,
@@ -3508,14 +3576,14 @@ input[type="datetime-local"] {
     overflow: hidden;
   }
 
-  .app-shell.tab-capture .tab-stage {
+  .tab-stage-capture {
     height: 100%;
     min-height: 0;
     margin-top: 0;
     overflow: hidden;
   }
 
-  .app-shell.tab-capture .capture-panel {
+  .tab-stage-capture .capture-panel {
     height: 100%;
     display: grid;
     grid-template-rows: minmax(0, 1fr);
@@ -3527,19 +3595,19 @@ input[type="datetime-local"] {
     overflow: hidden;
   }
 
-  .app-shell.tab-capture .capture-panel::before {
+  .tab-stage-capture .capture-panel::before {
     display: none;
   }
 
-  .app-shell.tab-capture .capture-panel:has(> .section-title) {
+  .tab-stage-capture .capture-panel:has(> .section-title) {
     grid-template-rows: auto minmax(0, 1fr);
   }
 
-  .app-shell.tab-capture .capture-panel > .section-title {
+  .tab-stage-capture .capture-panel > .section-title {
     margin-bottom: 8px;
   }
 
-  .app-shell.tab-capture .transaction-form {
+  .tab-stage-capture .transaction-form {
     height: 100%;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
@@ -3547,11 +3615,11 @@ input[type="datetime-local"] {
     overflow: hidden;
   }
 
-  .app-shell.tab-capture .capture-switch {
+  .tab-stage-capture .capture-switch {
     margin-top: -4px;
   }
 
-  .app-shell.tab-capture .capture-category-board {
+  .tab-stage-capture .capture-category-board {
     min-height: 0;
     padding-right: 0;
     overflow-y: auto;
@@ -3559,7 +3627,7 @@ input[type="datetime-local"] {
     scrollbar-width: thin;
   }
 
-  .app-shell.tab-capture .amount-pad-panel {
+  .tab-stage-capture .amount-pad-panel {
     min-height: 0;
     align-self: stretch;
     width: 100%;
@@ -3668,23 +3736,23 @@ input[type="datetime-local"] {
     grid-column: auto;
   }
 
-  .app-shell.tab-capture .capture-category-button {
+  .tab-stage-capture .capture-category-button {
     min-height: 50px;
     padding: 3px 2px;
     gap: 2px;
   }
 
-  .app-shell.tab-capture .capture-category-button .icon-badge {
+  .tab-stage-capture .capture-category-button .icon-badge {
     width: 30px;
     height: 30px;
     border-radius: 10px;
   }
 
-  .app-shell.tab-capture .capture-subcategory-grid {
+  .tab-stage-capture .capture-subcategory-grid {
     gap: 5px 6px;
   }
 
-  .app-shell.tab-capture .capture-subcategory-button {
+  .tab-stage-capture .capture-subcategory-button {
     min-height: 35px;
     padding-block: 3px;
   }
