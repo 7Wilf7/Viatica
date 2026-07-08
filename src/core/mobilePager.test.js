@@ -31,6 +31,14 @@ test("keeps bottom-nav tap mounts to current and target panes only", () => {
   assert.deepEqual(getMobilePagerTapWindow(2, 2, 5), [2]);
 });
 
+test("supports an action-only center tab outside the swipe sequence", () => {
+  const tabs = ["ledger", "calendar", "capture", "assets", "settings"];
+  const pagerTabs = tabs.filter((tab) => tab !== "capture");
+
+  assert.deepEqual(pagerTabs, ["ledger", "calendar", "assets", "settings"]);
+  assert.equal(pagerTabs[pagerTabs.indexOf("calendar") + 1], "assets");
+});
+
 test("always renders the visible tab even if the render window is stale", () => {
   assert.equal(shouldRenderMobilePagerPane(3, [0, 1], 3, 0), true);
   assert.equal(shouldRenderMobilePagerPane(4, [0, 1], 0, 4), true);

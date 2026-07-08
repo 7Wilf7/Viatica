@@ -114,6 +114,8 @@ let cloudSyncFeedbackStartedAt = 0;
 let cloudSyncDeferredNoticeAt = 0;
 let ledgerRevision = 0;
 let lastTabTap = { tab: "", at: 0 };
+let ledgerViewTouch = null;
+let ledgerViewMotionDir = 0;
 const cloudAuthConfigured = isCloudAuthConfigured();
 let bootSplashVisible = true;
 let bootSplashDismissTimer = 0;
@@ -212,9 +214,11 @@ const TABS = [
 ];
 
 const tabIds = TABS.map((tab) => tab.id);
+const PAGER_TABS = TABS.filter((tab) => tab.id !== "capture");
+const pagerTabIds = PAGER_TABS.map((tab) => tab.id);
 const pagerState = {
   visualTab: 0,
-  renderedTabs: getMobilePagerRenderWindow(0, TABS.length),
+  renderedTabs: getMobilePagerRenderWindow(0, PAGER_TABS.length),
   trackLeft: 0,
   pendingTrackLeft: null,
   dragFrame: 0,
@@ -252,6 +256,7 @@ const LEDGER_VIEWS = [
   { id: "flow", labelKey: "ledger.flow", icon: "flow" },
   { id: "chart", labelKey: "ledger.chart", icon: "chartLine" },
 ];
+const LEDGER_VIEW_ORDER = { flow: 0, chart: 1 };
 
 const GLYPHS = {
   ledger: `
@@ -784,14 +789,16 @@ const CHANGELOG_ENTRIES = [
     },
     items: {
       zh: [
-        "照 Ultreia 的移动端 pager 逻辑加入左右滑动切换底部 Tab，手指拖动时页面会跟随移动。",
+        "照 Ultreia 的移动端 pager 逻辑加入左右滑动切换底部 Tab，滑动序列为账本、日历、资产、设置。",
+        "加一笔不参与左右滑动，只能通过底部加号进入，避免浏览账本和日历时误滑进记账表单。",
+        "账本页参考 Ultreia 训练页的内层手势，流水和图表可以左右滑动切换；外层 Tab 滑动会在内层到边界后再接管。",
         "当前页和相邻页会预挂载，滑动过程只移动外层条带，减少重绘造成的卡顿。",
-        "输入框、选择器和可横向滚动区域不会抢手势，纵向滚动仍保持原来的惯性体验。",
       ],
       en: [
-        "Added left-right swipe switching for bottom tabs using Ultreia's mobile pager pattern, with the page following the finger during drag.",
+        "Added left-right swipe switching for bottom tabs using Ultreia's mobile pager pattern across Ledger, Calendar, Assets, and Settings.",
+        "Add no longer participates in swipe navigation and opens only from the center plus button, avoiding accidental entry into the transaction form.",
+        "Ledger now mirrors Ultreia's Training inner gesture so Flow and Charts can switch by horizontal swipe, with the outer tab pager taking over only at the inner boundary.",
         "The current and neighboring panes stay pre-mounted, so swiping only moves the outer strip and avoids heavy rerenders.",
-        "Inputs, pickers, and horizontal scrollers keep their own gestures while vertical scrolling keeps its native momentum.",
       ],
     },
   },
@@ -2257,7 +2264,7 @@ function pagerTrackWidth(track = pagerTrackElement()) {
 }
 
 function pagerMaxLeft(width) {
-  return (TABS.length - 1) * width;
+  return (PAGER_TABS.length - 1) * width;
 }
 
 function resistedPagerLeft(left, width) {
@@ -2311,9 +2318,9 @@ function pagerSettleDuration(distance, width) {
 }
 
 function finishPagerSettle(targetIndex, { commit = true } = {}) {
-  const nextTab = tabIdAt(targetIndex);
+  const nextTab = pagerTabIdAt(targetIndex);
   pagerState.visualTab = targetIndex;
-  pagerState.renderedTabs = getMobilePagerRenderWindow(targetIndex, TABS.length);
+  pagerState.renderedTabs = getMobilePagerRenderWindow(targetIndex, PAGER_TABS.length);
   pagerState.settleTarget = null;
   pagerState.initialRenderIndex = null;
   pagerState.touching = false;
@@ -2362,12 +2369,16 @@ function animatePagerToTabIndex(targetIndex, options = {}) {
 
 function activateTab(nextTab, options = {}) {
   if (!tabIds.includes(nextTab)) return;
-  const fromIndex = activeTabIndex();
-  const toIndex = tabIds.indexOf(nextTab);
-  if (fromIndex === toIndex) return;
+  const currentTab = state.activeTab;
+  const fromIndex = activePagerIndex();
+  const toIndex = pagerTabIds.indexOf(nextTab);
+  if (currentTab === nextTab) return;
 
   clearPagerFrames();
-  const animate = options.animate && !prefersReducedMotion();
+  const animate = options.animate
+    && !prefersReducedMotion()
+    && pagerTabIds.includes(currentTab)
+    && toIndex >= 0;
   state.activeTab = nextTab;
   applyActiveTabSideEffects(nextTab);
   maybeScheduleForegroundSyncForTab(nextTab);
@@ -2375,15 +2386,17 @@ function activateTab(nextTab, options = {}) {
 
   if (!animate) {
     pagerState.initialRenderIndex = null;
-    pagerState.visualTab = toIndex;
-    pagerState.renderedTabs = getMobilePagerTapWindow(fromIndex, toIndex, TABS.length);
+    if (toIndex >= 0) {
+      pagerState.visualTab = toIndex;
+      pagerState.renderedTabs = getMobilePagerTapWindow(fromIndex, toIndex, PAGER_TABS.length);
+    }
     render();
     return;
   }
 
   pagerState.initialRenderIndex = fromIndex;
   pagerState.visualTab = toIndex;
-  pagerState.renderedTabs = getMobilePagerJumpWindow(fromIndex, toIndex, TABS.length);
+  pagerState.renderedTabs = getMobilePagerJumpWindow(fromIndex, toIndex, PAGER_TABS.length);
   render();
   requestAnimationFrame(() => {
     const track = pagerTrackElement();
@@ -2396,6 +2409,16 @@ function activateTab(nextTab, options = {}) {
 
 function shouldSkipPagerDrag(target) {
   return Boolean(target?.closest?.("input, textarea, select, [contenteditable=\"true\"], [data-choice], [data-dropdown-menu]"));
+}
+
+function cancelPagerGesture() {
+  pagerState.gesture = null;
+  pagerState.touching = false;
+  setPagerMovingAttribute(false);
+}
+
+function getInnerSwipe(target) {
+  return target?.closest?.("[data-mobile-inner-swipe=\"true\"]") || null;
 }
 
 function findHorizontalScroller(target, track) {
@@ -2417,6 +2440,12 @@ function horizontalScrollerOwnsGesture(scroller, dx) {
 }
 
 function innerSwipeOwnsGesture(target, track, dx) {
+  const inner = getInnerSwipe(target);
+  if (inner) {
+    if (dx < 0) return inner.dataset.swipeNext === "true";
+    if (dx > 0) return inner.dataset.swipePrev === "true";
+    return false;
+  }
   return horizontalScrollerOwnsGesture(findHorizontalScroller(target, track), dx);
 }
 
@@ -2429,11 +2458,12 @@ function handlePagerTouchStart(event) {
     visualTab: pagerState.visualTab,
     trackLeft: pagerState.trackLeft,
     width,
-    tabCount: TABS.length,
+    tabCount: PAGER_TABS.length,
     settleTarget: pagerState.settleTarget,
   });
   clearPagerFrames();
   pagerState.settleTarget = null;
+  applyPagerTrackOffset(start.startLeft, track);
 
   const touch = event.touches[0];
   const now = event.timeStamp || performance.now();
@@ -2475,7 +2505,7 @@ function handlePagerTouchMove(event) {
     if (!shouldOuterPagerHandleSwipe({
       direction,
       currentTab: gesture.current,
-      tabCount: TABS.length,
+      tabCount: PAGER_TABS.length,
       innerCanMove,
     })) {
       gesture.mode = "inner";
@@ -2508,6 +2538,14 @@ function handlePagerTouchEnd(event) {
   if (gesture.mode !== "outer") {
     pagerState.touching = false;
     setPagerMovingAttribute(false);
+    const width = pagerTrackWidth(gesture.track);
+    const currentLeft = Number.isFinite(pagerState.pendingTrackLeft)
+      ? pagerState.pendingTrackLeft
+      : pagerState.trackLeft;
+    const alignedLeft = gesture.current * width;
+    if (Math.abs(currentLeft - alignedLeft) > 0.5) {
+      animatePagerToTabIndex(gesture.current, { commit: true, fromLeft: currentLeft });
+    }
     return;
   }
 
@@ -2521,7 +2559,7 @@ function handlePagerTouchEnd(event) {
   let targetIndex = gesture.current;
   if (distance > threshold || gesture.velocity > PAGER_DRAG_VELOCITY_PX_PER_MS) targetIndex += 1;
   if (distance < -threshold || gesture.velocity < -PAGER_DRAG_VELOCITY_PX_PER_MS) targetIndex -= 1;
-  targetIndex = Math.max(0, Math.min(TABS.length - 1, targetIndex));
+  targetIndex = Math.max(0, Math.min(PAGER_TABS.length - 1, targetIndex));
 
   if (gesture.didDrag) pagerState.suppressClickUntil = performance.now() + 450;
   if (targetIndex !== gesture.current) triggerTabHaptic();
@@ -2533,6 +2571,95 @@ function suppressClickAfterPagerDrag(event) {
   if (performance.now() > pagerState.suppressClickUntil) return;
   event.preventDefault();
   event.stopImmediatePropagation();
+}
+
+function changeLedgerView(nextView) {
+  if (!LEDGER_VIEWS.some((item) => item.id === nextView)) return;
+  if (state.ledgerView === nextView) return;
+  ledgerViewMotionDir = (LEDGER_VIEW_ORDER[nextView] ?? 0) > (LEDGER_VIEW_ORDER[state.ledgerView] ?? 0) ? 1 : -1;
+  state.ledgerView = nextView;
+  render();
+}
+
+function isMobileLedgerSwipe() {
+  return Boolean(window.matchMedia?.("(max-width: 640px)")?.matches);
+}
+
+function shouldSkipLedgerViewSwipe(target) {
+  return Boolean(target?.closest?.("button, input, textarea, select, a, [role=\"button\"], [data-choice], [data-dropdown-menu]"));
+}
+
+function ledgerViewCanMove(direction) {
+  if (direction > 0) return state.ledgerView === "flow";
+  if (direction < 0) return state.ledgerView === "chart";
+  return false;
+}
+
+function handleLedgerViewTouchStart(event) {
+  const area = event.target.closest?.("[data-ledger-view-swipe=\"true\"]");
+  if (!area || !isMobileLedgerSwipe() || event.touches.length !== 1 || shouldSkipLedgerViewSwipe(event.target)) {
+    ledgerViewTouch = null;
+    return;
+  }
+  const touch = event.touches[0];
+  ledgerViewTouch = {
+    x: touch.clientX,
+    y: touch.clientY,
+    t: event.timeStamp || performance.now(),
+    w: area.clientWidth || window.innerWidth || 1,
+    mode: null,
+  };
+}
+
+function handleLedgerViewTouchMove(event) {
+  if (!ledgerViewTouch || !isMobileLedgerSwipe() || event.touches.length !== 1) return;
+  const touch = event.touches[0];
+  const dx = touch.clientX - ledgerViewTouch.x;
+  const dy = touch.clientY - ledgerViewTouch.y;
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+
+  if (ledgerViewTouch.mode === null) {
+    if (absX > absY * 1.08 && absX > 8) {
+      const direction = dx < 0 ? 1 : -1;
+      ledgerViewTouch.mode = ledgerViewCanMove(direction) ? "inner" : "pass";
+    } else if (absY > 6 || absX > 6) {
+      ledgerViewTouch.mode = "scroll";
+    } else {
+      return;
+    }
+  }
+
+  if (ledgerViewTouch.mode !== "inner") return;
+  cancelPagerGesture();
+  event.stopPropagation();
+  event.preventDefault();
+}
+
+function handleLedgerViewTouchEnd(event) {
+  if (!ledgerViewTouch || !isMobileLedgerSwipe()) {
+    ledgerViewTouch = null;
+    return;
+  }
+  const touchState = ledgerViewTouch;
+  ledgerViewTouch = null;
+  if (touchState.mode !== "inner") return;
+
+  const touch = event.changedTouches?.[0];
+  if (!touch) return;
+  const dx = touch.clientX - touchState.x;
+  const dy = touch.clientY - touchState.y;
+  const dt = Math.max(1, (event.timeStamp || performance.now()) - touchState.t);
+  const velocity = dx / dt;
+  const threshold = Math.min(touchState.w * 0.16, 58);
+  const shouldCommit = Math.abs(dx) >= threshold || Math.abs(velocity) > PAGER_DRAG_VELOCITY_PX_PER_MS;
+  if (!shouldCommit || Math.abs(dx) < Math.abs(dy) * 1.08) return;
+
+  cancelPagerGesture();
+  event.stopPropagation();
+  event.preventDefault();
+  if (dx < 0 && state.ledgerView === "flow") changeLedgerView("chart");
+  if (dx > 0 && state.ledgerView === "chart") changeLedgerView("flow");
 }
 
 function normalizeEmail(value) {
@@ -3104,17 +3231,17 @@ function bootSplashFrameMs() {
   }
 }
 
-function activeTabIndex() {
-  const idx = tabIds.indexOf(state.activeTab);
+function activePagerIndex() {
+  const idx = pagerTabIds.indexOf(state.activeTab);
   return idx >= 0 ? idx : 0;
 }
 
-function tabIdAt(index) {
-  return tabIds[Math.max(0, Math.min(TABS.length - 1, index))] || "ledger";
+function pagerTabIdAt(index) {
+  return pagerTabIds[Math.max(0, Math.min(PAGER_TABS.length - 1, index))] || "ledger";
 }
 
 function pagerPanePercent() {
-  return 100 / TABS.length;
+  return 100 / PAGER_TABS.length;
 }
 
 function prefersReducedMotion() {
@@ -3122,24 +3249,25 @@ function prefersReducedMotion() {
 }
 
 function syncPagerForRender() {
-  const activeIndex = activeTabIndex();
+  if (!pagerTabIds.includes(state.activeTab)) return;
+  const activeIndex = activePagerIndex();
   if (Number.isFinite(pagerState.initialRenderIndex)) return;
   if (pagerState.touching || Number.isFinite(pagerState.settleTarget)) {
     pagerState.renderedTabs = mergeTabWindows(
       pagerState.renderedTabs,
-      getMobilePagerRenderWindow(activeIndex, TABS.length),
+      getMobilePagerRenderWindow(activeIndex, PAGER_TABS.length),
     );
     return;
   }
   pagerState.visualTab = activeIndex;
-  pagerState.renderedTabs = getMobilePagerRenderWindow(activeIndex, TABS.length);
+  pagerState.renderedTabs = getMobilePagerRenderWindow(activeIndex, PAGER_TABS.length);
 }
 
 function renderPagerStripStyle() {
   const baseIndex = Number.isFinite(pagerState.initialRenderIndex)
     ? pagerState.initialRenderIndex
     : pagerState.visualTab;
-  return `--tab-count: ${TABS.length}; transform: translate3d(-${baseIndex * pagerPanePercent()}%, 0, 0);`;
+  return `--tab-count: ${PAGER_TABS.length}; transform: translate3d(-${baseIndex * pagerPanePercent()}%, 0, 0);`;
 }
 
 function render() {
@@ -3168,6 +3296,7 @@ function render() {
     ${state.auth.loginOpen ? renderAuthDialog() : ""}
     <input id="csv-import" type="file" accept=".csv,text/csv" hidden>
   `;
+  ledgerViewMotionDir = 0;
   scheduleBootSplashDismiss();
   maybeAutoCheckAppUpdate();
 }
@@ -3259,12 +3388,31 @@ function renderTabContent(tabId, summary, ledgerSummary, filteredTransactions, e
 }
 
 function renderTabPager(summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions) {
-  const activeIndex = activeTabIndex();
+  if (state.activeTab === "capture") {
+    return `
+      <section class="tab-pager tab-pager-static" data-tab-pager data-active-tab="capture">
+        <article
+          class="tab-pager-pane tab-pager-static-pane tab-pane-capture active"
+          data-tab-id="capture"
+          data-tab-index="-1"
+          data-active="true"
+          aria-hidden="false"
+          style="--pane-index: 0; --pane-width: 100%;"
+        >
+          <section class="tab-stage tab-stage-capture">
+            ${renderCaptureTab(editingTransaction)}
+          </section>
+        </article>
+      </section>
+    `;
+  }
+
+  const activeIndex = activePagerIndex();
   return `
     <section class="tab-pager" data-tab-pager data-active-tab="${escapeHtml(state.activeTab)}">
       <div class="tab-pager-track" data-tab-pager-track>
         <div class="tab-pager-strip" data-tab-pager-strip style="${renderPagerStripStyle()}">
-          ${TABS.map((tab, idx) => {
+          ${PAGER_TABS.map((tab, idx) => {
             if (!shouldRenderMobilePagerPane(idx, pagerState.renderedTabs, pagerState.visualTab, activeIndex)) return "";
             const active = tab.id === state.activeTab;
             return `
@@ -3501,11 +3649,24 @@ function handleLedgerPeriodOption(node) {
 }
 
 function renderLedgerTab(filteredTransactions, summary, chartTransactions) {
+  const viewMotionClass = ledgerViewMotionDir
+    ? (ledgerViewMotionDir > 0 ? " ledger-view-in-right" : " ledger-view-in-left")
+    : "";
   return `
-    ${renderLedgerTopbar()}
-    ${renderLedgerPeriodSwitch()}
-    ${renderLedgerOverview(summary)}
-    ${state.ledgerView === "chart" ? renderLedgerStats(summary, chartTransactions) : renderLedgerFlow(filteredTransactions)}
+    <div
+      class="ledger-view-surface"
+      data-ledger-view-swipe="true"
+      data-mobile-inner-swipe="true"
+      data-swipe-prev="${state.ledgerView === "chart" ? "true" : "false"}"
+      data-swipe-next="${state.ledgerView === "flow" ? "true" : "false"}"
+    >
+      ${renderLedgerTopbar()}
+      ${renderLedgerPeriodSwitch()}
+      ${renderLedgerOverview(summary)}
+      <div class="ledger-view-panel${viewMotionClass}" data-ledger-view-panel="${escapeHtml(state.ledgerView)}">
+        ${state.ledgerView === "chart" ? renderLedgerStats(summary, chartTransactions) : renderLedgerFlow(filteredTransactions)}
+      </div>
+    </div>
   `;
 }
 
@@ -5193,6 +5354,10 @@ document.addEventListener("pointermove", (event) => {
   }
 });
 
+document.addEventListener("touchstart", handleLedgerViewTouchStart, { capture: true, passive: true });
+document.addEventListener("touchmove", handleLedgerViewTouchMove, { capture: true, passive: false });
+document.addEventListener("touchend", handleLedgerViewTouchEnd, { capture: true, passive: false });
+document.addEventListener("touchcancel", handleLedgerViewTouchEnd, { capture: true, passive: false });
 document.addEventListener("touchstart", handlePagerTouchStart, { capture: true, passive: true });
 document.addEventListener("touchmove", handlePagerTouchMove, { capture: true, passive: false });
 document.addEventListener("touchend", handlePagerTouchEnd, { capture: true, passive: false });
@@ -5443,9 +5608,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "ledger-view") {
     const view = node.dataset.view;
-    if (!LEDGER_VIEWS.some((item) => item.id === view)) return;
-    state.ledgerView = view;
-    render();
+    changeLedgerView(view);
   }
   if (action === "ledger-period-segment") {
     handleLedgerPeriodSegment(node, event);
