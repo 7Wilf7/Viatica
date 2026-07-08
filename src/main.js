@@ -1788,6 +1788,25 @@ function formatMoney(amount, currency) {
   return formatCurrency(amount, currency, currency === "CNY" ? "zh-CN" : displayLocale());
 }
 
+function formatWholeMoney(amount, currency = "CNY") {
+  const numeric = Number(amount || 0);
+  const value = Number.isFinite(numeric) ? Math.trunc(numeric) : 0;
+  const locale = currency === "CNY" ? "zh-CN" : displayLocale();
+  if (currency === "CNY") {
+    return `¥${new Intl.NumberFormat(locale, {
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+    }).format(value)}`;
+  }
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    currencyDisplay: "narrowSymbol",
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(value);
+}
+
 function captureAmountDisplay(amount, currency = "CNY") {
   const value = String(amount ?? "").trim();
   if (!value) return currency === "CNY" ? "¥0.00" : formatMoney(0, currency);
@@ -3106,6 +3125,16 @@ function compactMoney(amount, currency = "CNY") {
   return formatMoney(value, currency);
 }
 
+function compactWholeMoney(amount, currency = "CNY") {
+  const value = Math.abs(Number(amount || 0));
+  if (value >= 10000) {
+    return state.preferences.locale === "en"
+      ? `${formatWholeMoney(value / 1000, currency)}k`
+      : `${formatWholeMoney(value / 10000, currency)}万`;
+  }
+  return formatWholeMoney(value, currency);
+}
+
 function signedAmount(txn) {
   const prefix = txn.type === "income" ? "+" : "-";
   return `${prefix}${formatMoney(txn.amount, txn.currency)}`;
@@ -3683,8 +3712,8 @@ function renderLedgerOverview(summary) {
   return `
     <section class="ledger-overview" aria-label="${escapeHtml(t("ledger.overview"))}">
       <div class="ledger-metric-grid">
-        ${renderLedgerMetric(t("ledger.monthExpense"), formatMoney(summary.monthExpense), "chartPie")}
-        ${renderLedgerMetric(t("ledger.monthIncome"), formatMoney(summary.monthIncome), "chartLine")}
+        ${renderLedgerMetric(t("ledger.monthExpense"), formatWholeMoney(summary.monthExpense), "chartPie")}
+        ${renderLedgerMetric(t("ledger.monthIncome"), formatWholeMoney(summary.monthIncome), "chartLine")}
         ${renderLedgerMetric(t("today.transactionCount"), String(summary.transactionCount), "chartBars")}
       </div>
     </section>
@@ -4053,8 +4082,8 @@ function renderMonthCalendar() {
       <span class="calendar-cell ${expense || income ? "has-data" : ""} ${key === today ? "today" : ""}">
         <span class="calendar-day">${day}</span>
         <span class="calendar-values">
-          ${expense ? `<span class="calendar-money negative">-${escapeHtml(compactMoney(expense))}</span>` : ""}
-          ${income ? `<span class="calendar-money positive">+${escapeHtml(compactMoney(income))}</span>` : ""}
+          ${expense ? `<span class="calendar-money negative">-${escapeHtml(compactWholeMoney(expense))}</span>` : ""}
+          ${income ? `<span class="calendar-money positive">+${escapeHtml(compactWholeMoney(income))}</span>` : ""}
         </span>
       </span>
     `);
@@ -4828,16 +4857,17 @@ function renderBudgetRows(summary, limit = 6) {
   if (!entries.length) return `<div class="empty">${escapeHtml(t("assets.noBudget"))}</div>`;
   return entries.map(([category, data]) => {
     const ratio = Math.min(1, data.ratio || 0);
+    const progressText = `${formatMoney(data.spent)} / ${formatMoney(data.budget)}`;
     return `
       <div class="budget-row">
         <div class="metric-row-head">
           ${renderIconBadge(category, "category", "small")}
           <div class="metric-copy">
             <strong>${escapeHtml(category)}</strong>
-            <span>${formatMoney(data.spent)} / ${formatMoney(data.budget)}</span>
           </div>
           <span class="metric-amount">${Math.round(ratio * 100)}%</span>
         </div>
+        <span class="budget-progress-text">${escapeHtml(progressText)}</span>
         <div class="budget-track"><span style="width: ${Math.round(ratio * 100)}%"></span></div>
       </div>
     `;
