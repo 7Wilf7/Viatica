@@ -4,6 +4,7 @@ import {
   buildAevumOverview,
   filterTransactions,
   isProjectOnlyTransaction,
+  mergeProjectOnlyTransactionsForStats,
   normalizeBudgets,
   normalizeTransaction,
   projectLabelFromTags,
@@ -170,6 +171,32 @@ test("keeps project labels in tags and excludes project-only costs from ledger t
   assert.equal(summary.transactionCount, 1);
   assert.equal(filterTransactions([raceEntry, oldFee], { query: "项目补录" }).length, 1);
   assert.equal(filterTransactions([raceEntry, oldFee], { query: "仅记录项目" }).length, 1);
+});
+
+test("keeps project-only rows visible to project stats outside the ledger period", () => {
+  const raceEntry = normalizeTransaction({
+    amount: 388,
+    category: "运动",
+    account: "微信",
+    title: "越野赛报名",
+    project: "崇礼越野赛 2026",
+    occurredAt: "2026-07-09T08:00:00+08:00",
+  });
+  const oldFee = normalizeTransaction({
+    amount: 299,
+    category: "运动",
+    account: "微信",
+    title: "历史报名费",
+    project: "崇礼越野赛 2026",
+    projectOnly: true,
+    occurredAt: "2026-01-09T08:00:00+08:00",
+  });
+
+  const rows = mergeProjectOnlyTransactionsForStats([raceEntry, oldFee], [raceEntry]);
+  const allRows = mergeProjectOnlyTransactionsForStats([raceEntry, oldFee], [raceEntry, oldFee]);
+
+  assert.deepEqual(rows.map((txn) => txn.title), ["越野赛报名", "历史报名费"]);
+  assert.deepEqual(allRows.map((txn) => txn.title), ["越野赛报名", "历史报名费"]);
 });
 
 test("csv export and import round trips ledger rows", () => {

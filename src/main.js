@@ -39,6 +39,7 @@ import {
 import {
   filterTransactions,
   isProjectOnlyTransaction,
+  mergeProjectOnlyTransactionsForStats,
   normalizeBudgets,
   normalizeProjectLabel,
   normalizeTransaction,
@@ -593,7 +594,7 @@ const SUBCATEGORY_META = {
   "咖啡奶茶": { icon: "cash", thing: "coffee" },
   "水果": { icon: "food", thing: "apple" },
   "零食": { icon: "food", thing: "chips" },
-  "餐饮:其他": { icon: "food", thing: "fork" },
+  "餐饮:其他": { icon: "food", thing: "plate" },
   "共享单车": { icon: "bike", thing: "bicycle" },
   "地铁": { icon: "metro", thing: "train" },
   "打车": { icon: "taxi", thing: "taxi" },
@@ -602,33 +603,33 @@ const SUBCATEGORY_META = {
   "数码": { icon: "device", thing: "desktopComputer" },
   "家居": { icon: "sofa", thing: "sofa" },
   "装备": { icon: "gear", thing: "gear" },
-  "补给": { icon: "food", thing: "energyDrink" },
+  "补给": { icon: "food", thing: "proteinBar" },
   "运动饮料": { icon: "food", thing: "energyDrink" },
-  "康复": { icon: "health", thing: "" },
-  "按摩": { icon: "health", thing: "" },
+  "康复": { icon: "health", thing: "bandAid" },
+  "按摩": { icon: "health", thing: "moon" },
   "训练课": { icon: "training", thing: "stopwatch" },
   "赛事报名": { icon: "ticket", thing: "trophy" },
   "房租": { icon: "home", thing: "key" },
   "理发": { icon: "scissors", thing: "scissors" },
-  "话费": { icon: "phone", thing: "mobilePhone" },
+  "话费": { icon: "phone", thing: "phone" },
   "保险": { icon: "shield", thing: "shield" },
   "医疗": { icon: "health", thing: "stethoscope" },
   "药品": { icon: "capsule", thing: "pillBottle" },
-  "ChatGPT": { icon: "ai", thing: "" },
+  "ChatGPT": { icon: "ai", thing: "chatBubble" },
   "Aevum": { icon: "ai", logo: "aevum" },
   "第一本": { icon: "ledger", logo: "viatica" },
   "App": { icon: "app", thing: "mobilePhone" },
   "电影": { icon: "movie", thing: "movie" },
   "游戏": { icon: "game", thing: "mobileGame" },
-  "娱乐:餐饮": { icon: "food", thing: "fork" },
+  "娱乐:餐饮": { icon: "food", thing: "croissant" },
   "娱乐:其他": { icon: "more", thing: "partyPopper" },
-  "旅行:交通": { icon: "transport", thing: "train" },
+  "旅行:交通": { icon: "transport", thing: "bus" },
   "住宿": { icon: "hotel", thing: "hotel" },
-  "旅行:餐饮": { icon: "food", thing: "fork" },
+  "旅行:餐饮": { icon: "food", thing: "restaurant" },
   "门票": { icon: "ticket", thing: "ticket" },
-  "提现手续费": { icon: "fee", thing: "receipt" },
+  "提现手续费": { icon: "fee", thing: "file" },
   "手续费": { icon: "fee", thing: "receipt" },
-  "还款": { icon: "subscription", thing: "creditCard" },
+  "还款": { icon: "subscription", thing: "openBook" },
   "其他:其他": { icon: "more", thing: "questionMark" },
   "工资": { icon: "salary", thing: "briefcase" },
   "家教费": { icon: "learning", thing: "teacher" },
@@ -3312,6 +3313,7 @@ function render() {
   const summary = summarizeLedger(activeState.transactions, activeState.budgets, new Date(), activeState.accounts);
   const typeTransactions = ledgerTypeFilteredTransactions(activeState.transactions);
   const periodTransactions = rangeFilterTransactions(typeTransactions, state.ledgerPeriod);
+  const projectStatTransactions = mergeProjectOnlyTransactionsForStats(typeTransactions, periodTransactions);
   const ledgerSummary = summarizeLedgerPeriod(periodTransactions, activeState.budgets);
   const filteredTransactions = ledgerFlowTransactions(periodTransactions)
     .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt));
@@ -3322,7 +3324,7 @@ function render() {
     ${bootSplashVisible ? renderBootSplash() : ""}
     <main class="app-shell tab-${escapeHtml(state.activeTab)}${syncFeedbackClass}">
       ${renderCloudSyncFeedback()}
-      ${renderTabPager(summary, ledgerSummary, filteredTransactions, editingTransaction, periodTransactions)}
+      ${renderTabPager(summary, ledgerSummary, filteredTransactions, editingTransaction, periodTransactions, projectStatTransactions)}
 
       <nav class="bottom-tabs" aria-label="${escapeHtml(t("app.sections"))}">
         ${TABS.map(renderTabButton).join("")}
@@ -3414,15 +3416,15 @@ function renderBootSplash() {
   `;
 }
 
-function renderTabContent(tabId, summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions) {
+function renderTabContent(tabId, summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions, projectStatTransactions) {
   if (tabId === "capture") return renderCaptureTab(editingTransaction);
   if (tabId === "calendar") return renderCalendarTab(summary);
   if (tabId === "assets") return renderAssetsTab(summary);
   if (tabId === "settings") return renderSettingsTab();
-  return renderLedgerTab(filteredTransactions, ledgerSummary, chartTransactions);
+  return renderLedgerTab(filteredTransactions, ledgerSummary, chartTransactions, projectStatTransactions);
 }
 
-function renderTabPager(summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions) {
+function renderTabPager(summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions, projectStatTransactions) {
   if (state.activeTab === "capture") {
     return `
       <section class="tab-pager tab-pager-static" data-tab-pager data-active-tab="capture">
@@ -3460,7 +3462,7 @@ function renderTabPager(summary, ledgerSummary, filteredTransactions, editingTra
                 style="--pane-index: ${idx}; --pane-width: ${pagerPanePercent()}%;"
               >
                 <section class="tab-stage tab-stage-${escapeHtml(tab.id)}">
-                  ${renderTabContent(tab.id, summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions)}
+                  ${renderTabContent(tab.id, summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions, projectStatTransactions)}
                 </section>
               </article>
             `;
@@ -3686,7 +3688,7 @@ function handleLedgerPeriodOption(node) {
   render();
 }
 
-function renderLedgerTab(filteredTransactions, summary, chartTransactions) {
+function renderLedgerTab(filteredTransactions, summary, chartTransactions, projectStatTransactions) {
   const viewMotionClass = ledgerViewMotionDir
     ? (ledgerViewMotionDir > 0 ? " ledger-view-in-right" : " ledger-view-in-left")
     : "";
@@ -3702,7 +3704,7 @@ function renderLedgerTab(filteredTransactions, summary, chartTransactions) {
       ${renderLedgerPeriodSwitch()}
       ${renderLedgerOverview(summary)}
       <div class="ledger-view-panel${viewMotionClass}" data-ledger-view-panel="${escapeHtml(state.ledgerView)}">
-        ${state.ledgerView === "chart" ? renderLedgerStats(summary, chartTransactions) : renderLedgerFlow(filteredTransactions)}
+        ${state.ledgerView === "chart" ? renderLedgerStats(summary, chartTransactions, projectStatTransactions) : renderLedgerFlow(filteredTransactions)}
       </div>
     </div>
   `;
@@ -3743,10 +3745,10 @@ function renderLedgerFlow(filteredTransactions) {
   `;
 }
 
-function renderLedgerStats(summary, transactions = []) {
+function renderLedgerStats(summary, transactions = [], projectTransactions = transactions) {
   const chartEntries = categoryChartEntries(transactions, 5);
   const chartTotal = Math.max(1, chartEntries.reduce((total, [, amount]) => total + amount, 0));
-  const projectEntries = projectChartEntries(transactions, 6);
+  const projectEntries = projectChartEntries(projectTransactions, 6);
   return `
     <section class="panel stats-panel">
       <div class="section-title">
