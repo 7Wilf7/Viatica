@@ -10,6 +10,7 @@ import {
   projectLabelFromTags,
   sanitizeLedgerAccounts,
   summarizeLedger,
+  summarizeProjects,
   tagsWithProject,
 } from "./ledger.js";
 import { exportTransactionsCsv, importTransactionsCsv } from "./csv.js";
@@ -197,6 +198,50 @@ test("keeps project-only rows visible to project stats outside the ledger period
 
   assert.deepEqual(rows.map((txn) => txn.title), ["越野赛报名", "历史报名费"]);
   assert.deepEqual(allRows.map((txn) => txn.title), ["越野赛报名", "历史报名费"]);
+});
+
+test("summarizes each project with all flows and project-only backfills", () => {
+  const txns = [
+    normalizeTransaction({
+      amount: 388,
+      category: "运动",
+      title: "报名费",
+      project: "崇礼越野赛",
+      occurredAt: "2026-07-02T08:00:00+08:00",
+    }),
+    normalizeTransaction({
+      amount: 200,
+      category: "运动",
+      title: "历史住宿",
+      project: "崇礼越野赛",
+      projectOnly: true,
+      occurredAt: "2026-06-30T08:00:00+08:00",
+    }),
+    normalizeTransaction({
+      type: "income",
+      amount: 100,
+      category: "退款",
+      title: "退费",
+      project: "崇礼越野赛",
+      occurredAt: "2026-07-03T08:00:00+08:00",
+    }),
+    normalizeTransaction({
+      amount: 42,
+      category: "餐饮",
+      title: "午餐",
+      occurredAt: "2026-07-04T08:00:00+08:00",
+    }),
+  ];
+
+  const [project] = summarizeProjects(txns);
+
+  assert.equal(project.project, "崇礼越野赛");
+  assert.equal(project.expense, 588);
+  assert.equal(project.income, 100);
+  assert.equal(project.net, -488);
+  assert.equal(project.count, 3);
+  assert.equal(project.projectOnlyCount, 1);
+  assert.deepEqual(project.transactions.map((txn) => txn.title), ["退费", "报名费", "历史住宿"]);
 });
 
 test("csv export and import round trips ledger rows", () => {

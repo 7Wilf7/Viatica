@@ -1753,6 +1753,48 @@ label span {
   font-weight: 760;
 }
 
+.calendar-detail-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.calendar-detail-tabs {
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  background: oklch(0.120 0.006 95 / 0.62);
+}
+
+.calendar-detail-tab {
+  min-width: 0;
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: calc(var(--r-sm) - 3px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 760;
+  transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out), color 180ms var(--ease-out);
+}
+
+.calendar-detail-tab:hover,
+.calendar-detail-tab.active {
+  border-color: var(--line-strong);
+  background: oklch(0.190 0.010 95 / 0.76);
+  color: var(--ink);
+}
+
+.calendar-detail-body {
+  display: grid;
+  gap: 10px;
+}
+
 .calendar-summary-title {
   align-items: center;
   margin-bottom: 8px;
@@ -1781,6 +1823,119 @@ label span {
 
 .calendar-summary {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.calendar-project-body {
+  gap: 10px;
+}
+
+.calendar-project-list {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.calendar-project-list::-webkit-scrollbar {
+  display: none;
+}
+
+.calendar-project-chip {
+  flex: 0 0 auto;
+  min-width: 118px;
+  min-height: 42px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  background: oklch(0.145 0.006 95 / 0.70);
+  color: var(--ink-2);
+  text-align: left;
+  transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out), color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+}
+
+.calendar-project-chip span,
+.calendar-project-chip strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-project-chip span {
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.calendar-project-chip strong {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.calendar-project-chip:hover,
+.calendar-project-chip.active {
+  border-color: oklch(0.700 0.052 86 / 0.70);
+  background: oklch(0.210 0.016 86 / 0.64);
+  color: var(--ink);
+}
+
+.calendar-project-chip.active {
+  box-shadow: 0 0 0 1px oklch(0.700 0.052 86 / 0.16) inset;
+}
+
+.calendar-project-detail {
+  display: grid;
+  gap: 10px;
+}
+
+.calendar-project-heading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendar-project-heading > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.calendar-project-heading h2 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.2;
+  font-weight: 780;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-project-heading span {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 680;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-project-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.calendar-project-flow-title {
+  margin-top: 0;
+}
+
+.calendar-project-flow {
+  gap: 6px;
 }
 
 .capture-panel {
@@ -1886,9 +2041,11 @@ label span {
 .capture-subcategory-button {
   min-height: 36px;
   padding: 4px 5px;
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
+  justify-content: stretch;
+  justify-items: stretch;
   gap: 5px;
   overflow: hidden;
   font-size: 10px;
@@ -1904,11 +2061,13 @@ label span {
   width: 22px;
   height: 22px;
   border-radius: 8px;
+  justify-self: start;
 }
 
 .capture-subcategory-button > span:last-child {
   min-width: 0;
   overflow: hidden;
+  text-align: center;
   text-overflow: ellipsis;
 }
 

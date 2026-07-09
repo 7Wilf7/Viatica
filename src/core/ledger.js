@@ -77,6 +77,51 @@ export function mergeProjectOnlyTransactionsForStats(transactions = [], periodTr
   return merged;
 }
 
+export function summarizeProjects(transactions = []) {
+  const byProject = new Map();
+
+  for (const txn of transactions) {
+    const project = normalizeProjectLabel(txn.project || projectLabelFromTags(txn.tags));
+    if (!project) continue;
+    const amount = Number(txn.amount || 0);
+    if (!(amount > 0)) continue;
+    const current = byProject.get(project) || {
+      project,
+      expense: 0,
+      income: 0,
+      net: 0,
+      count: 0,
+      projectOnlyCount: 0,
+      lastAt: "",
+      transactions: [],
+    };
+    if (txn.type === "income") current.income += amount;
+    else current.expense += amount;
+    current.count += 1;
+    if (isProjectOnlyTransaction(txn)) current.projectOnlyCount += 1;
+    const occurredAt = new Date(txn.occurredAt);
+    if (!Number.isNaN(occurredAt.getTime()) && (!current.lastAt || occurredAt > new Date(current.lastAt))) {
+      current.lastAt = occurredAt.toISOString();
+    }
+    current.transactions.push(txn);
+    byProject.set(project, current);
+  }
+
+  return [...byProject.values()]
+    .map((item) => ({
+      ...item,
+      expense: Math.round(item.expense * 100) / 100,
+      income: Math.round(item.income * 100) / 100,
+      net: Math.round((item.income - item.expense) * 100) / 100,
+      transactions: [...item.transactions].sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt)),
+    }))
+    .sort((a, b) => {
+      const dateDiff = new Date(b.lastAt || 0) - new Date(a.lastAt || 0);
+      if (dateDiff) return dateDiff;
+      return b.expense + b.income - (a.expense + a.income);
+    });
+}
+
 function parseBoolean(input) {
   if (typeof input === "boolean") return input;
   return ["true", "1", "yes", "y"].includes(String(input || "").trim().toLowerCase());

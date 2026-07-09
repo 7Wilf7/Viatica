@@ -45,6 +45,7 @@ import {
   normalizeTransaction,
   projectLabelFromTags,
   summarizeLedger,
+  summarizeProjects,
 } from "./core/ledger.js";
 import {
   DEFAULT_LEDGER_PERIOD,
@@ -147,6 +148,8 @@ const state = {
   searchOpen: false,
   captureDraft: null,
   captureProjectOpen: false,
+  calendarPanel: "summary",
+  calendarProject: "",
   budgetKeypadCategory: "",
   budgetDraft: null,
   startingAssetsFormOpen: false,
@@ -575,7 +578,7 @@ const CATEGORY_META = {
   "AI 工具": { icon: "ai", thing: "robot", fg: "oklch(0.73 0.10 275)", bg: "oklch(0.73 0.10 275 / 0.15)" },
   "订阅": { icon: "app", thing: "subscription", fg: "oklch(0.72 0.10 85)", bg: "oklch(0.72 0.10 85 / 0.16)" },
   "娱乐": { icon: "entertainment", thing: "gameController", fg: "oklch(0.76 0.10 95)", bg: "oklch(0.76 0.10 95 / 0.16)" },
-  "旅行": { icon: "travel", thing: "airplane", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
+  "旅行": { icon: "travel", thing: "book", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
   "还款": { icon: "subscription", thing: "creditCard", fg: "oklch(0.72 0.10 25)", bg: "oklch(0.72 0.10 25 / 0.14)" },
   "工作": { icon: "work", thing: "calendar", fg: "oklch(0.76 0.08 82)", bg: "oklch(0.76 0.08 82 / 0.16)" },
   "薪酬": { icon: "salary", thing: "money", fg: "oklch(0.76 0.08 120)", bg: "oklch(0.76 0.08 120 / 0.15)" },
@@ -623,7 +626,7 @@ const SUBCATEGORY_META = {
   "游戏": { icon: "game", thing: "mobileGame" },
   "娱乐:餐饮": { icon: "food", thing: "croissant" },
   "娱乐:其他": { icon: "more", thing: "partyPopper" },
-  "旅行:交通": { icon: "transport", thing: "bus" },
+  "旅行:交通": { icon: "transport", thing: "airplane" },
   "住宿": { icon: "hotel", thing: "hotel" },
   "旅行:餐饮": { icon: "food", thing: "restaurant" },
   "门票": { icon: "ticket", thing: "ticket" },
@@ -1530,6 +1533,16 @@ const MESSAGES = {
     "confirm.delete": "删除这笔流水？",
     "confirm.deleteAccount": "删除账户“{account}”？已有流水不会被删除。",
     "calendar.summaryTitle": "本月小计",
+    "calendar.summaryTab": "本月小计",
+    "calendar.projectTab": "项目",
+    "calendar.projectTitle": "项目",
+    "calendar.projectExpense": "项目支出",
+    "calendar.projectIncome": "项目收入",
+    "calendar.projectNet": "项目净额",
+    "calendar.projectEntries": "流水数",
+    "calendar.projectBackfills": "补录",
+    "calendar.projectFlowTitle": "项目流水",
+    "calendar.noProject": "还没有项目流水。加一笔时填写项目名后，这里会按项目汇总。",
     "calendar.activeDays": "记账天数",
     "toast.updated": "流水已更新。",
     "toast.saved": "流水已保存。",
@@ -1762,6 +1775,16 @@ const MESSAGES = {
     "confirm.delete": "Delete this entry?",
     "confirm.deleteAccount": "Delete account “{account}”? Existing entries will not be deleted.",
     "calendar.summaryTitle": "Month Summary",
+    "calendar.summaryTab": "Month Summary",
+    "calendar.projectTab": "Projects",
+    "calendar.projectTitle": "Projects",
+    "calendar.projectExpense": "Project Spent",
+    "calendar.projectIncome": "Project Income",
+    "calendar.projectNet": "Project Net",
+    "calendar.projectEntries": "Entries",
+    "calendar.projectBackfills": "Backfills",
+    "calendar.projectFlowTitle": "Project Entries",
+    "calendar.noProject": "No project entries yet. Add a project name while capturing an entry to group it here.",
     "calendar.activeDays": "Active Days",
     "toast.updated": "Entry updated.",
     "toast.saved": "Entry saved.",
@@ -4020,7 +4043,40 @@ function renderCalendarTab(summary) {
       ${renderMonthCalendar()}
     </section>
 
-    <section class="panel calendar-summary-panel">
+    ${renderCalendarDetailPanel(summary)}
+  `;
+}
+
+function renderCalendarDetailPanel(summary) {
+  const activePanel = state.calendarPanel === "project" ? "project" : "summary";
+  const tabs = [
+    { id: "summary", label: t("calendar.summaryTab") },
+    { id: "project", label: t("calendar.projectTab") },
+  ];
+  return `
+    <section class="panel calendar-detail-panel">
+      <div class="calendar-detail-tabs" role="tablist" aria-label="${escapeHtml(t("tab.calendar"))}">
+        ${tabs.map((tab) => `
+          <button
+            class="calendar-detail-tab ${activePanel === tab.id ? "active" : ""}"
+            type="button"
+            role="tab"
+            aria-selected="${activePanel === tab.id ? "true" : "false"}"
+            data-action="calendar-panel"
+            data-panel="${escapeHtml(tab.id)}"
+          >
+            ${escapeHtml(tab.label)}
+          </button>
+        `).join("")}
+      </div>
+      ${activePanel === "project" ? renderCalendarProjectPanel() : renderCalendarSummaryPanel(summary)}
+    </section>
+  `;
+}
+
+function renderCalendarSummaryPanel(summary) {
+  return `
+    <div class="calendar-detail-body">
       <div class="section-title calendar-summary-title">
         <div>
           <h2>${escapeHtml(t("calendar.summaryTitle"))}</h2>
@@ -4034,7 +4090,67 @@ function renderCalendarTab(summary) {
         ${renderStat(t("today.expense", { range: t("range.month") }), compactMoney(summary.monthExpense))}
         ${renderStat(t("today.income", { range: t("range.month") }), compactMoney(summary.monthIncome))}
       </div>
-    </section>
+    </div>
+  `;
+}
+
+function selectedCalendarProjectSummary(projects = []) {
+  const selected = normalizeProjectLabel(state.calendarProject);
+  return projects.find((item) => item.project === selected) || projects[0] || null;
+}
+
+function renderCalendarProjectPanel() {
+  const projects = summarizeProjects(activeLedgerState().transactions);
+  const selected = selectedCalendarProjectSummary(projects);
+  if (!selected) {
+    return `<div class="calendar-detail-body"><div class="empty">${escapeHtml(t("calendar.noProject"))}</div></div>`;
+  }
+  const meta = [
+    t("stats.projectCount", { count: selected.count }),
+    selected.projectOnlyCount ? `${selected.projectOnlyCount} ${t("calendar.projectBackfills")}` : "",
+  ].filter(Boolean).join(" · ");
+  return `
+    <div class="calendar-detail-body calendar-project-body">
+      <div class="calendar-project-list" role="tablist" aria-label="${escapeHtml(t("calendar.projectTitle"))}">
+        ${projects.map((project) => `
+          <button
+            class="calendar-project-chip ${project.project === selected.project ? "active" : ""}"
+            type="button"
+            role="tab"
+            aria-selected="${project.project === selected.project ? "true" : "false"}"
+            data-action="select-calendar-project"
+            data-project="${escapeHtml(project.project)}"
+          >
+            <span>${escapeHtml(project.project)}</span>
+            <strong>${escapeHtml(compactMoney(project.expense))}</strong>
+          </button>
+        `).join("")}
+      </div>
+
+      <div class="calendar-project-detail">
+        <div class="calendar-project-heading">
+          ${renderIconBadge("旅行", "category", "small")}
+          <div>
+            <h2>${escapeHtml(selected.project)}</h2>
+            <span>${escapeHtml(meta)}</span>
+          </div>
+        </div>
+        <div class="hero-grid calendar-project-metrics">
+          ${renderStat(t("calendar.projectExpense"), compactMoney(selected.expense))}
+          ${renderStat(t("calendar.projectIncome"), compactMoney(selected.income))}
+          ${renderStat(t("calendar.projectNet"), signedMoney(selected.net))}
+          ${renderStat(t("calendar.projectEntries"), String(selected.count))}
+        </div>
+        <div class="section-title inline-section-title calendar-project-flow-title">
+          <div>
+            <h2>${escapeHtml(t("calendar.projectFlowTitle"))}</h2>
+          </div>
+        </div>
+        <div class="list calendar-project-flow">
+          ${selected.transactions.map(renderTransactionRow).join("")}
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -5650,6 +5766,15 @@ document.addEventListener("click", (event) => {
   if (action === "ledger-view") {
     const view = node.dataset.view;
     changeLedgerView(view);
+  }
+  if (action === "calendar-panel") {
+    state.calendarPanel = node.dataset.panel === "project" ? "project" : "summary";
+    render();
+  }
+  if (action === "select-calendar-project") {
+    state.calendarPanel = "project";
+    state.calendarProject = node.dataset.project || "";
+    render();
   }
   if (action === "ledger-period-segment") {
     handleLedgerPeriodSegment(node, event);
