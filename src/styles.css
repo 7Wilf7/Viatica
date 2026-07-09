@@ -358,7 +358,6 @@ label span {
 
 .boot-splash-logo {
   z-index: 2;
-  border-radius: 23%;
   object-fit: contain;
   transform-origin: center;
   pointer-events: none;

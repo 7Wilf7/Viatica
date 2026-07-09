@@ -1,7 +1,7 @@
 import "./styles.css";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { thiingsIconUrls } from "./assets/thiings/index.js";
-import { productLogoUrl } from "./assets/logo.js";
+import { bootLogoUrl, productLogoUrl } from "./assets/logo.js";
 import aevumLogoUrl from "../resources/brand/aevum-logo-display.png";
 import {
   CATEGORIES,
@@ -3430,7 +3430,7 @@ function renderBootSplash() {
             </g>
             <rect class="boot-logo-frame-rect" x="30" y="30" width="452" height="452" rx="88" pathLength="1" />
           </svg>
-          <img class="brand-logo boot-splash-logo" src="${productLogoUrl}" alt="" aria-hidden="true">
+          <img class="brand-logo boot-splash-logo" src="${bootLogoUrl}" alt="" aria-hidden="true">
           <div class="boot-logo-sheen" aria-hidden="true"></div>
         </div>
         <div class="brand-wordmark boot-wordmark">${escapeHtml(PRODUCT_NAME)}</div>
