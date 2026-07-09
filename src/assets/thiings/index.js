@@ -21,6 +21,7 @@ import dumbbellUrl from "./dumbbell.png";
 import energyDrinkUrl from "./energyDrink.png";
 import fileUrl from "./file.png";
 import forkUrl from "./fork.png";
+import foodFestivalUrl from "./foodFestival.png";
 import gameControllerUrl from "./gameController.png";
 import gearUrl from "./gear.png";
 import graduationCapUrl from "./graduationCap.png";
@@ -32,6 +33,7 @@ import keyUrl from "./key.png";
 import mobilePhoneUrl from "./mobilePhone.png";
 import moneyUrl from "./money.png";
 import moonUrl from "./moon.png";
+import massageUrl from "./massage.png";
 import mobileGameUrl from "./mobileGame.png";
 import movieUrl from "./movie.png";
 import openBookUrl from "./openBook.png";
@@ -59,6 +61,7 @@ import stethoscopeUrl from "./stethoscope.png";
 import stopwatchUrl from "./stopwatch.png";
 import subscriptionUrl from "./subscription.png";
 import suitcaseUrl from "./suitcase.png";
+import tShirtsUrl from "./tShirts.png";
 import tShirtUrl from "./tShirt.png";
 import taxiUrl from "./taxi.png";
 import teacherUrl from "./teacher.png";
@@ -92,6 +95,7 @@ export const thiingsIconUrls = {
   energyDrink: energyDrinkUrl,
   file: fileUrl,
   fork: forkUrl,
+  foodFestival: foodFestivalUrl,
   gameController: gameControllerUrl,
   gear: gearUrl,
   graduationCap: graduationCapUrl,
@@ -103,6 +107,7 @@ export const thiingsIconUrls = {
   mobilePhone: mobilePhoneUrl,
   money: moneyUrl,
   moon: moonUrl,
+  massage: massageUrl,
   mobileGame: mobileGameUrl,
   movie: movieUrl,
   openBook: openBookUrl,
@@ -130,6 +135,7 @@ export const thiingsIconUrls = {
   stopwatch: stopwatchUrl,
   subscription: subscriptionUrl,
   suitcase: suitcaseUrl,
+  tShirts: tShirtsUrl,
   tShirt: tShirtUrl,
   taxi: taxiUrl,
   teacher: teacherUrl,

@@ -352,14 +352,6 @@ const GLYPHS = {
     <path d="M3.5 11.3 H10.5" />
     <path d="M11 4.3 L12 3.2" />
   `,
-  hotpot: `
-    <path d="M2.8 6.7 H11.2 L10.5 10.9 H3.5 Z" />
-    <path d="M4.1 6.7 C4.3 5.2 5.4 4.2 7 4.2 C8.6 4.2 9.7 5.2 9.9 6.7" />
-    <path d="M4.7 8.6 H9.3" />
-    <path d="M5.1 3.3 C4.8 2.7 5.1 2.2 5.8 1.9" />
-    <path d="M7.1 3.3 C6.8 2.7 7.1 2.2 7.8 1.9" />
-    <path d="M9.1 3.3 C8.8 2.7 9.1 2.2 9.8 1.9" />
-  `,
   transport: `
     <path d="M2.5 7.2 L3.7 4.4 C4 3.8 4.5 3.5 5.2 3.5 H8.8 C9.5 3.5 10 3.8 10.3 4.4 L11.5 7.2" />
     <rect x="2.3" y="6.5" width="9.4" height="3.4" rx="1" />
@@ -485,13 +477,6 @@ const GLYPHS = {
     <path d="M5.4 8.3 L8.9 9.3" />
     <path d="M6 6.7 L8 7.2" />
   `,
-  sportShoe: `
-    <path d="M2.5 8.9 C4.1 8.7 5.4 7.7 6.5 6.3 L8 8.2 C8.7 9 9.8 9.3 11.6 9.3 V10.8 H3.1 C2.5 10.8 2.2 10.3 2.5 8.9 Z" />
-    <path d="M6.4 6.3 L7.2 4.9" />
-    <path d="M7.6 7.8 L8.7 6.9" />
-    <path d="M9.1 8.8 H10.6" />
-    <path d="M4.2 9.1 H4.25" />
-  `,
   training: `
     <path d="M2 11.2 L5.2 5.2 L7.1 8.1 L9 4.2 L12.2 11.2 Z" />
     <path d="M5.2 5.2 L6.2 6.9" />
@@ -501,12 +486,6 @@ const GLYPHS = {
     <path d="M7 11.5 C4 9.5 2.4 7.8 2.4 5.6 C2.4 4.2 3.4 3.1 4.7 3.1 C5.6 3.1 6.4 3.6 7 4.5 C7.6 3.6 8.4 3.1 9.3 3.1 C10.6 3.1 11.6 4.2 11.6 5.6 C11.6 7.8 10 9.5 7 11.5 Z" />
     <path d="M7 5.9 V8.5" />
     <path d="M5.7 7.2 H8.3" />
-  `,
-  massage: `
-    <path d="M4.2 7.5 V4.9 C4.2 4.3 4.6 3.9 5.1 3.9 C5.7 3.9 6 4.3 6 4.9 V7" />
-    <path d="M6 6.6 V3.7 C6 3.1 6.4 2.7 7 2.7 C7.6 2.7 8 3.1 8 3.7 V6.7" />
-    <path d="M8 6.5 V4.7 C8 4.1 8.4 3.7 8.9 3.7 C9.5 3.7 9.8 4.1 9.8 4.7 V7.8" />
-    <path d="M4.2 7.6 L3.5 6.9 C3.1 6.5 2.5 6.6 2.3 7.1 C2.1 7.5 2.3 7.9 2.6 8.2 L5.4 11.2 H9.2 C10.3 10.2 10.9 9.2 10.9 7.8 V6.4" />
   `,
   ai: `
     <rect x="3.2" y="3.2" width="7.6" height="7.6" rx="1.4" />
@@ -623,11 +602,11 @@ const SUBCATEGORY_META = {
   "服饰": { icon: "shirt", thing: "tShirt" },
   "数码": { icon: "device", thing: "desktopComputer" },
   "家居": { icon: "sofa", thing: "sofa" },
-  "装备": { icon: "sportShoe", thing: "" },
+  "装备": { icon: "shirt", thing: "tShirts" },
   "补给": { icon: "food", thing: "proteinBar" },
   "运动饮料": { icon: "food", thing: "energyDrink" },
   "康复": { icon: "health", thing: "bandAid" },
-  "按摩": { icon: "massage", thing: "" },
+  "按摩": { icon: "health", thing: "massage" },
   "训练课": { icon: "training", thing: "stopwatch" },
   "赛事报名": { icon: "ticket", thing: "trophy" },
   "房租": { icon: "home", thing: "key" },
@@ -642,7 +621,7 @@ const SUBCATEGORY_META = {
   "App": { icon: "app", thing: "mobilePhone" },
   "电影": { icon: "movie", thing: "movie" },
   "游戏": { icon: "game", thing: "mobileGame" },
-  "娱乐:餐饮": { icon: "hotpot", thing: "" },
+  "娱乐:餐饮": { icon: "food", thing: "foodFestival" },
   "娱乐:其他": { icon: "more", thing: "partyPopper" },
   "旅行:交通": { icon: "transport", thing: "airplane" },
   "住宿": { icon: "hotel", thing: "hotel" },
