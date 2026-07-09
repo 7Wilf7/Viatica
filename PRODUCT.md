@@ -69,9 +69,11 @@ a gamified finance app.
   `viatica_transactions`. On sign-in, Viatica merges device data with cloud
   data instead of replacing either side. The APK, mobile PWA, and desktop PWA
   should converge through the Aevum account.
-- Save feedback is part of the sync contract: local writes may complete first,
-  but signed-in mutations should show uploading/saved/retry status so Wilf can
-  distinguish a local save from a completed cloud write.
+- Sync should feel invisible during routine capture: local writes complete
+  immediately, signed-in mutations write and retry in the background, and other
+  foreground devices refresh cloud data aggressively enough to converge quickly.
+  Manual sync may show compact syncing/saved/error status, but background retry
+  should not interrupt bookkeeping with toast popups.
 - Data must remain portable, but CSV import/export and full JSON backup are
   maintenance capabilities rather than default Settings-home actions while the
   product moves toward Aevum account sync.

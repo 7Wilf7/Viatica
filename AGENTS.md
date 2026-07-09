@@ -78,8 +78,10 @@ of copying training-specific behavior.
   merge by transaction id, keep the newest `updatedAt` when ids match, then
   upsert the merged state.
 - Data mutations save to local cache immediately. When signed in, mark cloud
-  write pending, show compact upload/saved/retry feedback, and retry failed
-  writes instead of silently treating local save as cloud success.
+  write pending, write to cloud in the background, and retry failed writes
+  without noisy toast popups. Manual sync may show compact syncing/saved/error
+  feedback, but routine capture should feel as close to invisible sync as
+  possible.
 - Local account records and opening balances may remain inside the `viatica:v1`
   model for backwards compatibility, but the current UI should not foreground a
   user-facing account workflow. Treat Assets as one starting-assets value plus

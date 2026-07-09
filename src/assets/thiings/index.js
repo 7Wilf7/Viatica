@@ -58,6 +58,7 @@ import sofaUrl from "./sofa.png";
 import stethoscopeUrl from "./stethoscope.png";
 import stopwatchUrl from "./stopwatch.png";
 import subscriptionUrl from "./subscription.png";
+import suitcaseUrl from "./suitcase.png";
 import tShirtUrl from "./tShirt.png";
 import taxiUrl from "./taxi.png";
 import teacherUrl from "./teacher.png";
@@ -128,6 +129,7 @@ export const thiingsIconUrls = {
   stethoscope: stethoscopeUrl,
   stopwatch: stopwatchUrl,
   subscription: subscriptionUrl,
+  suitcase: suitcaseUrl,
   tShirt: tShirtUrl,
   taxi: taxiUrl,
   teacher: teacherUrl,

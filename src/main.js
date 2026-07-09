@@ -89,17 +89,17 @@ const SUPABASE_PUBLIC_URL = (import.meta.env?.VITE_SUPABASE_URL || "").replace(/
 const MIRROR_APK_URL = SUPABASE_PUBLIC_URL
   ? `${SUPABASE_PUBLIC_URL}/storage/v1/object/public/releases/viatica-latest.apk`
   : null;
-const CLOUD_MUTATION_SYNC_DELAY_MS = 250;
-const CLOUD_BOOT_SYNC_DELAY_MS = 8000;
-const CLOUD_FOREGROUND_SYNC_DELAY_MS = 5000;
-const CLOUD_SYNC_TIMEOUT_MS = 12000;
+const CLOUD_MUTATION_SYNC_DELAY_MS = 180;
+const CLOUD_BOOT_SYNC_DELAY_MS = 900;
+const CLOUD_FOREGROUND_SYNC_DELAY_MS = 200;
+const CLOUD_FOREGROUND_SYNC_INTERVAL_MS = 20000;
+const CLOUD_SYNC_TIMEOUT_MS = 20000;
 const CLOUD_SYNC_FEEDBACK_MIN_MS = 600;
 const CLOUD_SYNC_SUCCESS_HOLD_MS = 900;
 const CLOUD_SYNC_ERROR_HOLD_MS = 4000;
-const CLOUD_SYNC_RETRY_DELAY_MS = 15000;
-const CLOUD_SYNC_DEFERRED_NOTICE_MIN_MS = 5 * 60 * 1000;
-const FOREGROUND_SYNC_MIN_MS = 3 * 60 * 1000;
-const FOREGROUND_SYNC_RETRY_MIN_MS = 60 * 1000;
+const CLOUD_SYNC_RETRY_DELAY_MS = 5000;
+const FOREGROUND_SYNC_MIN_MS = 10000;
+const FOREGROUND_SYNC_RETRY_MIN_MS = 4000;
 const BOOT_REVEAL_MS = 4200;
 const TAB_HAPTIC_MS = 8;
 const PAGER_SETTLE_MIN_MS = 360;
@@ -114,9 +114,9 @@ const DEMO_ACCOUNT_EMAIL = "demo@demo.com";
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
 let cloudSyncTimer = 0;
+let cloudForegroundSyncPollTimer = 0;
 let cloudSyncFeedbackTimer = 0;
 let cloudSyncFeedbackStartedAt = 0;
-let cloudSyncDeferredNoticeAt = 0;
 let ledgerRevision = 0;
 let lastTabTap = { tab: "", at: 0 };
 let ledgerViewTouch = null;
@@ -352,6 +352,14 @@ const GLYPHS = {
     <path d="M3.5 11.3 H10.5" />
     <path d="M11 4.3 L12 3.2" />
   `,
+  hotpot: `
+    <path d="M2.8 6.7 H11.2 L10.5 10.9 H3.5 Z" />
+    <path d="M4.1 6.7 C4.3 5.2 5.4 4.2 7 4.2 C8.6 4.2 9.7 5.2 9.9 6.7" />
+    <path d="M4.7 8.6 H9.3" />
+    <path d="M5.1 3.3 C4.8 2.7 5.1 2.2 5.8 1.9" />
+    <path d="M7.1 3.3 C6.8 2.7 7.1 2.2 7.8 1.9" />
+    <path d="M9.1 3.3 C8.8 2.7 9.1 2.2 9.8 1.9" />
+  `,
   transport: `
     <path d="M2.5 7.2 L3.7 4.4 C4 3.8 4.5 3.5 5.2 3.5 H8.8 C9.5 3.5 10 3.8 10.3 4.4 L11.5 7.2" />
     <rect x="2.3" y="6.5" width="9.4" height="3.4" rx="1" />
@@ -477,6 +485,13 @@ const GLYPHS = {
     <path d="M5.4 8.3 L8.9 9.3" />
     <path d="M6 6.7 L8 7.2" />
   `,
+  sportShoe: `
+    <path d="M2.5 8.9 C4.1 8.7 5.4 7.7 6.5 6.3 L8 8.2 C8.7 9 9.8 9.3 11.6 9.3 V10.8 H3.1 C2.5 10.8 2.2 10.3 2.5 8.9 Z" />
+    <path d="M6.4 6.3 L7.2 4.9" />
+    <path d="M7.6 7.8 L8.7 6.9" />
+    <path d="M9.1 8.8 H10.6" />
+    <path d="M4.2 9.1 H4.25" />
+  `,
   training: `
     <path d="M2 11.2 L5.2 5.2 L7.1 8.1 L9 4.2 L12.2 11.2 Z" />
     <path d="M5.2 5.2 L6.2 6.9" />
@@ -486,6 +501,12 @@ const GLYPHS = {
     <path d="M7 11.5 C4 9.5 2.4 7.8 2.4 5.6 C2.4 4.2 3.4 3.1 4.7 3.1 C5.6 3.1 6.4 3.6 7 4.5 C7.6 3.6 8.4 3.1 9.3 3.1 C10.6 3.1 11.6 4.2 11.6 5.6 C11.6 7.8 10 9.5 7 11.5 Z" />
     <path d="M7 5.9 V8.5" />
     <path d="M5.7 7.2 H8.3" />
+  `,
+  massage: `
+    <path d="M4.2 7.5 V4.9 C4.2 4.3 4.6 3.9 5.1 3.9 C5.7 3.9 6 4.3 6 4.9 V7" />
+    <path d="M6 6.6 V3.7 C6 3.1 6.4 2.7 7 2.7 C7.6 2.7 8 3.1 8 3.7 V6.7" />
+    <path d="M8 6.5 V4.7 C8 4.1 8.4 3.7 8.9 3.7 C9.5 3.7 9.8 4.1 9.8 4.7 V7.8" />
+    <path d="M4.2 7.6 L3.5 6.9 C3.1 6.5 2.5 6.6 2.3 7.1 C2.1 7.5 2.3 7.9 2.6 8.2 L5.4 11.2 H9.2 C10.3 10.2 10.9 9.2 10.9 7.8 V6.4" />
   `,
   ai: `
     <rect x="3.2" y="3.2" width="7.6" height="7.6" rx="1.4" />
@@ -575,7 +596,7 @@ const CATEGORY_META = {
   "AI 工具": { icon: "ai", thing: "robot", fg: "oklch(0.73 0.10 275)", bg: "oklch(0.73 0.10 275 / 0.15)" },
   "订阅": { icon: "app", thing: "subscription", fg: "oklch(0.72 0.10 85)", bg: "oklch(0.72 0.10 85 / 0.16)" },
   "娱乐": { icon: "entertainment", thing: "gameController", fg: "oklch(0.76 0.10 95)", bg: "oklch(0.76 0.10 95 / 0.16)" },
-  "旅行": { icon: "travel", thing: "book", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
+  "旅行": { icon: "travel", thing: "suitcase", fg: "oklch(0.72 0.10 205)", bg: "oklch(0.72 0.10 205 / 0.15)" },
   "还款": { icon: "subscription", thing: "creditCard", fg: "oklch(0.72 0.10 25)", bg: "oklch(0.72 0.10 25 / 0.14)" },
   "工作": { icon: "work", thing: "calendar", fg: "oklch(0.76 0.08 82)", bg: "oklch(0.76 0.08 82 / 0.16)" },
   "薪酬": { icon: "salary", thing: "money", fg: "oklch(0.76 0.08 120)", bg: "oklch(0.76 0.08 120 / 0.15)" },
@@ -594,7 +615,7 @@ const SUBCATEGORY_META = {
   "咖啡奶茶": { icon: "cash", thing: "coffee" },
   "水果": { icon: "food", thing: "apple" },
   "零食": { icon: "food", thing: "chips" },
-  "餐饮:其他": { icon: "food", thing: "plate" },
+  "餐饮:其他": { icon: "food", thing: "fork" },
   "共享单车": { icon: "bike", thing: "bicycle" },
   "地铁": { icon: "metro", thing: "train" },
   "打车": { icon: "taxi", thing: "taxi" },
@@ -602,11 +623,11 @@ const SUBCATEGORY_META = {
   "服饰": { icon: "shirt", thing: "tShirt" },
   "数码": { icon: "device", thing: "desktopComputer" },
   "家居": { icon: "sofa", thing: "sofa" },
-  "装备": { icon: "gear", thing: "gear" },
+  "装备": { icon: "sportShoe", thing: "" },
   "补给": { icon: "food", thing: "proteinBar" },
   "运动饮料": { icon: "food", thing: "energyDrink" },
   "康复": { icon: "health", thing: "bandAid" },
-  "按摩": { icon: "health", thing: "moon" },
+  "按摩": { icon: "massage", thing: "" },
   "训练课": { icon: "training", thing: "stopwatch" },
   "赛事报名": { icon: "ticket", thing: "trophy" },
   "房租": { icon: "home", thing: "key" },
@@ -621,7 +642,7 @@ const SUBCATEGORY_META = {
   "App": { icon: "app", thing: "mobilePhone" },
   "电影": { icon: "movie", thing: "movie" },
   "游戏": { icon: "game", thing: "mobileGame" },
-  "娱乐:餐饮": { icon: "food", thing: "croissant" },
+  "娱乐:餐饮": { icon: "hotpot", thing: "" },
   "娱乐:其他": { icon: "more", thing: "partyPopper" },
   "旅行:交通": { icon: "transport", thing: "airplane" },
   "住宿": { icon: "hotel", thing: "hotel" },
@@ -755,14 +776,14 @@ const MANUAL_SECTIONS = [
         "“资产”先看资产概览；资产金额按一个初始资金总额加流水净额计算，不再维护微信、支付宝、银行卡这类子账户。",
         "收入可以只选主分类保存；红包、退款和其他收入的具体说明直接写在备注里。",
         "需要演示时，退出当前 Aevum 账号并登录专用 Demo 账号；演示数据存在云端，不再使用本机内置 Demo 模式。",
-        "登录 Aevum 账号后，真实流水和分类预算会与 Supabase 云端合并同步；空设备不会覆盖已有数据。",
+        "登录 Aevum 账号后，真实流水和分类预算会与 Supabase 云端合并同步；新增或修改会先保存到本机，再在后台写入云端。打开、回到前台或保持页面可见时，其他设备会自动拉取云端新数据。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
         "Assets leads with the Assets Overview row. The amount is one starting-assets total plus ledger net, without wallet or bank sub-accounts.",
         "Income can be saved from the primary category alone; describe gifts, refunds, and other income in the note when needed.",
         "For demos, sign out of your current Aevum account and sign in with the dedicated Demo account. Demo data now lives in the cloud instead of a bundled local mode.",
-        "After signing in to the Aevum account, real entries and category budgets merge with Supabase cloud data; an empty device will not overwrite existing data.",
+        "After signing in to the Aevum account, real entries and category budgets merge with Supabase cloud data. New or edited entries save locally first, then write to the cloud in the background. Other foreground devices pull fresh cloud data on launch, focus, and low-frequency visible-page refresh.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
       ],
     },
@@ -788,6 +809,25 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-07-09",
+    title: {
+      zh: "同步更无感，图标更贴切",
+      en: "Quieter Sync And Better Icons",
+    },
+    items: {
+      zh: [
+        "云同步超时或暂时失败时不再弹出“本地数据已可用，云同步稍后重试”，改为后台静默重试。",
+        "登录后启动、回到前台、网络恢复、进入账本/日历/资产/设置，以及页面保持可见时，会更积极地拉取云端数据，让 APP、移动 PWA 和桌面 PWA 更快收敛。",
+        "加一笔里的餐饮其他、运动装备、按摩、娱乐餐饮和旅行大类换成更贴切的图标。",
+      ],
+      en: [
+        "Cloud sync timeouts or temporary failures no longer show the local-data-ready retry toast; Viatica now retries quietly in the background.",
+        "After sign-in, launch, foreground return, network recovery, Ledger/Calendar/Assets/Settings entry, and visible-page refresh pull cloud data more aggressively so the APK, mobile PWA, and desktop PWA converge faster.",
+        "Updated Add icons for Food Other, Sport Gear, Massage, Entertainment Food, and Travel.",
+      ],
+    },
+  },
   {
     date: "2026-07-08",
     title: {
@@ -822,7 +862,7 @@ const CHANGELOG_ENTRIES = [
         "账号切换时本地缓存按 Aevum user 分开保存，非 Demo 账号同步时会忽略 `demo_txn_*` 演示流水和明显的 Demo 初始资产，避免 Demo 数据继续混进个人账本。",
         "开屏动画改为单一时间轴，启动期间发生页面重绘时不会从头重播或中途卡住。",
         "资产页恢复单一初始资金编辑：长按资产概览后用内置数字键盘修改，并同步到 Aevum 云端偏好。",
-        "本机数据变动后会更快触发云端写库，并用顶部小状态条显示上传中、已保存或稍后重试，避免静默同步失败造成 PWA 和 App 数据不一致。",
+        "本机数据变动后会更快触发云端写库；同步状态逐步改为后台处理，减少 PWA 和 App 数据不一致。",
       ],
       en: [
         "Removed the bundled local Demo mode and Settings data-mode switch; Ledger, Calendar, Assets, and Budgets now read only the active Aevum account or real local data.",
@@ -830,7 +870,7 @@ const CHANGELOG_ENTRIES = [
         "Account switching now keeps local caches per Aevum user, and non-Demo accounts ignore `demo_txn_*` entries plus obvious Demo starting assets so Demo data does not leak into personal ledgers.",
         "The splash animation now uses one fixed timeline, so page rerenders during launch no longer restart or cut off the animation.",
         "Restored single starting-assets editing on Assets: long-press Assets Overview, edit with the built-in keypad, and sync it through Aevum cloud preferences.",
-        "Local data changes now trigger cloud writes sooner and show a compact top status for uploading, saved, or retrying states so silent sync failures do not make PWA and App data drift.",
+        "Local data changes now trigger cloud writes sooner, with sync status moving toward background handling so PWA and App data drift less often.",
       ],
     },
   },
@@ -1312,7 +1352,7 @@ const MESSAGES = {
     "sync.syncing": "正在同步数据",
     "sync.uploading": "正在同步数据",
     "sync.saved": "已保存到云端",
-    "sync.failed": "同步失败，稍后重试",
+    "sync.failed": "同步未完成",
     "tab.capture": "添加",
     "tab.ledger": "账本",
     "tab.calendar": "日历",
@@ -1499,7 +1539,6 @@ const MESSAGES = {
     "toast.authSignedOut": "已退出 Aevum 账号。",
     "toast.cloudSyncDone": "账本已同步。",
     "toast.cloudSyncFailed": "云同步失败：{message}",
-    "toast.cloudSyncDeferred": "本地数据已可用，云同步稍后重试。",
     "toast.cloudSyncSignIn": "请先登录 Aevum 账号再同步。",
     "manual.changelogHeading": "产品迭代过程",
     "filter.search": "搜索标题、商家、项目、标签",
@@ -1521,8 +1560,6 @@ const MESSAGES = {
     "calendar.projectTab": "项目",
     "calendar.projectTitle": "项目",
     "calendar.projectExpense": "支出",
-    "calendar.projectIncome": "项目收入",
-    "calendar.projectNet": "项目净额",
     "calendar.projectEntries": "流水数",
     "calendar.projectBackfills": "补录",
     "calendar.projectFlowTitle": "项目流水",
@@ -1541,7 +1578,7 @@ const MESSAGES = {
     "sync.syncing": "Syncing Data",
     "sync.uploading": "Syncing Data",
     "sync.saved": "Saved To Cloud",
-    "sync.failed": "Sync Failed, Retrying",
+    "sync.failed": "Sync Incomplete",
     "tab.capture": "Add",
     "tab.ledger": "Ledger",
     "tab.calendar": "Calendar",
@@ -1728,7 +1765,6 @@ const MESSAGES = {
     "toast.authSignedOut": "Signed out of Aevum.",
     "toast.cloudSyncDone": "Ledger synced.",
     "toast.cloudSyncFailed": "Cloud sync failed: {message}",
-    "toast.cloudSyncDeferred": "Local data is ready. Cloud sync will retry later.",
     "toast.cloudSyncSignIn": "Sign in to Aevum before syncing.",
     "manual.changelogHeading": "Product History",
     "filter.search": "Search title, merchant, project, tags",
@@ -1750,8 +1786,6 @@ const MESSAGES = {
     "calendar.projectTab": "Projects",
     "calendar.projectTitle": "Projects",
     "calendar.projectExpense": "Spent",
-    "calendar.projectIncome": "Project Income",
-    "calendar.projectNet": "Project Net",
     "calendar.projectEntries": "Entries",
     "calendar.projectBackfills": "Backfills",
     "calendar.projectFlowTitle": "Project Entries",
@@ -2016,6 +2050,10 @@ function canCloudSync() {
   return Boolean(state.auth.configured && state.auth.user);
 }
 
+function canStartCloudSync() {
+  return canCloudSync() && globalThis.navigator?.onLine !== false;
+}
+
 function createClientTimeoutError(message) {
   const error = new Error(message);
   error.name = "TimeoutError";
@@ -2031,12 +2069,6 @@ function withClientTimeout(promise, timeoutMs, message) {
       timer = globalThis.setTimeout(() => reject(createClientTimeoutError(message)), timeoutMs);
     }),
   ]);
-}
-
-function maybeToastCloudSyncDeferred() {
-  if (Date.now() - cloudSyncDeferredNoticeAt < CLOUD_SYNC_DEFERRED_NOTICE_MIN_MS) return;
-  cloudSyncDeferredNoticeAt = Date.now();
-  toast(t("toast.cloudSyncDeferred"));
 }
 
 function showCloudSyncFeedback() {
@@ -2059,26 +2091,46 @@ function hideCloudSyncFeedback(holdMs = 0) {
 }
 
 function scheduleCloudSync(delay = CLOUD_MUTATION_SYNC_DELAY_MS, { feedback = false } = {}) {
-  if (!canCloudSync()) return;
+  if (!canStartCloudSync()) return;
   window.clearTimeout(cloudSyncTimer);
   cloudSyncTimer = window.setTimeout(() => {
     syncCloudNow({ silent: true, feedback });
   }, delay);
 }
 
-function scheduleForegroundCloudSync(delay = CLOUD_FOREGROUND_SYNC_DELAY_MS) {
-  if (!canCloudSync() || state.cloudSync.status === "syncing") return;
+function stopForegroundCloudSyncPolling() {
+  window.clearInterval(cloudForegroundSyncPollTimer);
+  cloudForegroundSyncPollTimer = 0;
+}
+
+function restartForegroundCloudSyncPolling() {
+  stopForegroundCloudSyncPolling();
+  if (!canStartCloudSync() || document.visibilityState === "hidden") return;
+  cloudForegroundSyncPollTimer = window.setInterval(() => {
+    scheduleForegroundCloudSync(0);
+  }, CLOUD_FOREGROUND_SYNC_INTERVAL_MS);
+}
+
+function scheduleForegroundCloudSync(delay = CLOUD_FOREGROUND_SYNC_DELAY_MS, { force = false } = {}) {
+  if (!canStartCloudSync() || state.cloudSync.status === "syncing") return;
   const lastSyncTime = Number(new Date(state.cloudSync.lastSyncedAt || 0));
   const lastAttemptTime = Number(new Date(state.cloudSync.lastAttemptAt || 0));
   const lastRelevantTime = Math.max(lastSyncTime || 0, lastAttemptTime || 0);
   const minGap = state.cloudSync.status === "error" ? FOREGROUND_SYNC_RETRY_MIN_MS : FOREGROUND_SYNC_MIN_MS;
-  if (lastRelevantTime && Date.now() - lastRelevantTime < minGap) return;
+  if (!force && lastRelevantTime && Date.now() - lastRelevantTime < minGap) return;
   scheduleCloudSync(delay);
 }
 
 async function syncCloudNow({ silent = false, feedback = !silent } = {}) {
   if (!state.auth.user) {
     if (!silent) toast(t("toast.cloudSyncSignIn"));
+    return;
+  }
+  if (globalThis.navigator?.onLine === false) {
+    state.cloudSync.status = "error";
+    state.cloudSync.error = "offline";
+    if (feedback) showCloudSyncFeedback();
+    render();
     return;
   }
   if (state.cloudSync.status === "syncing") {
@@ -2109,7 +2161,6 @@ async function syncCloudNow({ silent = false, feedback = !silent } = {}) {
       state.cloudSync.status = "idle";
       state.cloudSync.pendingMutation = true;
       scheduleCloudSync(CLOUD_MUTATION_SYNC_DELAY_MS);
-      if (!silent) toast(t("toast.cloudSyncDeferred"));
       return;
     }
     applySyncedLedgerState(result.state);
@@ -2127,12 +2178,9 @@ async function syncCloudNow({ silent = false, feedback = !silent } = {}) {
     }
     state.cloudSync.status = "error";
     state.cloudSync.error = isCloudTimeoutError(error)
-      ? t("toast.cloudSyncDeferred")
+      ? "timeout"
       : error?.message || "";
-    if (isCloudTimeoutError(error)) {
-      if (silent) maybeToastCloudSyncDeferred();
-      else toast(t("toast.cloudSyncDeferred"));
-    } else if (!silent) {
+    if (!isCloudTimeoutError(error) && !silent) {
       toast(t("toast.cloudSyncFailed", { message: state.cloudSync.error || t("settings.cloudSyncError") }));
     }
     if (state.cloudSync.pendingMutation) scheduleCloudSync(CLOUD_SYNC_RETRY_DELAY_MS);
@@ -2155,7 +2203,7 @@ function expectedCloudUserSnapshot() {
 }
 
 async function syncCloudMutation(write, { feedback = false, preservePending = false } = {}) {
-  if (!canCloudSync()) return;
+  if (!canStartCloudSync()) return;
   if (state.cloudSync.status === "syncing") {
     scheduleCloudSync(CLOUD_MUTATION_SYNC_DELAY_MS);
     return;
@@ -2201,9 +2249,8 @@ async function syncCloudMutation(write, { feedback = false, preservePending = fa
     }
     state.cloudSync.status = "error";
     state.cloudSync.error = isCloudTimeoutError(error)
-      ? t("toast.cloudSyncDeferred")
+      ? "timeout"
       : error?.message || "";
-    if (isCloudTimeoutError(error)) maybeToastCloudSyncDeferred();
     if (state.cloudSync.pendingMutation) scheduleCloudSync(CLOUD_SYNC_RETRY_DELAY_MS);
   } finally {
     if (state.cloudSync.status === "synced" && !state.cloudSync.pendingMutation) {
@@ -2254,7 +2301,9 @@ function applyActiveTabSideEffects(tabId) {
 }
 
 function maybeScheduleForegroundSyncForTab(tabId) {
-  if (["ledger", "assets", "settings"].includes(tabId)) scheduleForegroundCloudSync();
+  if (["ledger", "calendar", "assets", "settings"].includes(tabId)) {
+    scheduleForegroundCloudSync(0, { force: true });
+  }
 }
 
 function triggerTabHaptic() {
@@ -2772,6 +2821,7 @@ async function handleProfileSave(form) {
 }
 
 function setCloudSession(session) {
+  stopForegroundCloudSyncPolling();
   switchLedgerStorageOwner(session?.user || null);
   state.auth.session = session;
   state.auth.user = session?.user || null;
@@ -2780,6 +2830,8 @@ function setCloudSession(session) {
     state.auth.accountOpen = false;
     if (state.settingsContent === "profile") state.settingsContent = "home";
     resetProfileState();
+  } else {
+    restartForegroundCloudSyncPolling();
   }
 }
 
@@ -5657,7 +5709,7 @@ document.addEventListener("click", (event) => {
     state.activeTab = "ledger";
     state.ledgerView = "flow";
     render();
-    scheduleForegroundCloudSync();
+    scheduleForegroundCloudSync(0, { force: true });
   }
   if (action === "open-ledger-search") {
     state.activeTab = "ledger";
@@ -5676,7 +5728,7 @@ document.addEventListener("click", (event) => {
   if (action === "open-budgets") {
     state.activeTab = "assets";
     render();
-    scheduleForegroundCloudSync();
+    scheduleForegroundCloudSync(0, { force: true });
   }
   if (action === "ledger-view") {
     const view = node.dataset.view;
@@ -5831,12 +5883,25 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && state.auth.user) {
     if (state.settingsContent !== "profile") void loadSharedProfile({ silent: true });
-    scheduleForegroundCloudSync();
+    scheduleForegroundCloudSync(0, { force: true });
+    restartForegroundCloudSyncPolling();
+  } else {
+    stopForegroundCloudSyncPolling();
   }
 });
 
 window.addEventListener("focus", () => {
-  scheduleForegroundCloudSync();
+  scheduleForegroundCloudSync(0, { force: true });
+  restartForegroundCloudSyncPolling();
+});
+
+window.addEventListener("online", () => {
+  scheduleForegroundCloudSync(0, { force: true });
+  restartForegroundCloudSyncPolling();
+});
+
+window.addEventListener("offline", () => {
+  stopForegroundCloudSyncPolling();
 });
 
 render();

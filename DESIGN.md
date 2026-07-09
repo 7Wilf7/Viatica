@@ -127,14 +127,12 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   Demo data mode switch. Settings should never present Demo as a second local
   data model; it should only expose the active Aevum account state.
 - Settings owns Aevum account entry, shared profile fields, the guide/changelog,
-  editable budgets, app updates, cloud sync, and PWA/storage notes. The cloud
-  sync row should be compact: show whether the user needs to sign in, is
-  syncing, has synced, or hit an error; tapping it runs a manual merge sync.
-  Mutations made while signed in also need compact upload/saved/retry feedback
-  outside Settings. Do not foreground CSV import, CSV export, or JSON backup on
-  the Settings home while the product direction is Aevum account sync; keep
-  backup-style actions as maintenance capabilities unless Wilf asks to surface
-  them again.
+  editable budgets, app updates, and PWA/storage notes. Routine cloud sync
+  should feel quiet and automatic: background retries should not show toast
+  popups, while explicit manual sync can still use a compact top status. Do not
+  foreground CSV import, CSV export, or JSON backup on the Settings home while
+  the product direction is Aevum account sync; keep backup-style actions as
+  maintenance capabilities unless Wilf asks to surface them again.
 - Budget rows and transaction rows use dense panels, not oversized cards.
   Transaction rows prioritize category icon, title, time/type context, and
   amount; account names stay hidden unless account switching is reintroduced.

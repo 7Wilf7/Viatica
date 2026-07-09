@@ -65,9 +65,11 @@ the restored Aevum session is ready, those pending signed-out transactions are
 merged into the real account cache on sign-in, while Demo seed transactions are
 still ignored.
 
-Signed-in data mutations show compact upload/saved/retry feedback. A local save
-should not be presented as a completed cloud write until the matching Supabase
-sync finishes.
+Signed-in data mutations save locally first, then write and retry in the
+background without noisy retry toasts. Foreground devices refresh cloud data on
+startup, focus, key tab entry, network recovery, and a low-frequency visible-page
+poll so the APK, mobile PWA, and desktop PWA converge quickly. Manual sync still
+may show compact syncing/saved/error feedback.
 
 ## Cloud Demo Account
 
