@@ -1,11 +1,11 @@
 # Design
 
 ## System
-Viatica belongs to the same product family as Aevum and Ultreia. It shares the
-family's Linear-inspired product language: dark surfaces, precise thin lines,
-subtle ambient light, restrained blur, and short stateful motion. The accent
-shifts from Aevum's violet-blue glow to a restrained muted ledger-brass accent
-on a neutral dark graphite base.
+Viatica belongs to the same product family as Aevum, Ultreia, and Sidera. It
+shares the family's Linear-inspired product language: dark surfaces, precise
+thin lines, subtle ambient light, restrained blur, and short stateful motion.
+The accent shifts from Aevum's neutral system glow to a restrained muted
+ledger-brass accent on a neutral dark graphite base.
 
 When a design task asks to reference Ultreia, first resolve the current local
 repo paths through Aevum's ecosystem docs:
@@ -34,6 +34,11 @@ grid clarity, and friendly category icon language. Do not copy its light skin
 or assets. Viatica should translate those lessons into its own dark, restrained
 ledger tool: fewer heavy borders and glows, clear category glyphs, compact
 transaction rows, and data-first cards that feel useful rather than decorative.
+
+Family roles stay distinct: Aevum is the neutral system layer, Ultreia is the
+deep moss / olive training layer, Viatica is the muted brass ledger layer, and
+Sidera is the cold star-blue / muted violet knowledge layer. Shared design does
+not grant shared access to private ledger data.
 
 ## Colors
 - Background: neutral dark graphite around `oklch(0.112 0.006 95)`.
@@ -110,7 +115,7 @@ transaction rows, and data-first cards that feel useful rather than decorative.
   keyboards by using Viatica's built-in keypad.
 - Settings uses the Ultreia-style compact mobile list. The top identity block
   follows Ultreia's mobile account header pattern, but the copy says Aevum
-  account because the identity is shared across Aevum / Ultreia / Viatica. The
+  account because the identity is shared across all four Aevum products. The
   manual and changelog are combined into one guide page so usage notes and
   product iteration history live together. Long content such as the guide and
   category budget editor opens as a second-level page, not inline on the

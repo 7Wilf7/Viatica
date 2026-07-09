@@ -10,7 +10,7 @@ Aevum only keeps overview data, app entry points, and reviewed cross-product
 events.
 
 ## Product Family
-Viatica, Ultreia, and Aevum are family products in Wilf's personal tool
+Aevum, Ultreia, Viatica, and Sidera are family products in Wilf's personal tool
 ecosystem. Viatica keeps its own ledger and privacy boundary, but its mobile
 shell, settings structure, and visual language should stay compatible with the
 family.
@@ -69,9 +69,9 @@ of copying training-specific behavior.
   the target.
 - Data is local-first for offline/cache under `localStorage` key `viatica:v1`,
   and cloud-backed through the shared Aevum Supabase project when signed in.
-- Aevum account is the shared identity for Viatica, Ultreia, and Aevum. Do not
-  call it a Viatica account. Viatica uses the Aevum account to merge local
-  ledger data with cloud data across APK, mobile PWA, and desktop PWA.
+- Aevum account is the shared identity for Aevum, Ultreia, Viatica, and Sidera.
+  Do not call it a Viatica account. Viatica uses the Aevum account to merge
+  local ledger data with cloud data across APK, mobile PWA, and desktop PWA.
 - The shared Aevum Supabase project owns Viatica's cloud tables:
   `viatica_accounts`, `viatica_budgets`, `viatica_preferences`, and
   `viatica_transactions`. Sync must preserve local data: first pull cloud rows,
@@ -92,8 +92,8 @@ of copying training-specific behavior.
 - Aevum integration is overview-first and event-based. Do not let Aevum read or
   edit Viatica's private ledger directly.
 - Family-product alignment is a design and workflow constraint, not a data
-  sharing permission. Do not let Ultreia or Aevum read or edit Viatica's private
-  ledger directly.
+  sharing permission. Do not let Aevum, Ultreia, or Sidera read or edit
+  Viatica's private ledger directly.
 
 ## Design Rules
 - Product UI, not marketing UI.
