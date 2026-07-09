@@ -527,21 +527,16 @@ label span {
 
 @media (prefers-reduced-motion: reduce) {
   .boot-logo-build,
+  .boot-logo-sheen {
+    display: none;
+  }
+
   .boot-splash-logo,
-  .boot-logo-backplate,
-  .boot-logo-frame-rect,
-  .boot-logo-trace,
-  .boot-logo-piece,
   .boot-wordmark {
     opacity: 1;
     transform: none;
     filter: none;
     clip-path: none;
-    stroke-dashoffset: 0;
-  }
-
-  .boot-logo-sheen {
-    display: none;
   }
 }
 
@@ -566,14 +561,18 @@ label span {
 }
 
 @keyframes viaticaBuildLayer {
-  0%, 52% { opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  66%, 100% { opacity: 0; }
+  0%, 42% { opacity: 1; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  58% { opacity: 0.82; animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  70% { opacity: 0.46; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  84%, 100% { opacity: 0; }
 }
 
 @keyframes viaticaExactLogoReveal {
-  0%, 42% { opacity: 0; transform: scale(0.982); filter: blur(5px); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
-  56% { opacity: 0.52; transform: scale(0.992); filter: blur(2px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-  66%, 100% { opacity: 1; transform: scale(1); filter: blur(0); }
+  0%, 18% { opacity: 0; transform: scale(0.955); filter: blur(9px); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  34% { opacity: 0.12; transform: scale(0.968); filter: blur(7px); animation-timing-function: cubic-bezier(0.34, 0, 0.14, 1); }
+  50% { opacity: 0.34; transform: scale(0.985); filter: blur(4px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  66% { opacity: 0.74; transform: scale(0.997); filter: blur(1px); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  82%, 100% { opacity: 1; transform: scale(1); filter: blur(0); }
 }
 
 @keyframes viaticaTraceRevealA {
