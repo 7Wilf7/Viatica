@@ -79,7 +79,9 @@ transaction rows, and data-first cards that feel useful rather than decorative.
 - Viatica owns a small custom monoline glyph set for bottom navigation,
   categories, accounts, and row actions. Category icons may use subtle
   differentiated colors, but they should stay soft and tool-like, not childish
-  or promotional.
+  or promotional. The category pictogram assets come from Thiings.co; keep this
+  attribution in project documentation rather than showing a Settings-home
+  credit row.
 - Ledger owns filtering, editing, deletion, and the top Flow / Charts switch.
   Charts means statistics. Its top structure follows Ultreia's Training home
   rhythm, adapted to accounting: type filter on the left, Flow / Charts switch

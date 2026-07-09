@@ -89,7 +89,6 @@ const SUPABASE_PUBLIC_URL = (import.meta.env?.VITE_SUPABASE_URL || "").replace(/
 const MIRROR_APK_URL = SUPABASE_PUBLIC_URL
   ? `${SUPABASE_PUBLIC_URL}/storage/v1/object/public/releases/viatica-latest.apk`
   : null;
-const AUTO_CHECK_CACHE_MS = 30 * 60 * 1000;
 const CLOUD_MUTATION_SYNC_DELAY_MS = 250;
 const CLOUD_BOOT_SYNC_DELAY_MS = 8000;
 const CLOUD_FOREGROUND_SYNC_DELAY_MS = 5000;
@@ -114,7 +113,6 @@ const PAGER_EDGE_RESISTANCE = 0.32;
 const DEMO_ACCOUNT_EMAIL = "demo@demo.com";
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
-let releaseCheckCache = null;
 let cloudSyncTimer = 0;
 let cloudSyncFeedbackTimer = 0;
 let cloudSyncFeedbackStartedAt = 0;
@@ -193,7 +191,6 @@ const state = {
     installState: "idle",
     installMsg: "",
     downloadPct: null,
-    autoCheckStarted: false,
   },
 };
 
@@ -1313,9 +1310,9 @@ const MESSAGES = {
     "app.sections": "Viatica 页面",
     "splash.label": "Viatica 正在启动",
     "sync.syncing": "正在同步数据",
-    "sync.uploading": "正在上传数据",
+    "sync.uploading": "正在同步数据",
     "sync.saved": "已保存到云端",
-    "sync.failed": "上传失败，稍后重试",
+    "sync.failed": "同步失败，稍后重试",
     "tab.capture": "添加",
     "tab.ledger": "账本",
     "tab.calendar": "日历",
@@ -1417,31 +1414,18 @@ const MESSAGES = {
     "settings.accountChecking": "正在检查账号状态...",
     "settings.accountMissingConfig": "未配置 Supabase 环境变量",
     "settings.accountSignedIn": "已登录",
-    "settings.accountSyncPending": "退出前会保留本机账本",
     "settings.accountProfile": "账号资料",
-    "settings.accountProfileHint": "显示名、出生日期和性别会同步到 Aevum / Ultreia。",
     "settings.signIn": "登录 Aevum 账号",
     "settings.signOut": "退出登录",
     "settings.signingOut": "正在退出...",
     "settings.resetPassword": "重置密码",
-    "settings.resetPasswordHint": "向当前邮箱发送重置邮件",
     "settings.languageTitle": "界面语言",
     "settings.brandLine": "本机优先的个人账本",
     "settings.languageHint": "只切换界面文案，不改已有流水、账本、分类和导出数据。",
     "settings.dataSection": "数据",
     "settings.productSection": "产品",
     "settings.localSection": "本机",
-    "settings.iconCreditTitle": "分类图标",
-    "settings.iconCreditHint": "部分分类图标来自",
-    "settings.cloudSyncTitle": "云同步",
-    "settings.cloudSyncHint": "把本机账本和 Aevum 云端合并",
-    "settings.cloudSyncSignIn": "先登录",
-    "settings.cloudSyncIdle": "自动同步已开启",
-    "settings.cloudSyncPending": "等待上传",
-    "settings.cloudSyncing": "同步中...",
-    "settings.cloudSynced": "已同步",
     "settings.cloudSyncError": "同步失败",
-    "settings.cloudSyncRetrying": "上传失败，稍后重试",
     "settings.importExportTitle": "备份与迁移",
     "settings.importExportHint": "维护用途：用于手动迁移、恢复数据或保留离线备份。",
     "settings.exportCsv": "导出 CSV",
@@ -1536,7 +1520,7 @@ const MESSAGES = {
     "calendar.summaryTab": "本月小计",
     "calendar.projectTab": "项目",
     "calendar.projectTitle": "项目",
-    "calendar.projectExpense": "项目支出",
+    "calendar.projectExpense": "支出",
     "calendar.projectIncome": "项目收入",
     "calendar.projectNet": "项目净额",
     "calendar.projectEntries": "流水数",
@@ -1555,9 +1539,9 @@ const MESSAGES = {
     "app.sections": "Viatica sections",
     "splash.label": "Viatica is starting",
     "sync.syncing": "Syncing Data",
-    "sync.uploading": "Uploading Data",
+    "sync.uploading": "Syncing Data",
     "sync.saved": "Saved To Cloud",
-    "sync.failed": "Upload Failed, Retrying",
+    "sync.failed": "Sync Failed, Retrying",
     "tab.capture": "Add",
     "tab.ledger": "Ledger",
     "tab.calendar": "Calendar",
@@ -1659,31 +1643,18 @@ const MESSAGES = {
     "settings.accountChecking": "Checking account...",
     "settings.accountMissingConfig": "Supabase environment variables are missing",
     "settings.accountSignedIn": "Signed in",
-    "settings.accountSyncPending": "Local ledger stays on this device after sign-out",
     "settings.accountProfile": "Account Profile",
-    "settings.accountProfileHint": "Display Name, Birth Date, And Gender Sync With Aevum / Ultreia.",
     "settings.signIn": "Sign In To Aevum",
     "settings.signOut": "Sign Out",
     "settings.signingOut": "Signing out...",
     "settings.resetPassword": "Reset Password",
-    "settings.resetPasswordHint": "Send a reset email to this account",
     "settings.languageTitle": "Interface Language",
     "settings.brandLine": "Local-First Personal Ledger",
     "settings.languageHint": "Switches interface copy only; existing entries, books, categories, and exports stay unchanged.",
     "settings.dataSection": "Data",
     "settings.productSection": "Product",
     "settings.localSection": "Local",
-    "settings.iconCreditTitle": "Category Icons",
-    "settings.iconCreditHint": "Some category icons by",
-    "settings.cloudSyncTitle": "Cloud Sync",
-    "settings.cloudSyncHint": "Merge this ledger with Aevum cloud",
-    "settings.cloudSyncSignIn": "Sign In First",
-    "settings.cloudSyncIdle": "Auto Sync Ready",
-    "settings.cloudSyncPending": "Upload Pending",
-    "settings.cloudSyncing": "Syncing...",
-    "settings.cloudSynced": "Synced",
     "settings.cloudSyncError": "Sync Failed",
-    "settings.cloudSyncRetrying": "Upload Failed, Retrying",
     "settings.importExportTitle": "Backup and Migration",
     "settings.importExportHint": "Maintenance only: move devices manually, restore data, or keep an offline backup.",
     "settings.exportCsv": "Export CSV",
@@ -1778,7 +1749,7 @@ const MESSAGES = {
     "calendar.summaryTab": "Month Summary",
     "calendar.projectTab": "Projects",
     "calendar.projectTitle": "Projects",
-    "calendar.projectExpense": "Project Spent",
+    "calendar.projectExpense": "Spent",
     "calendar.projectIncome": "Project Income",
     "calendar.projectNet": "Project Net",
     "calendar.projectEntries": "Entries",
@@ -2103,16 +2074,6 @@ function scheduleForegroundCloudSync(delay = CLOUD_FOREGROUND_SYNC_DELAY_MS) {
   const minGap = state.cloudSync.status === "error" ? FOREGROUND_SYNC_RETRY_MIN_MS : FOREGROUND_SYNC_MIN_MS;
   if (lastRelevantTime && Date.now() - lastRelevantTime < minGap) return;
   scheduleCloudSync(delay);
-}
-
-function cloudSyncLabel() {
-  if (!state.auth.configured || !state.auth.user) return t("settings.cloudSyncSignIn");
-  if (state.cloudSync.status === "syncing") return t("settings.cloudSyncing");
-  if (state.cloudSync.pendingMutation && state.cloudSync.status === "error") return t("settings.cloudSyncRetrying");
-  if (state.cloudSync.pendingMutation) return t("settings.cloudSyncPending");
-  if (state.cloudSync.status === "error") return t("settings.cloudSyncError");
-  if (state.cloudSync.lastSyncedAt) return t("settings.cloudSynced");
-  return t("settings.cloudSyncIdle");
 }
 
 async function syncCloudNow({ silent = false, feedback = !silent } = {}) {
@@ -3358,7 +3319,6 @@ function render() {
   `;
   ledgerViewMotionDir = 0;
   scheduleBootSplashDismiss();
-  maybeAutoCheckAppUpdate();
 }
 
 function cloudSyncFeedbackKind() {
@@ -4137,8 +4097,6 @@ function renderCalendarProjectPanel() {
         </div>
         <div class="hero-grid calendar-project-metrics">
           ${renderStat(t("calendar.projectExpense"), compactMoney(selected.expense))}
-          ${renderStat(t("calendar.projectIncome"), compactMoney(selected.income))}
-          ${renderStat(t("calendar.projectNet"), signedMoney(selected.net))}
           ${renderStat(t("calendar.projectEntries"), String(selected.count))}
         </div>
         <div class="section-title inline-section-title calendar-project-flow-title">
@@ -4318,7 +4276,6 @@ function renderSettingsTab() {
         renderSettingsCell(t("settings.languageTitle"), "", renderLanguageSwitch()),
         renderSettingsCell(t("settings.manualTitle"), "", "", "manual"),
         renderAppUpdateChecker(),
-        renderIconCreditCell(),
       ])}
 
       ${isNativeApp() ? "" : renderSettingsSection(t("settings.localSection"), [
@@ -4365,27 +4322,18 @@ function renderSettingsAccountCard() {
           <button class="settings-cell" type="button" data-action="settings-content" data-content="profile">
             <span class="settings-cell-copy">
               <strong>${escapeHtml(t("settings.accountProfile"))}</strong>
-              <span>${escapeHtml(state.profile.status === "error" ? t("profile.loadFailed") : t("settings.accountProfileHint"))}</span>
             </span>
             <span class="settings-chevron">›</span>
           </button>
-          <div class="settings-cell account-info-cell">
-            <span class="settings-cell-copy">
-              <strong>${escapeHtml(t("settings.cloudSyncTitle"))}</strong>
-              <span>${escapeHtml(cloudSyncLabel())}</span>
-            </span>
-          </div>
           <button class="settings-cell" type="button" data-action="open-reset-password">
             <span class="settings-cell-copy">
               <strong>${escapeHtml(t("settings.resetPassword"))}</strong>
-              <span>${escapeHtml(t("settings.resetPasswordHint"))}</span>
             </span>
             <span class="settings-chevron">›</span>
           </button>
           <button class="settings-cell danger-cell" type="button" data-action="sign-out" ${state.auth.busy ? "disabled" : ""}>
             <span class="settings-cell-copy">
               <strong>${escapeHtml(state.auth.busy ? t("settings.signingOut") : t("settings.signOut"))}</strong>
-              <span>${escapeHtml(t("settings.accountSyncPending"))}</span>
             </span>
           </button>
         </div>
@@ -4528,20 +4476,6 @@ function renderSettingsCell(primary, secondary = "", right = "", action = "", di
     <button class="settings-cell" data-action="${escapeHtml(isSettingsContent ? "settings-content" : action)}" ${isSettingsContent ? `data-content="${escapeHtml(action)}"` : ""} ${disabled ? "disabled aria-busy=\"true\"" : ""}>
       ${content}
     </button>
-  `;
-}
-
-function renderIconCreditCell() {
-  return `
-    <div class="settings-cell icon-credit-cell">
-      <span class="settings-cell-copy">
-        <strong>${escapeHtml(t("settings.iconCreditTitle"))}</strong>
-        <span>
-          ${escapeHtml(t("settings.iconCreditHint"))}
-          <a href="https://www.thiings.co" target="_blank" rel="noreferrer">Thiings.co</a>
-        </span>
-      </span>
-    </div>
   `;
 }
 
@@ -5313,27 +5247,10 @@ async function clearPwaCacheAndReload() {
   window.location.reload();
 }
 
-function maybeAutoCheckAppUpdate() {
-  if (state.activeTab !== "settings" || state.settingsContent !== "home") return;
-  if (state.update.autoCheckStarted) return;
-  state.update.autoCheckStarted = true;
-  window.setTimeout(() => {
-    checkForAppUpdate({ automatic: true });
-  }, 0);
-}
-
-async function checkForAppUpdate({ automatic = false } = {}) {
+async function checkForAppUpdate() {
   if (state.update.status === "checking") return;
-  if (automatic && releaseCheckCache && Date.now() - releaseCheckCache.at < AUTO_CHECK_CACHE_MS) {
-    state.update.status = releaseCheckCache.status;
-    state.update.release = releaseCheckCache.release;
-    render();
-    return;
-  }
-  if (!automatic) {
-    state.update.showNotes = false;
-    state.update.showRecentAction = false;
-  }
+  state.update.showNotes = false;
+  state.update.showRecentAction = false;
   state.update.status = "checking";
   state.update.installMsg = "";
   render();
@@ -5346,7 +5263,6 @@ async function checkForAppUpdate({ automatic = false } = {}) {
       state.update.release = null;
       state.update.showRecentAction = false;
       state.update.showNotes = false;
-      releaseCheckCache = { at: Date.now(), status: "no-release", release: null };
       render();
       return;
     }
@@ -5362,15 +5278,14 @@ async function checkForAppUpdate({ automatic = false } = {}) {
     const status = compareVersions(remoteVersion, APP_VERSION) > 0 ? "newer" : "latest";
     state.update.status = status;
     state.update.release = release;
-    state.update.showRecentAction = !automatic && status === "latest";
+    state.update.showRecentAction = status === "latest";
     state.update.showNotes = false;
-    releaseCheckCache = { at: Date.now(), status, release };
   } catch (err) {
     console.warn("[update-check] failed:", err);
     state.update.status = "error";
     state.update.release = null;
     state.update.showRecentAction = false;
-    if (!automatic) state.update.showNotes = false;
+    state.update.showNotes = false;
   }
   render();
 }
@@ -5868,10 +5783,20 @@ document.addEventListener("click", (event) => {
     clearPwaCacheAndReload();
   }
   if (action === "check-update") {
-    checkForAppUpdate({ automatic: false });
+    checkForAppUpdate();
   }
   if (action === "toggle-update-notes") {
-    state.update.showNotes = !state.update.showNotes;
+    if (state.update.showNotes) {
+      state.update.status = "idle";
+      state.update.release = null;
+      state.update.showNotes = false;
+      state.update.showRecentAction = false;
+      state.update.installState = "idle";
+      state.update.installMsg = "";
+      state.update.downloadPct = null;
+    } else {
+      state.update.showNotes = true;
+    }
     render();
   }
   if (action === "install-update") {
