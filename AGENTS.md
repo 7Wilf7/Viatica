@@ -45,7 +45,14 @@ of copying training-specific behavior.
 ## Directory Rules
 - `src/` holds app source.
 - `src/core/` holds pure business logic and tests.
+- `docs/` holds durable behavior, architecture, and operational notes for
+  workflows that span multiple source files.
 - `public/` holds PWA assets such as the manifest, icons, and service worker.
+- `public/assets/index-*.js` and
+  `public/assets/viatica-pwa-rescue.js` are intentional stale PWA-shell
+  compatibility assets, not ordinary build output. Do not hand-edit or delete
+  them without following `docs/pwa-recovery.md` and verifying the live fallback
+  paths.
 - `android/` holds the generated Capacitor Android project for APK builds.
 - `resources/brand/` holds source brand artwork. PWA launcher icons in
   `public/icons/` should be generated from the source logo, not redesigned
@@ -82,6 +89,13 @@ of copying training-specific behavior.
   without noisy toast popups. Manual sync may show compact syncing/saved/error
   feedback, but routine capture should feel as close to invisible sync as
   possible.
+- `preferences.merchantRules` and `preferences.recurringTransactions` are
+  local-only today; confirmed recurring entries sync as normal transactions,
+  but the rules themselves do not. Do not claim cross-device rule sync without
+  a reviewed schema change.
+- Recurring reminders must stay confirmation-first, and financial Review must
+  stay deterministic and read-only. Neither may silently mutate historical
+  transactions.
 - Local account records and opening balances may remain inside the `viatica:v1`
   model for backwards compatibility, but the current UI should not foreground a
   user-facing account workflow. Treat Assets as one starting-assets value plus
@@ -125,6 +139,9 @@ of copying training-specific behavior.
   editable monthly targets saved under `viatica:v1`.
 - Keep project totals and related entries in Calendar's Project view. Do not
   duplicate project statistics under Ledger Charts.
+- Calendar owns Month Summary, Pending Recurring, Review, Projects, and
+  date-bound day details. Keep these as focused views instead of adding another
+  dashboard.
 - Settings should follow Ultreia's compact mobile pattern: a short settings
   list first, with the manual and changelog combined into one second-level
   guide page. Budget editing and other long explanatory content also open as
@@ -150,52 +167,29 @@ of copying training-specific behavior.
   `cd android && .\gradlew.bat :app:processReleaseMainManifest --no-daemon`
   on Windows when the local JDK/Android SDK is available. If this cannot run,
   say exactly which local dependency is missing.
+- After startup/UI-shell or PWA cache/rewrite changes, smoke-test the production
+  build in a phone viewport with no console errors. Follow
+  `docs/pwa-recovery.md` for PWA-specific checks.
 - If ledger behavior changes, add or update tests in `src/core/*.test.js`.
 - Do not overwrite user data files.
 - Browser data reset, destructive import, or storage migration must be an
   explicit user action with a clear backup path.
 
 ## Android APK Release Flow
-- Viatica follows Ultreia's APK distribution model: keep the GitHub repo
-  public, push a semver tag like `v0.1.1`, let
-  `.github/workflows/release.yml` build/sign/upload the APK to GitHub Releases,
-  and let the in-app Settings update checker compare the installed version with
-  the latest GitHub Release.
-- Standard release command shape is the same as Ultreia:
-  `git tag v0.1.1 && git push origin v0.1.1`.
-- Bump `package.json` `version` before tagging. The in-app update checker reads
-  this version through Vite's `__APP_VERSION__` define, so package version and
-  tag version must stay aligned.
-- `ANDROID_VERSION_NAME` comes from the tag without the leading `v`.
-  `ANDROID_VERSION_CODE` comes from GitHub `run_number`, matching Ultreia's
-  monotonic Android upgrade rule.
-- Release signing reads GitHub Secrets:
-  `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
-  and `ANDROID_KEY_PASSWORD`. Never commit keystores or passwords. Local signing
-  may use gitignored `android/keystore.properties`.
-- The workflow may mirror the latest APK to Supabase Storage as
-  `releases/viatica-latest.apk` using `SUPABASE_SERVICE_ROLE_KEY`; this mirror
-  is a download acceleration path only, not the source of version truth.
+- The authoritative runbook is `docs/android-release.md`; keep it aligned with
+  `.github/workflows/release.yml` and the package scripts.
 - Wilf saying "推 APK" means: validate, bump version if needed, commit, push the
-  tag, and let GitHub Actions create the signed release APK. Do not interpret it
-  as only building a local debug APK.
+  tag, and let GitHub Actions create the signed release APK.
 - Wilf saying a shorthand number such as "推 0111" means the same parsing rule
   as Ultreia: `0111` -> `0.11.1`, `0110` -> `0.11.0`; if a number cannot be
   split into one clear semver, stop and confirm before tagging.
-- Before pushing an APK tag, run the same local checks as Ultreia when the local
-  toolchain is available: `npm run test`, `npm run lint`, `npm run build`, and
-  `cd android && .\gradlew.bat :app:processReleaseMainManifest --no-daemon`
-  on Windows. If Java/Android SDK is missing, say exactly what could not be
-  verified, then inspect the GitHub Actions result after the tag.
-- APK release handoff matches Ultreia: once the version commit and `v*` tag push
-  are confirmed, the release can be handed off; do not wait for GitHub Actions
-  unless Wilf asks, the release flow was just changed, or the run needs
-  troubleshooting.
 - Versioning follows Ultreia's pre-1.0 rule: each tag is one release. PATCH +1
   for fixes, copy/style/performance/docs-only changes without a new
   user-visible feature; MINOR +1 and reset PATCH to 0 for a user-visible feature
   or feature batch; do not skip numbers by feel. `1.0.0` is reserved for a
   stable public-ready product.
+- Never commit signing secrets or keystores. Do not create a tag or formal
+  release unless Wilf's current instruction explicitly authorizes it.
 
 ## Git
 - After verified project changes, commit and push directly so work stays

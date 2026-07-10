@@ -15,7 +15,8 @@ complex setup ritual.
 
 Viatica is the standalone personal ledger in the Aevum product family. It owns
 transaction capture, editing, import/export, budgets, categories, legacy account
-compatibility, starting assets, local ledger records, cloud sync, and APK/PWA
+compatibility, starting assets, local bookkeeping memory, recurring reminders,
+deterministic financial review, local ledger records, cloud sync, and APK/PWA
 distribution. Aevum should receive only overview snapshots and reviewed events
 from Viatica.
 
@@ -51,8 +52,13 @@ and the Viatica mark.
   Add as the centered plus action.
 - Ledger owns Flow / Charts, period switching, compact metrics, search, editing,
   and deletion.
-- Calendar owns date review and grouped project totals. Charts stays focused on
-  category statistics and trends instead of duplicating project summaries.
+- Calendar owns month navigation, day details, date backfill, upcoming recurring
+  reminders, deterministic review, and grouped project totals. Charts stays
+  focused on category statistics and trends instead of duplicating those views.
+- Add may reuse recent transactions as templates or repeat drafts, but it still
+  requires an explicit save.
+- Recurring reminders never write silently. Confirm creates a normal
+  transaction; Skip only advances the next date; Modify opens a draft first.
 - Category budgets are separate editable monthly targets.
 - Assets uses one starting-assets value plus ledger income/expense flow, not a
   foregrounded bank-account manager.
@@ -73,6 +79,9 @@ and the Viatica mark.
   when ids match and protect an empty PWA from wiping an APK with data.
 - Signed-in mutations save locally first, then write and retry in the
   background.
+- Bookkeeping memory and recurring rules currently remain local-only under
+  `preferences.merchantRules` and `preferences.recurringTransactions`; do not
+  describe them as cross-device features until a reviewed cloud schema exists.
 - Transaction details stay private unless an explicit reviewed event shares a
   summary with Aevum.
 - Product demos use a dedicated Aevum Demo account seeded from
@@ -86,10 +95,10 @@ APK shorthand and versioning should stay aligned with Ultreia.
 
 ## Current Milestone
 
-The active milestone after the `0.2.x` sync releases is reliable daily
-accounting: keep capture fast, make sync status clear, prevent Demo/personal
-cache contamination, and preserve the accountless Assets model. AI features
-remain later work.
+The active milestone is a reliable daily finance loop: fast capture, calendar
+backfill, repeatable entries, manually confirmed recurring reminders,
+deterministic review, clear recovery, and sync confidence. The next trust gap is
+restore preview and conflict-safe recovery. AI features remain later work.
 
 ## Accessibility & Inclusion
 

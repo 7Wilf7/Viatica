@@ -230,7 +230,7 @@ test("csv export and import round trips ledger rows", () => {
   assert.equal(imported[1].amount, 899);
 });
 
-test("builds an Aevum overview without exposing private notes", () => {
+test("builds an aggregate Aevum overview without exposing transaction rows", () => {
   const txns = [
     normalizeTransaction({ amount: 42, category: "餐饮", account: "微信", title: "午餐", note: "private" }),
     normalizeTransaction({ amount: 299, category: "运动", account: "微信", title: "历史报名费", project: "崇礼越野赛", projectOnly: true }),
@@ -238,6 +238,8 @@ test("builds an Aevum overview without exposing private notes", () => {
   const overview = buildAevumOverview(txns, {}, new Date("2026-06-24T12:00:00+08:00"));
 
   assert.equal(overview.source, "viatica");
-  assert.equal(overview.recent.length, 1);
-  assert.equal("note" in overview.recent[0], false);
+  assert.equal(overview.transactionCount, 1);
+  assert.equal("recent" in overview, false);
+  assert.equal(JSON.stringify(overview).includes("午餐"), false);
+  assert.equal(JSON.stringify(overview).includes("微信"), false);
 });

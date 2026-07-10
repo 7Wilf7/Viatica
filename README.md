@@ -26,7 +26,12 @@ through Aevum reviewed events or memory.
 - Bottom-tab app shell: Ledger, Calendar, Add, Assets, Settings.
 - Ledger Flow / Charts, period filters, compact metrics, search, editing, and
   deletion.
-- Calendar spending and grouped-project review.
+- Calendar month navigation, day details, date backfill, recurring reminders,
+  deterministic review, and grouped-project review.
+- Recent transaction templates, repeat-entry drafts, and visible local
+  bookkeeping memory.
+- Monthly recurring items shown as overdue or next-30-day reminders that
+  require manual confirmation before they become ledger transactions.
 - Category statistics and editable category budgets.
 - One starting-assets value plus ledger income/expense flow.
 - Local browser persistence under `viatica:v1`.
@@ -57,6 +62,11 @@ bundle. It requires a local JDK and Android SDK.
 - `PRODUCT.md`: product purpose, boundaries, sync principles, and current
   milestone.
 - `DESIGN.md`: family design language and Viatica-specific ledger UI rules.
+- `docs/finance-loop.md`: calendar, templates, recurring reminders, review
+  signals, and their storage boundary.
+- `docs/pwa-recovery.md`: stale-shell recovery assets, cache behavior, and live
+  verification steps.
+- `docs/android-release.md`: APK versioning, signing, tag, and release runbook.
 - `src/core/*.test.js`: core ledger and sync behavior coverage.
 - `scripts/seed-demo-account.mjs`: Demo account seed helper.
 
@@ -67,6 +77,12 @@ account-specific localStorage keys shaped as `viatica:v1:user:<Aevum user id>`
 and sync with the shared Aevum Supabase project using `viatica_*` tables. First
 sync is merge-first rather than overwrite-first, and mutations save locally
 before background cloud writes.
+
+`preferences.merchantRules` and `preferences.recurringTransactions` currently
+stay in the active device's local cache. They are not columns in
+`viatica_preferences` and therefore do not sync across devices. A recurring
+item becomes cloud-backed only after Wilf confirms it and Viatica saves the
+resulting normal transaction.
 
 ## Android APK Release Flow
 

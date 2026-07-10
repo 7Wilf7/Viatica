@@ -361,21 +361,6 @@ export function filterTransactions(transactions = [], filters = {}) {
 export function buildAevumOverview(transactions = [], budgets = DEFAULT_BUDGETS, now = new Date()) {
   const ledgerTransactions = transactions.filter((txn) => !isProjectOnlyTransaction(txn));
   const summary = summarizeLedger(ledgerTransactions, budgets, now);
-  const recent = [...ledgerTransactions]
-    .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt))
-    .slice(0, 5)
-    .map((txn) => ({
-      id: txn.id,
-      type: txn.type,
-      occurredAt: txn.occurredAt,
-      amount: txn.amount,
-      currency: txn.currency,
-      book: txn.book,
-      account: txn.account,
-      category: txn.category,
-      title: txn.title,
-      reimbursable: txn.reimbursable,
-    }));
 
   return {
     source: "viatica",
@@ -392,6 +377,5 @@ export function buildAevumOverview(transactions = [], budgets = DEFAULT_BUDGETS,
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([category, amount]) => ({ category, amount })),
-    recent,
   };
 }

@@ -66,7 +66,9 @@ not grant shared access to private ledger data.
   clarity, not its light visual skin: expense / income fills the full switch,
   expense and income use different category sets, category buttons reveal detail
   chips, and a built-in amount keypad keeps the system keyboard out of the main
-  path. Expense detail chips render in one tray below the full primary-category
+  path. A compact date control supports backfill, and recent templates or a
+  repeated transaction may prefill a draft without saving it automatically.
+  Expense detail chips render in one tray below the full primary-category
   grid instead of between category rows, keeping the main category grid visually
   stable. Income categories can be saved without a detail chip when the detail
   would only repeat the category. On mobile, the amount readout and keypad stay
@@ -97,9 +99,12 @@ not grant shared access to private ledger data.
   row should stay minimal.
 - Ledger must not show an All Books selector or visible book filter unless the
   product intentionally reintroduces multi-book workflow.
-- Calendar owns the monthly spending calendar and a compact month summary.
-  Calendar day numbers sit at the top center of each cell so the body of the
-  cell can later hold daily income/expense details.
+- Calendar owns month navigation and four focused secondary views: Month
+  Summary, Pending Recurring, Review, and Projects. Tapping a day opens its
+  entries and a date-bound backfill action. Recurring reminders require Confirm,
+  Skip, or Modify This Time; Review is read-only and calculated locally.
+  Calendar day numbers sit at the top center of each cell so daily income/expense
+  values stay scannable.
 - Charts under Ledger stay focused on category statistics and trends. Project
   totals and their related entries live together under Calendar → Projects and
   should not be duplicated in Charts. Category statistics are actual spending
@@ -134,7 +139,8 @@ not grant shared access to private ledger data.
   Demo data mode switch. Settings should never present Demo as a second local
   data model; it should only expose the active Aevum account state.
 - Settings owns Aevum account entry, shared profile fields, the guide/changelog,
-  editable budgets, app updates, and PWA/storage notes. Routine cloud sync
+  editable budgets, local bookkeeping memory, recurring-rule management, app
+  updates, and PWA/storage notes. Routine cloud sync
   should feel quiet and automatic: background retries should not show toast
   popups, while explicit manual sync can still use a compact top status. Do not
   foreground CSV import, CSV export, or JSON backup on the Settings home while

@@ -6,9 +6,12 @@ android/app/src/main/assets/public
 android/app/src/main/assets/capacitor.config.json
 android/app/src/main/assets/capacitor.plugins.json
 android/keystore.properties
-android/app/*.jks
+*.jks
+*.keystore
 .env.local
 .env.*.local
 .env
+.env.*
+!.env.example
 .DS_Store
 *.log
