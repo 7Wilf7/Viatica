@@ -9,7 +9,8 @@ and the app cannot start far enough to clear its cache.
 
 ## Current Strategy
 
-- `public/sw.js` uses the `viatica-v7` cache.
+- `public/sw.js` uses the `viatica-v8` cache. The v8 bump retires clients that
+  still held the pre-static-logo splash shell.
 - Navigation requests are network-first and fall back to the cached shell only
   when the network is unavailable or unsuccessful.
 - Same-origin static assets remain cache-first.
