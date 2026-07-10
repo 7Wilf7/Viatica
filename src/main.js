@@ -117,7 +117,7 @@ const CLOUD_SYNC_ERROR_HOLD_MS = 4000;
 const CLOUD_SYNC_RETRY_DELAY_MS = 5000;
 const FOREGROUND_SYNC_MIN_MS = 10000;
 const FOREGROUND_SYNC_RETRY_MIN_MS = 4000;
-const BOOT_REVEAL_MS = 4200;
+const BOOT_REVEAL_MS = 1800;
 const TAB_HAPTIC_MS = 8;
 const PAGER_SETTLE_MIN_MS = 360;
 const PAGER_SETTLE_MAX_MS = 720;
@@ -3754,41 +3754,7 @@ function renderBootSplash() {
     <section class="boot-splash${qaFrameClass}"${qaFrameStyle} aria-label="${escapeHtml(t("splash.label"))}">
       <div class="boot-splash-stack" aria-busy="true">
         <div class="boot-logo-stage">
-          <svg class="boot-logo-build" viewBox="0 0 512 512" aria-hidden="true">
-            <defs>
-              <linearGradient id="boot-piece-fill" x1="152" x2="360" y1="120" y2="386" gradientUnits="userSpaceOnUse">
-                <stop offset="0" stop-color="#f6eec6" />
-                <stop offset="0.42" stop-color="#a99a70" />
-                <stop offset="1" stop-color="#4e4429" />
-              </linearGradient>
-              <linearGradient id="boot-piece-edge" x1="162" x2="354" y1="118" y2="386" gradientUnits="userSpaceOnUse">
-                <stop offset="0" stop-color="#fff7d2" />
-                <stop offset="1" stop-color="#8a7b4d" />
-              </linearGradient>
-              <filter id="boot-piece-glow" x="-30%" y="-30%" width="160%" height="170%">
-                <feDropShadow dx="0" dy="0" stdDeviation="5.5" flood-color="#f0dda0" flood-opacity="0.32" />
-                <feDropShadow dx="0" dy="9" stdDeviation="12" flood-color="#000000" flood-opacity="0.34" />
-              </filter>
-            </defs>
-            <rect class="boot-logo-backplate" x="30" y="30" width="452" height="452" rx="88" />
-            <g class="boot-logo-traces">
-              <path class="boot-logo-trace boot-logo-trace-a" pathLength="1" d="M28 200 H82 C116 200 118 166 118 136 V118 C118 86 146 60 180 60 H284 C302 60 304 46 304 28" />
-              <path class="boot-logo-trace boot-logo-trace-b" pathLength="1" d="M28 232 H96 C132 232 140 176 176 176 H248 C292 176 296 118 342 118 H484" />
-              <path class="boot-logo-trace boot-logo-trace-c" pathLength="1" d="M28 286 H112 C152 286 166 342 206 342 H244 C282 342 286 396 286 484" />
-              <path class="boot-logo-trace boot-logo-trace-d" pathLength="1" d="M484 220 H394 C360 220 352 260 318 260 H272" />
-              <path class="boot-logo-trace boot-logo-trace-e" pathLength="1" d="M484 360 H416 C382 360 376 402 342 402 H316 C292 402 286 438 286 484" />
-            </g>
-            <g class="boot-logo-mark">
-              <path class="boot-logo-piece boot-logo-piece-a" d="M170 125 C166 127 164 131 164 136 L164 183 C164 188 166 192 170 194 L246 237 C250 239 254 236 254 231 L254 180 C254 176 252 172 248 170 L176 127 C174 125 172 124 170 125 Z" />
-              <path class="boot-logo-piece boot-logo-piece-b" d="M169 198 C166 196 164 199 164 204 L164 286 C164 291 166 295 170 297 L245 340 C249 342 254 339 254 334 L254 252 C254 248 252 244 248 242 L169 198 Z" />
-              <path class="boot-logo-piece boot-logo-piece-c" d="M274 177 C274 174 276 172 279 170 L321 148 C324 146 328 146 331 148 L354 162 C358 165 360 169 360 174 L360 226 C360 230 358 234 354 236 L276 280 C272 282 267 279 267 274 L267 191 C267 185 269 181 274 177 Z" />
-              <path class="boot-logo-piece boot-logo-piece-d" d="M276 290 L351 247 C355 245 360 248 360 253 L360 292 C360 296 358 300 354 302 L309 330 C306 332 302 332 299 330 L276 316 C273 314 271 310 271 306 L271 298 C271 294 273 292 276 290 Z" />
-              <path class="boot-logo-piece boot-logo-piece-e" d="M258 313 C258 309 262 307 266 309 L304 332 C308 334 310 339 308 343 L288 385 C286 390 280 391 276 389 L260 379 C257 377 255 373 255 369 L255 320 C255 317 256 315 258 313 Z" />
-            </g>
-            <rect class="boot-logo-frame-rect" x="30" y="30" width="452" height="452" rx="88" pathLength="1" />
-          </svg>
           <img class="brand-logo boot-splash-logo" src="${bootLogoUrl}" alt="" aria-hidden="true">
-          <div class="boot-logo-sheen" aria-hidden="true"></div>
         </div>
         <div class="brand-wordmark boot-wordmark">${escapeHtml(PRODUCT_NAME)}</div>
       </div>

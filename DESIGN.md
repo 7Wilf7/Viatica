@@ -77,12 +77,15 @@ not grant shared access to private ledger data.
   account chips in the primary Add flow unless account switching becomes a real
   high-frequency need again.
 - The official Viatica logo source lives at `resources/brand/viatica-logo.png`.
-  In-app brand surfaces use the resized display copy through
+  The splash renders that exact desktop source from its first frame, including
+  the double-line border, with no redraw, fade, scale, blur, sheen, or assembly.
+  Other in-app surfaces use the resized display copy through
   `src/assets/logo.js`; PWA launcher icons in `public/icons/` are generated
   copies of the same mark.
-- Brand exposure should stay product-native: a short boot splash with logo +
-  script-style Viatica wordmark, and a compact Settings Aevum account header.
-  Do not turn the app into a landing page.
+- Brand exposure should stay product-native: the script-style Viatica wordmark
+  reveals left to right at a constant linear speed while the Logo remains
+  static, and Settings keeps a compact Aevum account header. Do not turn the app
+  into a landing page.
 - Viatica owns a small custom monoline glyph set for bottom navigation,
   categories, accounts, and row actions. Category icons may use subtle
   differentiated colors, but they should stay soft and tool-like, not childish
