@@ -58,25 +58,6 @@ export function isProjectOnlyTransaction(txn = {}) {
   return Boolean(txn.projectOnly) || parseTags(txn.tags).includes(PROJECT_ONLY_TAG);
 }
 
-export function mergeProjectOnlyTransactionsForStats(transactions = [], periodTransactions = []) {
-  const merged = [...periodTransactions];
-  const includedRefs = new Set(periodTransactions);
-  const includedIds = new Set(periodTransactions.map((txn) => txn?.id).filter(Boolean));
-
-  for (const txn of transactions) {
-    if (!isProjectOnlyTransaction(txn)) continue;
-    const project = normalizeProjectLabel(txn.project || projectLabelFromTags(txn.tags));
-    if (!project) continue;
-    if (includedRefs.has(txn)) continue;
-    if (txn.id && includedIds.has(txn.id)) continue;
-    merged.push(txn);
-    includedRefs.add(txn);
-    if (txn.id) includedIds.add(txn.id);
-  }
-
-  return merged;
-}
-
 export function summarizeProjects(transactions = []) {
   const byProject = new Map();
 

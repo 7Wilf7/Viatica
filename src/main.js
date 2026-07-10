@@ -39,7 +39,6 @@ import {
 import {
   filterTransactions,
   isProjectOnlyTransaction,
-  mergeProjectOnlyTransactionsForStats,
   normalizeBudgets,
   normalizeProjectLabel,
   normalizeTransaction,
@@ -717,13 +716,13 @@ const MANUAL_SECTIONS = [
         "“账本”顶部是类型筛选 + 流水 / 图表切换：流水用于查单笔记录，图表就是统计。",
         "“日历”用于快速定位日期，并查看本月支出、收入和有记录的天数。",
         "账本周期可切换所有时间、本周、本月、今年；支出、收入和记录数会跟着周期变化。需要时点放大镜搜索，或用分类筛选。长按单笔流水可以编辑或删除。",
-        "项目用于把一次比赛、一次旅行这类相关流水归在一起；图表页会按项目统计总额。已经在记账起点前付过的钱，可以勾选“仅记录项目”，它只进项目统计，不影响资产和日常支出，也不会显示日期或时间段。",
+        "项目用于把一次比赛、一次旅行这类相关流水归在一起；在“日历 → 项目”里可以查看项目总额和相关流水。已经在记账起点前付过的钱，可以勾选“仅记录项目”，它只进项目汇总，不影响资产和日常支出，也不会显示日期或时间段。",
       ],
       en: [
         "Ledger starts with type filtering plus Flow / Charts: Flow reviews individual entries, and Charts means statistics.",
         "Calendar locates dates quickly and shows monthly spending, income, and active ledger days.",
         "Switch the Ledger period between All Time, This Week, This Month, and This Year. Expense, income, and entry count follow that period. Use the magnifier for search or Category when needed. Long-press an entry to edit or delete it.",
-        "Projects group related entries for a race, trip, or similar event. Charts summarize project totals. For money paid before your ledger start date, mark it Project only: it counts toward the project without changing assets, normal spending, or date/time ledger context.",
+        "Projects group related entries for a race, trip, or similar event. Review project totals and entries under Calendar → Projects. For money paid before your ledger start date, mark it Project only: it counts toward the project without changing assets, normal spending, or date/time ledger context.",
       ],
     },
   },
@@ -788,6 +787,21 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-07-10",
+    title: {
+      zh: "精简图表统计",
+      en: "Simplified Charts",
+    },
+    items: {
+      zh: [
+        "图表页移除重复的项目统计；项目总额和相关流水统一在“日历 → 项目”查看。",
+      ],
+      en: [
+        "Removed duplicate project statistics from Charts; project totals and entries now stay together under Calendar → Projects.",
+      ],
+    },
+  },
   {
     date: "2026-07-09",
     title: {
@@ -1401,10 +1415,7 @@ const MESSAGES = {
     "stats.lineMeta": "",
     "stats.categoryTitle": "分类统计",
     "stats.categoryHint": "只按真实流水汇总，不看预算目标。",
-    "stats.projectTitle": "项目统计",
-    "stats.projectOnly": "含补录",
     "stats.projectCount": "{count} 笔",
-    "stats.noProject": "当前范围还没有项目数据。",
     "stats.noCategory": "当前范围还没有可统计数据。",
     "stats.other": "其他",
     "assets.title": "资产概览",
@@ -1627,10 +1638,7 @@ const MESSAGES = {
     "stats.lineMeta": "",
     "stats.categoryTitle": "Category Statistics",
     "stats.categoryHint": "Based only on real entries, not budget targets.",
-    "stats.projectTitle": "Project Statistics",
-    "stats.projectOnly": "includes backfill",
     "stats.projectCount": "{count} entries",
-    "stats.noProject": "No project data in this range yet.",
     "stats.noCategory": "No chartable data in this range yet.",
     "stats.other": "Other",
     "assets.title": "Assets Overview",
@@ -3328,7 +3336,6 @@ function render() {
   const summary = summarizeLedger(activeState.transactions, activeState.budgets, new Date(), activeState.accounts);
   const typeTransactions = ledgerTypeFilteredTransactions(activeState.transactions);
   const periodTransactions = rangeFilterTransactions(typeTransactions, state.ledgerPeriod);
-  const projectStatTransactions = mergeProjectOnlyTransactionsForStats(typeTransactions, periodTransactions);
   const ledgerSummary = summarizeLedgerPeriod(periodTransactions, activeState.budgets);
   const filteredTransactions = ledgerFlowTransactions(periodTransactions)
     .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt));
@@ -3339,7 +3346,7 @@ function render() {
     ${bootSplashVisible ? renderBootSplash() : ""}
     <main class="app-shell tab-${escapeHtml(state.activeTab)}${syncFeedbackClass}">
       ${renderCloudSyncFeedback()}
-      ${renderTabPager(summary, ledgerSummary, filteredTransactions, editingTransaction, periodTransactions, projectStatTransactions)}
+      ${renderTabPager(summary, ledgerSummary, filteredTransactions, editingTransaction, periodTransactions)}
 
       <nav class="bottom-tabs" aria-label="${escapeHtml(t("app.sections"))}">
         ${TABS.map(renderTabButton).join("")}
@@ -3430,15 +3437,15 @@ function renderBootSplash() {
   `;
 }
 
-function renderTabContent(tabId, summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions, projectStatTransactions) {
+function renderTabContent(tabId, summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions) {
   if (tabId === "capture") return renderCaptureTab(editingTransaction);
   if (tabId === "calendar") return renderCalendarTab(summary);
   if (tabId === "assets") return renderAssetsTab(summary);
   if (tabId === "settings") return renderSettingsTab();
-  return renderLedgerTab(filteredTransactions, ledgerSummary, chartTransactions, projectStatTransactions);
+  return renderLedgerTab(filteredTransactions, ledgerSummary, chartTransactions);
 }
 
-function renderTabPager(summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions, projectStatTransactions) {
+function renderTabPager(summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions) {
   if (state.activeTab === "capture") {
     return `
       <section class="tab-pager tab-pager-static" data-tab-pager data-active-tab="capture">
@@ -3476,7 +3483,7 @@ function renderTabPager(summary, ledgerSummary, filteredTransactions, editingTra
                 style="--pane-index: ${idx}; --pane-width: ${pagerPanePercent()}%;"
               >
                 <section class="tab-stage tab-stage-${escapeHtml(tab.id)}">
-                  ${renderTabContent(tab.id, summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions, projectStatTransactions)}
+                  ${renderTabContent(tab.id, summary, ledgerSummary, filteredTransactions, editingTransaction, chartTransactions)}
                 </section>
               </article>
             `;
@@ -3702,7 +3709,7 @@ function handleLedgerPeriodOption(node) {
   render();
 }
 
-function renderLedgerTab(filteredTransactions, summary, chartTransactions, projectStatTransactions) {
+function renderLedgerTab(filteredTransactions, summary, chartTransactions) {
   const viewMotionClass = ledgerViewMotionDir
     ? (ledgerViewMotionDir > 0 ? " ledger-view-in-right" : " ledger-view-in-left")
     : "";
@@ -3718,7 +3725,7 @@ function renderLedgerTab(filteredTransactions, summary, chartTransactions, proje
       ${renderLedgerPeriodSwitch()}
       ${renderLedgerOverview(summary)}
       <div class="ledger-view-panel${viewMotionClass}" data-ledger-view-panel="${escapeHtml(state.ledgerView)}">
-        ${state.ledgerView === "chart" ? renderLedgerStats(summary, chartTransactions, projectStatTransactions) : renderLedgerFlow(filteredTransactions)}
+        ${state.ledgerView === "chart" ? renderLedgerStats(summary, chartTransactions) : renderLedgerFlow(filteredTransactions)}
       </div>
     </div>
   `;
@@ -3759,10 +3766,9 @@ function renderLedgerFlow(filteredTransactions) {
   `;
 }
 
-function renderLedgerStats(summary, transactions = [], projectTransactions = transactions) {
+function renderLedgerStats(summary, transactions = []) {
   const chartEntries = categoryChartEntries(transactions, 5);
   const chartTotal = Math.max(1, chartEntries.reduce((total, [, amount]) => total + amount, 0));
-  const projectEntries = projectChartEntries(projectTransactions, 6);
   return `
     <section class="panel stats-panel">
       <div class="section-title">
@@ -3779,16 +3785,7 @@ function renderLedgerStats(summary, transactions = [], projectTransactions = tra
         </div>
       </div>
       <div class="budget-list">
-        ${renderCategoryStatRows(summary, 8, chartEntries, chartTotal)}
-      </div>
-
-      <div class="section-title inline-section-title">
-        <div>
-          <h2>${escapeHtml(t("stats.projectTitle"))}</h2>
-        </div>
-      </div>
-      <div class="budget-list project-stat-list">
-        ${renderProjectStatRows(projectEntries)}
+        ${renderCategoryStatRows(summary, 8)}
       </div>
     </section>
   `;
@@ -3828,32 +3825,6 @@ function dailyChartEntries(transactions = []) {
     totals.set(key, (totals.get(key) || 0) + amount);
   }
   return [...totals.entries()].sort((a, b) => new Date(a[0]) - new Date(b[0]));
-}
-
-function projectChartEntries(transactions = [], limit = 6) {
-  const sourceType = chartSourceType();
-  const totals = new Map();
-  for (const txn of transactions) {
-    if (txn.type !== sourceType) continue;
-    const project = transactionProjectLabel(txn);
-    if (!project) continue;
-    const amount = Number(txn.amount || 0);
-    if (!(amount > 0)) continue;
-    const current = totals.get(project) || { amount: 0, count: 0, projectOnlyCount: 0 };
-    current.amount += amount;
-    current.count += 1;
-    if (isProjectOnlyTransaction(txn)) current.projectOnlyCount += 1;
-    totals.set(project, current);
-  }
-  return [...totals.entries()]
-    .map(([project, data]) => ({
-      project,
-      amount: Math.round(data.amount * 100) / 100,
-      count: data.count,
-      projectOnlyCount: data.projectOnlyCount,
-    }))
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, limit);
 }
 
 function chartNumber(value) {
@@ -4976,31 +4947,6 @@ function renderCategoryStatRows(summary, limit = 8) {
       <div class="budget-track"><span style="width: ${Math.round((amount / total) * 100)}%"></span></div>
     </div>
   `).join("");
-}
-
-function renderProjectStatRows(entries = []) {
-  if (!entries.length) return `<div class="empty">${escapeHtml(t("stats.noProject"))}</div>`;
-  const max = Math.max(...entries.map((entry) => entry.amount), 1);
-  return entries.map((entry) => {
-    const ratio = Math.min(1, entry.amount / max);
-    const meta = [
-      t("stats.projectCount", { count: entry.count }),
-      entry.projectOnlyCount ? t("stats.projectOnly") : "",
-    ].filter(Boolean).join(" · ");
-    return `
-      <div class="budget-row project-stat-row">
-        <div class="metric-row-head">
-          ${renderIconBadge("旅行", "category", "small")}
-          <div class="metric-copy">
-            <strong>${escapeHtml(entry.project)}</strong>
-            <span>${escapeHtml(meta)}</span>
-          </div>
-          <span class="metric-amount">${formatMoney(entry.amount)}</span>
-        </div>
-        <div class="budget-track"><span style="width: ${Math.round(ratio * 100)}%"></span></div>
-      </div>
-    `;
-  }).join("");
 }
 
 function renderFilters() {

@@ -3412,12 +3412,6 @@ input[type="datetime-local"] {
   background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
 }
 
-.project-stat-row .metric-amount {
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 800;
-}
-
 .txn-row {
   position: relative;
   padding: 9px;

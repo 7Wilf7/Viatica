@@ -123,6 +123,8 @@ of copying training-specific behavior.
 - Keep category statistics and category budgets separate. Statistics summarize
   actual spending from transactions. Budgets compare actual spending against
   editable monthly targets saved under `viatica:v1`.
+- Keep project totals and related entries in Calendar's Project view. Do not
+  duplicate project statistics under Ledger Charts.
 - Settings should follow Ultreia's compact mobile pattern: a short settings
   list first, with the manual and changelog combined into one second-level
   guide page. Budget editing and other long explanatory content also open as

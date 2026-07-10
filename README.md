@@ -26,7 +26,7 @@ through Aevum reviewed events or memory.
 - Bottom-tab app shell: Ledger, Calendar, Add, Assets, Settings.
 - Ledger Flow / Charts, period filters, compact metrics, search, editing, and
   deletion.
-- Calendar spending review.
+- Calendar spending and grouped-project review.
 - Category statistics and editable category budgets.
 - One starting-assets value plus ledger income/expense flow.
 - Local browser persistence under `viatica:v1`.

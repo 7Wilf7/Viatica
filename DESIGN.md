@@ -100,8 +100,10 @@ not grant shared access to private ledger data.
 - Calendar owns the monthly spending calendar and a compact month summary.
   Calendar day numbers sit at the top center of each cell so the body of the
   cell can later hold daily income/expense details.
-- Charts under Ledger own actual statistics only. Category statistics are
-  actual spending summaries and must not display budget targets.
+- Charts under Ledger stay focused on category statistics and trends. Project
+  totals and their related entries live together under Calendar → Projects and
+  should not be duplicated in Charts. Category statistics are actual spending
+  summaries and must not display budget targets.
 - Assets owns total assets, the hidden starting-assets value, legacy account
   compatibility, and category budgets. The default Assets screen should lead
   with total assets and category budgets, not a visible account-balance list.

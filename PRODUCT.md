@@ -51,8 +51,9 @@ and the Viatica mark.
   Add as the centered plus action.
 - Ledger owns Flow / Charts, period switching, compact metrics, search, editing,
   and deletion.
-- Charts means actual statistics. Category budgets are separate editable monthly
-  targets.
+- Calendar owns date review and grouped project totals. Charts stays focused on
+  category statistics and trends instead of duplicating project summaries.
+- Category budgets are separate editable monthly targets.
 - Assets uses one starting-assets value plus ledger income/expense flow, not a
   foregrounded bank-account manager.
 - Settings stays compact. Manual/changelog, budgets, updates, and maintenance
