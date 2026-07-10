@@ -32,6 +32,23 @@ import {
 } from "./core/cloudSync.js";
 import { formatCurrency, monthKey, todayKey, toDateInputValue, transactionSign } from "./core/format.js";
 import {
+  advanceRecurringRule,
+  buildFinanceRecap,
+  buildMonthCalendarCells,
+  buildRecurringTransactionDraft,
+  createRecurringRuleFromTransaction,
+  dateInputValueForDateKey,
+  localDateKey,
+  normalizeMerchantRules,
+  normalizeRecurringRules,
+  parseDateKey,
+  recentTemplates,
+  recurringOccurrencesNextDays,
+  summarizeDayTransactions,
+  transactionsForDate,
+  updateMerchantRules,
+} from "./core/financeLoop.js";
+import {
   EMPTY_AEVUM_PROFILE,
   fetchAevumProfile,
   saveAevumProfile,
@@ -145,7 +162,13 @@ const state = {
   searchOpen: false,
   captureDraft: null,
   captureProjectOpen: false,
+  pendingRecurringRuleId: "",
   calendarPanel: "summary",
+  calendarView: {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth(),
+  },
+  calendarSelectedDate: "",
   calendarProject: "",
   budgetKeypadCategory: "",
   budgetDraft: null,
@@ -198,12 +221,16 @@ state.preferences = {
   activeBook: "日常账本",
   locale: "zh",
   startingAssets: 0,
+  merchantRules: [],
+  recurringTransactions: [],
   ...state.preferences,
 };
 delete state.preferences.dataMode;
 delete state.preferences.deletedAccounts;
 state.preferences.startingAssets = normalizeStartingAssets(state.preferences.startingAssets);
 if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
+state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
+state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
 state.accounts = [];
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
 state.filters.book = "all";
@@ -728,6 +755,26 @@ const MANUAL_SECTIONS = [
   },
   {
     title: {
+      zh: "补记、周期账单和复盘",
+      en: "Backfill, recurring bills, and review",
+    },
+    items: {
+      zh: [
+        "“添加”里可以直接选日期，也可以从“日历”点某一天后选择“从这一天补记”。",
+        "长按流水可以再记一笔，Viatica 会把反复出现的商家 / 标题整理成可见的本机记账记忆；分类可以在“设置 → 记账记忆”里修改。",
+        "周期账单来自已有流水，未来 30 天只显示待确认提醒；确认才入账，跳过只推进下一次，修改本次会先回到添加页。",
+        "复盘页只读：先由本地代码计算比上月多花、预算风险、疑似重复和疑似周期，不会调用 AI 或修改历史流水。",
+      ],
+      en: [
+        "Add can choose a date directly, or Calendar can open a day and start Backfill From This Day.",
+        "Long-press an entry to repeat it. Viatica turns repeated merchants or titles into visible local bookkeeping memory; edit categories in Settings → Bookkeeping Memory.",
+        "Recurring bills come from existing entries and show pending reminders for the next 30 days. Confirm writes the entry, Skip only advances the next date, and Modify This Time returns to Add first.",
+        "Review is read-only: local code calculates month increases, budget risks, possible duplicates, and likely recurring costs without calling AI or mutating history.",
+      ],
+    },
+  },
+  {
+    title: {
       zh: "分类统计和分类预算",
       en: "Category statistics and budgets",
     },
@@ -787,6 +834,27 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-07-10",
+    title: {
+      zh: "记账闭环基础",
+      en: "Ledger Loop Foundations",
+    },
+    items: {
+      zh: [
+        "日历支持切月、点日期查看当天流水，并能从指定日期补记。",
+        "添加页新增日期入口和最近常用模板；长按流水可再记一笔，并生成可编辑的本机记账记忆。",
+        "周期账单进入未来 30 天待确认列表，确认、跳过或修改本次都需要手动操作，不会静默写入账本。",
+        "新增只读复盘面板，用本地确定性逻辑提示月度增加、预算风险、疑似重复和疑似周期费用。",
+      ],
+      en: [
+        "Calendar now switches months, opens day details, and starts backfills from a chosen date.",
+        "Add now has a date control and recent templates; long-press entries can be repeated and can create editable local bookkeeping memory.",
+        "Recurring bills now appear as next-30-day pending items with manual Confirm, Skip, or Modify This Time actions.",
+        "Added a read-only review panel with local deterministic signals for spending increases, budget risks, duplicates, and likely recurring costs.",
+      ],
+    },
+  },
   {
     date: "2026-07-10",
     title: {
@@ -1373,6 +1441,8 @@ const MESSAGES = {
     "capture.account": "账户",
     "capture.category": "分类",
     "capture.currency": "币种",
+    "capture.date": "日期",
+    "capture.today": "今天",
     "capture.time": "时间",
     "capture.timeMorning": "早上",
     "capture.timeNoon": "中午",
@@ -1392,6 +1462,8 @@ const MESSAGES = {
     "capture.keypadClear": "清空",
     "capture.saveEdit": "保存修改",
     "capture.save": "保存流水",
+    "capture.templatesTitle": "最近常用",
+    "capture.noTemplates": "保存几笔后会出现常用模板。",
     "ledger.title": "账本",
     "ledger.overview": "账本概览",
     "ledger.monthExpense": "支出",
@@ -1469,6 +1541,14 @@ const MESSAGES = {
     "settings.budgetSaved": "预算已保存。",
     "settings.budgetResetDone": "预算已恢复默认。",
     "settings.budgetInvalid": "预算必须是 0 或正数。",
+    "settings.rulesTitle": "记账记忆",
+    "settings.rulesHint": "商家和分类规则",
+    "settings.rulesPageHint": "这些规则来自你反复保存的商家 / 标题；只在本机确定性套用，可以删除或改分类。",
+    "settings.noRules": "还没有记账记忆。重复记录同一商家后会出现规则。",
+    "settings.recurringTitle": "周期账单",
+    "settings.recurringHint": "查看和停用待确认项目",
+    "settings.recurringPageHint": "周期项目只生成待确认提醒，不会自动写入正式账本。",
+    "settings.noRecurring": "还没有周期账单。长按流水或在日期明细里点“设为周期”。",
     "settings.pwaTitle": "PWA 更新",
     "settings.pwaHint": "更新后仍看到旧界面时使用；不会清除 viatica:v1 账本数据。",
     "settings.clearing": "正在清理...",
@@ -1541,12 +1621,16 @@ const MESSAGES = {
     "range.year": "今年",
     "range.all": "所有时间",
     "txn.edit": "编辑",
+    "txn.repeat": "再记",
+    "txn.recurring": "周期",
     "txn.delete": "删除",
     "txn.projectOnly": "项目补录",
     "confirm.delete": "删除这笔流水？",
     "confirm.deleteAccount": "删除账户“{account}”？已有流水不会被删除。",
     "calendar.summaryTitle": "本月小计",
     "calendar.summaryTab": "本月小计",
+    "calendar.upcomingTab": "未来 30 天",
+    "calendar.reviewTab": "复盘",
     "calendar.projectTab": "项目",
     "calendar.projectTitle": "项目",
     "calendar.projectExpense": "支出",
@@ -1555,8 +1639,41 @@ const MESSAGES = {
     "calendar.projectFlowTitle": "项目流水",
     "calendar.noProject": "还没有项目流水。加一笔时填写项目名后，这里会按项目汇总。",
     "calendar.activeDays": "记账天数",
+    "calendar.prevMonth": "上个月",
+    "calendar.nextMonth": "下个月",
+    "calendar.monthToday": "回到今天",
+    "calendar.dayDetail": "日期明细",
+    "calendar.closeDay": "关闭日期明细",
+    "calendar.prevDay": "前一天",
+    "calendar.nextDay": "后一天",
+    "calendar.backfillDay": "从这一天补记",
+    "calendar.noDayEntries": "这一天还没有流水。",
+    "calendar.dayExpense": "支出",
+    "calendar.dayIncome": "收入",
+    "calendar.upcomingTitle": "待确认周期账单",
+    "calendar.noUpcoming": "未来 30 天没有待确认周期项目。",
+    "calendar.recurringOverdue": "已到期",
+    "calendar.recurringConfirm": "确认",
+    "calendar.recurringSkip": "跳过",
+    "calendar.recurringModify": "修改本次",
+    "calendar.reviewTitle": "只读财务复盘",
+    "calendar.reviewLocalOnly": "本地计算，不修改账本。",
+    "calendar.reviewWeek": "本周支出",
+    "calendar.reviewMonth": "本月支出",
+    "calendar.reviewIncrease": "比上月多花",
+    "calendar.reviewBudgetRisk": "预算接近上限",
+    "calendar.reviewDuplicate": "可能重复",
+    "calendar.reviewRecurring": "疑似周期",
+    "calendar.reviewEmpty": "流水还不够形成复盘信号。",
     "toast.updated": "流水已更新。",
     "toast.saved": "流水已保存。",
+    "toast.templateApplied": "已套用模板。",
+    "toast.ruleUpdated": "记账记忆已更新。",
+    "toast.ruleDeleted": "记账记忆已删除。",
+    "toast.recurringCreated": "已设为周期账单，后续仍需手动确认。",
+    "toast.recurringConfirmed": "周期账单已确认入账。",
+    "toast.recurringSkipped": "已跳过本次周期账单。",
+    "toast.recurringDeleted": "周期账单已停用。",
     "toast.saveFailed": "保存失败：{message}",
     "toast.imported": "已导入 {count} 条流水。",
     "toast.importFailed": "导入失败：{message}",
@@ -1596,6 +1713,8 @@ const MESSAGES = {
     "capture.account": "Account",
     "capture.category": "Category",
     "capture.currency": "Currency",
+    "capture.date": "Date",
+    "capture.today": "Today",
     "capture.time": "Time",
     "capture.timeMorning": "Morning",
     "capture.timeNoon": "Noon",
@@ -1615,6 +1734,8 @@ const MESSAGES = {
     "capture.keypadClear": "Clear",
     "capture.saveEdit": "Save Changes",
     "capture.save": "Save Entry",
+    "capture.templatesTitle": "Recent Templates",
+    "capture.noTemplates": "Saved repeats will appear here.",
     "ledger.title": "Ledger",
     "ledger.overview": "Ledger Overview",
     "ledger.monthExpense": "Spent",
@@ -1692,6 +1813,14 @@ const MESSAGES = {
     "settings.budgetSaved": "Budgets saved.",
     "settings.budgetResetDone": "Budgets restored to defaults.",
     "settings.budgetInvalid": "Budgets must be 0 or positive.",
+    "settings.rulesTitle": "Bookkeeping Memory",
+    "settings.rulesHint": "Merchant and category rules",
+    "settings.rulesPageHint": "These rules come from repeated merchants or titles. They stay deterministic and local; you can delete them or change their category.",
+    "settings.noRules": "No bookkeeping memory yet. Repeated merchants will create rules.",
+    "settings.recurringTitle": "Recurring Bills",
+    "settings.recurringHint": "Review and stop pending items",
+    "settings.recurringPageHint": "Recurring items create pending reminders only. They never enter the official ledger without confirmation.",
+    "settings.noRecurring": "No recurring bills yet. Long-press an entry or use day details to mark one recurring.",
     "settings.pwaTitle": "PWA Refresh",
     "settings.pwaHint": "Use this when the app still shows an old interface; viatica:v1 ledger data is kept.",
     "settings.clearing": "Clearing...",
@@ -1764,12 +1893,16 @@ const MESSAGES = {
     "range.year": "This Year",
     "range.all": "All Time",
     "txn.edit": "Edit",
+    "txn.repeat": "Repeat",
+    "txn.recurring": "Recurring",
     "txn.delete": "Delete",
     "txn.projectOnly": "Project Backfill",
     "confirm.delete": "Delete this entry?",
     "confirm.deleteAccount": "Delete account “{account}”? Existing entries will not be deleted.",
     "calendar.summaryTitle": "Month Summary",
     "calendar.summaryTab": "Month Summary",
+    "calendar.upcomingTab": "Next 30 Days",
+    "calendar.reviewTab": "Review",
     "calendar.projectTab": "Projects",
     "calendar.projectTitle": "Projects",
     "calendar.projectExpense": "Spent",
@@ -1778,8 +1911,41 @@ const MESSAGES = {
     "calendar.projectFlowTitle": "Project Entries",
     "calendar.noProject": "No project entries yet. Add a project name while capturing an entry to group it here.",
     "calendar.activeDays": "Active Days",
+    "calendar.prevMonth": "Previous Month",
+    "calendar.nextMonth": "Next Month",
+    "calendar.monthToday": "Today",
+    "calendar.dayDetail": "Day Detail",
+    "calendar.closeDay": "Close Day Detail",
+    "calendar.prevDay": "Previous Day",
+    "calendar.nextDay": "Next Day",
+    "calendar.backfillDay": "Backfill From This Day",
+    "calendar.noDayEntries": "No entries on this day yet.",
+    "calendar.dayExpense": "Expense",
+    "calendar.dayIncome": "Income",
+    "calendar.upcomingTitle": "Pending Recurring Bills",
+    "calendar.noUpcoming": "No pending recurring items in the next 30 days.",
+    "calendar.recurringOverdue": "Due",
+    "calendar.recurringConfirm": "Confirm",
+    "calendar.recurringSkip": "Skip",
+    "calendar.recurringModify": "Modify This Time",
+    "calendar.reviewTitle": "Read-only Finance Review",
+    "calendar.reviewLocalOnly": "Calculated locally. No ledger edits.",
+    "calendar.reviewWeek": "This Week",
+    "calendar.reviewMonth": "This Month",
+    "calendar.reviewIncrease": "More Than Last Month",
+    "calendar.reviewBudgetRisk": "Budget Risk",
+    "calendar.reviewDuplicate": "Possible Duplicate",
+    "calendar.reviewRecurring": "Likely Recurring",
+    "calendar.reviewEmpty": "Not enough entries for review signals yet.",
     "toast.updated": "Entry updated.",
     "toast.saved": "Entry saved.",
+    "toast.templateApplied": "Template applied.",
+    "toast.ruleUpdated": "Bookkeeping memory updated.",
+    "toast.ruleDeleted": "Bookkeeping memory deleted.",
+    "toast.recurringCreated": "Marked as recurring. Future entries still require confirmation.",
+    "toast.recurringConfirmed": "Recurring bill confirmed.",
+    "toast.recurringSkipped": "Skipped this recurring bill.",
+    "toast.recurringDeleted": "Recurring bill disabled.",
     "toast.saveFailed": "Save failed: {message}",
     "toast.imported": "Imported {count} entries.",
     "toast.importFailed": "Import failed: {message}",
@@ -1856,6 +2022,58 @@ function dateInputValueWithHour(value, hour) {
   const safeDate = Number.isNaN(d.getTime()) ? new Date() : d;
   safeDate.setHours(hour, 0, 0, 0);
   return toDateInputValue(safeDate);
+}
+
+function captureDateValue(value = new Date()) {
+  return localDateKey(value);
+}
+
+function dateKeyLabel(dateKey, options = {}) {
+  const date = parseDateKey(dateKey) || new Date();
+  return new Intl.DateTimeFormat(displayLocale(), {
+    month: "2-digit",
+    day: "2-digit",
+    ...(options.weekday ? { weekday: "short" } : {}),
+  }).format(date);
+}
+
+function monthLabel(year, month) {
+  return new Intl.DateTimeFormat(displayLocale(), {
+    year: "numeric",
+    month: "long",
+  }).format(new Date(year, month, 1));
+}
+
+function shiftDateKey(dateKey, deltaDays) {
+  const date = parseDateKey(dateKey) || new Date();
+  date.setDate(date.getDate() + deltaDays);
+  return localDateKey(date);
+}
+
+function setCalendarViewFromDateKey(dateKey) {
+  const date = parseDateKey(dateKey) || new Date();
+  state.calendarView = {
+    year: date.getFullYear(),
+    month: date.getMonth(),
+  };
+}
+
+function changeCalendarMonth(delta) {
+  const view = state.calendarView || { year: new Date().getFullYear(), month: new Date().getMonth() };
+  const next = new Date(view.year, view.month + delta, 1);
+  state.calendarView = {
+    year: next.getFullYear(),
+    month: next.getMonth(),
+  };
+}
+
+function touchPreferences() {
+  state.preferences.updatedAt = new Date().toISOString();
+}
+
+function normalizePreferenceCollections() {
+  state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
+  state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
 }
 
 function chunkList(items, size) {
@@ -1959,6 +2177,8 @@ function applyLedgerState(nextState, { preserveLocale = true } = {}) {
   delete state.preferences.deletedAccounts;
   state.preferences.startingAssets = normalizeStartingAssets(state.preferences.startingAssets);
   if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
+  state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
+  state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
   state.accounts = [];
 }
 
@@ -3221,6 +3441,144 @@ function toast(message) {
   toast.timer = setTimeout(() => node.classList.remove("show"), 2400);
 }
 
+function applyTransactionTemplate(template) {
+  if (!template) return;
+  const current = state.captureDraft || defaultCaptureDraft();
+  state.captureDraft = {
+    ...defaultCaptureDraft(),
+    ...current,
+    type: template.type === "income" ? "income" : "expense",
+    category: sanitizeCategoryForType(template.type, template.category),
+    title: template.title || "",
+    merchant: template.merchant || "",
+    amount: template.amount || "",
+    currency: template.currency || "CNY",
+    note: "",
+  };
+  state.captureProjectOpen = false;
+  state.editingTransactionId = null;
+  state.activeTab = "capture";
+}
+
+function draftFromTransaction(txn, dateKey = "") {
+  if (!txn) return null;
+  const occurredAt = dateKey
+    ? dateInputValueForDateKey(dateKey, new Date(txn.occurredAt || new Date()).getHours() || 12)
+    : toDateInputValue(new Date());
+  return {
+    ...defaultCaptureDraft(),
+    type: txn.type === "income" ? "income" : "expense",
+    amount: txn.amount || "",
+    currency: txn.currency || "CNY",
+    book: txn.book || "日常账本",
+    account: txn.account || defaultAccountName(),
+    category: sanitizeCategoryForType(txn.type, txn.category),
+    title: txn.title || "",
+    merchant: txn.merchant || "",
+    occurredAt,
+    tags: Array.isArray(txn.tags) ? txn.tags.join(" ") : txn.tags || "",
+    project: transactionProjectLabel(txn),
+    projectOnly: false,
+    note: "",
+    reimbursable: false,
+    receiptDataUrl: "",
+  };
+}
+
+function repeatTransaction(id, dateKey = "") {
+  const txn = state.transactions.find((item) => item.id === id);
+  const draft = draftFromTransaction(txn, dateKey);
+  if (!draft) return;
+  state.captureDraft = draft;
+  state.captureProjectOpen = Boolean(draft.project);
+  state.editingTransactionId = null;
+  state.pendingRecurringRuleId = "";
+  state.activeTab = "capture";
+}
+
+function rememberTransaction(txn) {
+  state.preferences.merchantRules = updateMerchantRules(state.preferences.merchantRules, txn);
+  touchPreferences();
+}
+
+function makeRecurringFromTransaction(id) {
+  const txn = state.transactions.find((item) => item.id === id);
+  if (!txn || txn.projectOnly) return;
+  const rule = createRecurringRuleFromTransaction(txn);
+  state.preferences.recurringTransactions = normalizeRecurringRules([
+    rule,
+    ...(state.preferences.recurringTransactions || []).filter((item) => (
+      !(
+        item.type === rule.type
+        && item.category === rule.category
+        && item.title === rule.title
+        && item.merchant === rule.merchant
+        && Number(item.amount) === Number(rule.amount)
+      )
+    )),
+  ]);
+  touchPreferences();
+  persist();
+  toast(t("toast.recurringCreated"));
+}
+
+function recurringRuleById(ruleId) {
+  normalizePreferenceCollections();
+  return state.preferences.recurringTransactions.find((rule) => rule.id === ruleId) || null;
+}
+
+function advanceRecurringPreference(ruleId, occurrenceDate) {
+  state.preferences.recurringTransactions = normalizeRecurringRules(
+    (state.preferences.recurringTransactions || []).map((rule) => (
+      rule.id === ruleId ? advanceRecurringRule(rule, occurrenceDate) : rule
+    )),
+  );
+  touchPreferences();
+}
+
+function confirmRecurringOccurrence(ruleId, occurrenceDate) {
+  const rule = recurringRuleById(ruleId);
+  if (!rule) return;
+  const draft = buildRecurringTransactionDraft(rule, occurrenceDate);
+  const txn = normalizeTransaction({
+    ...defaultCaptureDraft(),
+    ...draft,
+    book: "日常账本",
+    account: defaultAccountName(),
+  });
+  state.transactions.unshift(txn);
+  rememberTransaction(txn);
+  advanceRecurringPreference(ruleId, occurrenceDate);
+  const preservePending = Boolean(state.cloudSync.pendingMutation);
+  persist({ schedule: false });
+  render();
+  syncTransactionMutation(txn, "insert", { preservePending });
+  toast(t("toast.recurringConfirmed"));
+}
+
+function skipRecurringOccurrence(ruleId, occurrenceDate) {
+  if (!recurringRuleById(ruleId)) return;
+  advanceRecurringPreference(ruleId, occurrenceDate);
+  persist();
+  render();
+  toast(t("toast.recurringSkipped"));
+}
+
+function modifyRecurringOccurrence(ruleId, occurrenceDate) {
+  const rule = recurringRuleById(ruleId);
+  if (!rule) return;
+  state.captureDraft = {
+    ...defaultCaptureDraft(),
+    ...buildRecurringTransactionDraft(rule, occurrenceDate),
+    book: "日常账本",
+    account: defaultAccountName(),
+  };
+  state.pendingRecurringRuleId = ruleId;
+  state.editingTransactionId = null;
+  state.captureProjectOpen = false;
+  state.activeTab = "capture";
+}
+
 let longPressTimer = 0;
 let longPressTarget = null;
 let longPressPoint = null;
@@ -3994,27 +4352,47 @@ function renderStatsCharts(transactions, entries, total) {
   `;
 }
 
-function renderCalendarTab(summary) {
+function renderCalendarTab() {
+  const view = state.calendarView || { year: new Date().getFullYear(), month: new Date().getMonth() };
   return `
     <section class="panel">
-      <div class="section-title">
-        <div>
-          <h2>${escapeHtml(t("today.calendarTitle", { month: summary.monthKey }))}</h2>
+      <div class="calendar-toolbar">
+        <button class="icon-button calendar-nav-button" type="button" data-action="calendar-prev-month" aria-label="${escapeHtml(t("calendar.prevMonth"))}">
+          ‹
+        </button>
+        <div class="calendar-heading">
+          <h2>${escapeHtml(t("today.calendarTitle", { month: monthLabel(view.year, view.month) }))}</h2>
+          <button class="calendar-today-button" type="button" data-action="calendar-today">${escapeHtml(t("calendar.monthToday"))}</button>
         </div>
+        <button class="icon-button calendar-nav-button" type="button" data-action="calendar-next-month" aria-label="${escapeHtml(t("calendar.nextMonth"))}">
+          ›
+        </button>
       </div>
       ${renderMonthCalendar()}
     </section>
 
-    ${renderCalendarDetailPanel(summary)}
+    ${renderCalendarDetailPanel()}
+    ${state.calendarSelectedDate ? renderCalendarDaySheet() : ""}
   `;
 }
 
-function renderCalendarDetailPanel(summary) {
-  const activePanel = state.calendarPanel === "project" ? "project" : "summary";
+function renderCalendarDetailPanel() {
+  const activePanel = ["summary", "upcoming", "review", "project"].includes(state.calendarPanel)
+    ? state.calendarPanel
+    : "summary";
   const tabs = [
     { id: "summary", label: t("calendar.summaryTab") },
+    { id: "upcoming", label: t("calendar.upcomingTab") },
+    { id: "review", label: t("calendar.reviewTab") },
     { id: "project", label: t("calendar.projectTab") },
   ];
+  const body = activePanel === "project"
+    ? renderCalendarProjectPanel()
+    : activePanel === "upcoming"
+      ? renderCalendarUpcomingPanel()
+      : activePanel === "review"
+        ? renderCalendarReviewPanel()
+        : renderCalendarSummaryPanel();
   return `
     <section class="panel calendar-detail-panel">
       <div class="calendar-detail-tabs" role="tablist" aria-label="${escapeHtml(t("tab.calendar"))}">
@@ -4031,12 +4409,13 @@ function renderCalendarDetailPanel(summary) {
           </button>
         `).join("")}
       </div>
-      ${activePanel === "project" ? renderCalendarProjectPanel() : renderCalendarSummaryPanel(summary)}
+      ${body}
     </section>
   `;
 }
 
-function renderCalendarSummaryPanel(summary) {
+function renderCalendarSummaryPanel() {
+  const monthStats = calendarMonthStats();
   return `
     <div class="calendar-detail-body">
       <div class="section-title calendar-summary-title">
@@ -4045,12 +4424,106 @@ function renderCalendarSummaryPanel(summary) {
         </div>
         <span class="calendar-active-days">
           <span>${escapeHtml(t("calendar.activeDays"))}</span>
-          <strong>${monthActiveDays()}</strong>
+          <strong>${monthStats.activeDays}</strong>
         </span>
       </div>
       <div class="hero-grid calendar-summary">
-        ${renderStat(t("today.expense", { range: t("range.month") }), compactMoney(summary.monthExpense))}
-        ${renderStat(t("today.income", { range: t("range.month") }), compactMoney(summary.monthIncome))}
+        ${renderStat(t("today.expense", { range: t("range.month") }), compactMoney(monthStats.expense))}
+        ${renderStat(t("today.income", { range: t("range.month") }), compactMoney(monthStats.income))}
+      </div>
+    </div>
+  `;
+}
+
+function renderCalendarUpcomingPanel() {
+  normalizePreferenceCollections();
+  const occurrences = recurringOccurrencesNextDays(state.preferences.recurringTransactions, new Date(), 30);
+  return `
+    <div class="calendar-detail-body">
+      <div class="section-title calendar-summary-title">
+        <div>
+          <h2>${escapeHtml(t("calendar.upcomingTitle"))}</h2>
+        </div>
+      </div>
+      <div class="recurring-list">
+        ${occurrences.length ? occurrences.map((item) => `
+          <article class="recurring-row ${item.overdue ? "overdue" : ""}">
+            <div class="metric-row-head">
+              ${renderIconBadge(item.category, "category", "small")}
+              <span class="metric-copy">
+                <strong>${escapeHtml(item.title || item.category)}</strong>
+                <span>${escapeHtml(`${dateKeyLabel(item.occurrenceDate, { weekday: true })}${item.overdue ? ` · ${t("calendar.recurringOverdue")}` : ""}`)}</span>
+              </span>
+              <span class="metric-amount">${escapeHtml(compactMoney(item.amount, item.currency))}</span>
+            </div>
+            <div class="recurring-actions">
+              <button class="btn secondary" type="button" data-action="confirm-recurring" data-rule-id="${escapeHtml(item.ruleId)}" data-date="${escapeHtml(item.occurrenceDate)}">${escapeHtml(t("calendar.recurringConfirm"))}</button>
+              <button class="btn ghost" type="button" data-action="modify-recurring" data-rule-id="${escapeHtml(item.ruleId)}" data-date="${escapeHtml(item.occurrenceDate)}">${escapeHtml(t("calendar.recurringModify"))}</button>
+              <button class="btn ghost" type="button" data-action="skip-recurring" data-rule-id="${escapeHtml(item.ruleId)}" data-date="${escapeHtml(item.occurrenceDate)}">${escapeHtml(t("calendar.recurringSkip"))}</button>
+            </div>
+          </article>
+        `).join("") : `<div class="empty">${escapeHtml(t("calendar.noUpcoming"))}</div>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderRecapRows(rows) {
+  if (!rows.length) return "";
+  return rows.map((row) => `
+    <div class="recap-row">
+      <span class="metric-copy">
+        <strong>${escapeHtml(row.title)}</strong>
+        <span>${escapeHtml(row.meta)}</span>
+      </span>
+      <span class="metric-amount">${escapeHtml(row.amount)}</span>
+    </div>
+  `).join("");
+}
+
+function renderCalendarReviewPanel() {
+  const ledgerState = activeLedgerState();
+  const recap = buildFinanceRecap(ledgerState.transactions, ledgerState.budgets, new Date());
+  const increaseRows = recap.categoryIncreases.map((item) => ({
+    title: `${t("calendar.reviewIncrease")} · ${item.category}`,
+    meta: `${compactMoney(item.previousAmount)} -> ${compactMoney(item.amount)}`,
+    amount: signedMoney(item.delta),
+  }));
+  const riskRows = recap.budgetRisks.map((item) => ({
+    title: `${t("calendar.reviewBudgetRisk")} · ${item.category}`,
+    meta: `${formatMoney(item.spent)} / ${formatMoney(item.budget)}`,
+    amount: `${Math.round(item.ratio * 100)}%`,
+  }));
+  const duplicateRows = recap.duplicates.map((item) => ({
+    title: `${t("calendar.reviewDuplicate")} · ${item.title}`,
+    meta: dateKeyLabel(item.dateKey, { weekday: true }),
+    amount: `${item.count}×`,
+  }));
+  const recurringRows = recap.recurringCandidates.map((item) => ({
+    title: `${t("calendar.reviewRecurring")} · ${item.title}`,
+    meta: dateKeyLabel(item.lastDate),
+    amount: `${item.count}×`,
+  }));
+  const hasSignals = increaseRows.length || riskRows.length || duplicateRows.length || recurringRows.length;
+  return `
+    <div class="calendar-detail-body">
+      <div class="section-title calendar-summary-title">
+        <div>
+          <h2>${escapeHtml(t("calendar.reviewTitle"))}</h2>
+        </div>
+        <span class="calendar-active-days">${escapeHtml(t("calendar.reviewLocalOnly"))}</span>
+      </div>
+      <div class="hero-grid calendar-summary">
+        ${renderStat(t("calendar.reviewWeek"), compactMoney(recap.weekExpense))}
+        ${renderStat(t("calendar.reviewMonth"), compactMoney(recap.monthExpense))}
+      </div>
+      <div class="recap-list">
+        ${hasSignals ? [
+          renderRecapRows(increaseRows),
+          renderRecapRows(riskRows),
+          renderRecapRows(duplicateRows),
+          renderRecapRows(recurringRows),
+        ].join("") : `<div class="empty">${escapeHtml(t("calendar.reviewEmpty"))}</div>`}
       </div>
     </div>
   `;
@@ -4114,30 +4587,39 @@ function renderCalendarProjectPanel() {
   `;
 }
 
-function monthActiveDays() {
+function calendarMonthKey() {
+  const view = state.calendarView || { year: new Date().getFullYear(), month: new Date().getMonth() };
+  return localMonthKey(new Date(view.year, view.month, 1));
+}
+
+function calendarMonthStats() {
   const { transactions } = activeLedgerState();
-  const currentMonth = monthKey(new Date());
-  return new Set(
-    transactions
-      .filter((txn) => !isProjectOnlyTransaction(txn) && monthKey(txn.occurredAt) === currentMonth)
-      .map((txn) => todayKey(txn.occurredAt)),
-  ).size;
+  const currentMonth = calendarMonthKey();
+  const activeDays = new Set();
+  return transactions.reduce((stats, txn) => {
+    if (isProjectOnlyTransaction(txn) || monthKey(txn.occurredAt) !== currentMonth) return stats;
+    const amount = Number(txn.amount || 0);
+    activeDays.add(todayKey(txn.occurredAt));
+    if (txn.type === "income") stats.income += amount;
+    else stats.expense += amount;
+    stats.activeDays = activeDays.size;
+    return stats;
+  }, { expense: 0, income: 0, activeDays: 0 });
 }
 
 function renderMonthCalendar() {
   const { transactions } = activeLedgerState();
-  const now = new Date();
-  const currentMonth = monthKey(now);
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const view = state.calendarView || { year: new Date().getFullYear(), month: new Date().getMonth() };
+  const cells = buildMonthCalendarCells(view.year, view.month);
+  const visibleKeys = new Set(cells.map((cell) => cell.dateKey));
   const dayExpense = new Map();
   const dayIncome = new Map();
-  const today = todayKey(now);
+  const today = todayKey(new Date());
 
   for (const txn of transactions) {
     if (isProjectOnlyTransaction(txn)) continue;
-    if (monthKey(txn.occurredAt) !== currentMonth) continue;
     const key = todayKey(txn.occurredAt);
+    if (!visibleKeys.has(key)) continue;
     const amount = Number(txn.amount || 0);
     if (txn.type === "expense") dayExpense.set(key, (dayExpense.get(key) || 0) + amount);
     if (txn.type === "income") dayIncome.set(key, (dayIncome.get(key) || 0) + amount);
@@ -4146,35 +4628,78 @@ function renderMonthCalendar() {
   const weekdays = state.preferences.locale === "en"
     ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     : ["一", "二", "三", "四", "五", "六", "日"];
-  const cells = [];
-  const leadingBlanks = (firstDay.getDay() + 6) % 7;
-  for (let i = 0; i < leadingBlanks; i += 1) {
-    cells.push(`<span class="calendar-cell blank"></span>`);
-  }
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    const d = new Date(now.getFullYear(), now.getMonth(), day);
-    const key = todayKey(d);
+  const renderedCells = cells.map((cell) => {
+    const key = cell.dateKey;
     const expense = dayExpense.get(key) || 0;
     const income = dayIncome.get(key) || 0;
-    cells.push(`
-      <span class="calendar-cell ${expense || income ? "has-data" : ""} ${key === today ? "today" : ""}">
-        <span class="calendar-day">${day}</span>
+    return `
+      <button
+        class="calendar-cell ${expense || income ? "has-data" : ""} ${key === today ? "today" : ""} ${cell.inMonth ? "" : "other-month"} ${state.calendarSelectedDate === key ? "selected" : ""}"
+        type="button"
+        data-action="calendar-select-day"
+        data-date="${escapeHtml(key)}"
+        aria-label="${escapeHtml(dateKeyLabel(key, { weekday: true }))}"
+      >
+        <span class="calendar-day">${cell.day}</span>
         <span class="calendar-values">
           ${expense ? `<span class="calendar-money negative">-${escapeHtml(compactWholeMoney(expense))}</span>` : ""}
           ${income ? `<span class="calendar-money positive">+${escapeHtml(compactWholeMoney(income))}</span>` : ""}
         </span>
-      </span>
-    `);
-  }
-  while (cells.length % 7 !== 0) {
-    cells.push(`<span class="calendar-cell blank"></span>`);
-  }
+      </button>
+    `;
+  });
 
   return `
     <div class="month-calendar">
       ${weekdays.map((day) => `<span class="calendar-weekday">${escapeHtml(day)}</span>`).join("")}
-      ${cells.join("")}
+      ${renderedCells.join("")}
     </div>
+  `;
+}
+
+function renderCalendarDaySheet() {
+  const dateKey = state.calendarSelectedDate;
+  const entries = transactionsForDate(activeLedgerState().transactions, dateKey);
+  const totals = summarizeDayTransactions(entries);
+  return `
+    <div class="calendar-day-backdrop" data-action="close-day-sheet" aria-hidden="true"></div>
+    <section class="calendar-day-sheet" role="dialog" aria-modal="true" aria-label="${escapeHtml(t("calendar.dayDetail"))}">
+      <div class="calendar-day-head">
+        <button class="icon-button" type="button" data-action="calendar-prev-day" aria-label="${escapeHtml(t("calendar.prevDay"))}">‹</button>
+        <div>
+          <h2>${escapeHtml(dateKeyLabel(dateKey, { weekday: true }))}</h2>
+          <span>${escapeHtml(t("calendar.dayDetail"))}</span>
+        </div>
+        <button class="icon-button" type="button" data-action="calendar-next-day" aria-label="${escapeHtml(t("calendar.nextDay"))}">›</button>
+        <button class="icon-button" type="button" data-action="close-day-sheet" aria-label="${escapeHtml(t("calendar.closeDay"))}">×</button>
+      </div>
+      <div class="hero-grid calendar-day-metrics">
+        ${renderStat(t("calendar.dayExpense"), compactMoney(totals.expense))}
+        ${renderStat(t("calendar.dayIncome"), compactMoney(totals.income))}
+      </div>
+      <button class="btn primary wide" type="button" data-action="backfill-from-date" data-date="${escapeHtml(dateKey)}">
+        ${escapeHtml(t("calendar.backfillDay"))}
+      </button>
+      <div class="calendar-day-list">
+        ${entries.length ? entries.map((txn) => `
+          <article class="calendar-day-entry ${escapeHtml(transactionTone(txn))}">
+            <div class="metric-row-head">
+              ${renderTransactionIconBadge(txn)}
+              <span class="metric-copy">
+                <strong>${escapeHtml(txn.title || txn.category)}</strong>
+                <span>${escapeHtml([txn.merchant, captureTimeSegmentLabel(txn.occurredAt)].filter(Boolean).join(" · "))}</span>
+              </span>
+              <span class="metric-amount ${transactionAmountClass(txn)}">${signedAmount(txn)}</span>
+            </div>
+            <div class="calendar-day-actions">
+              <button class="btn ghost row-action-button" type="button" data-action="repeat-transaction" data-id="${escapeHtml(txn.id)}" data-date="${escapeHtml(dateKey)}">${escapeHtml(t("txn.repeat"))}</button>
+              <button class="btn ghost row-action-button" type="button" data-action="edit" data-id="${escapeHtml(txn.id)}">${escapeHtml(t("txn.edit"))}</button>
+              <button class="btn ghost row-action-button" type="button" data-action="make-recurring" data-id="${escapeHtml(txn.id)}">${escapeHtml(t("txn.recurring"))}</button>
+            </div>
+          </article>
+        `).join("") : `<div class="empty">${escapeHtml(t("calendar.noDayEntries"))}</div>`}
+      </div>
+    </section>
   `;
 }
 
@@ -4267,6 +4792,8 @@ function renderBudgetTotalProgress(summary) {
 function renderSettingsTab() {
   if (state.settingsContent === "manual") return renderSettingsPage(t("settings.manualTitle"), renderManual());
   if (state.settingsContent === "budgets") return renderSettingsPage(t("settings.budgetTitle"), renderBudgetSettings());
+  if (state.settingsContent === "rules") return renderSettingsPage(t("settings.rulesTitle"), renderRuleSettings());
+  if (state.settingsContent === "recurring") return renderSettingsPage(t("settings.recurringTitle"), renderRecurringSettings());
   if (state.settingsContent === "profile") return renderSettingsPage(t("profile.title"), renderProfileSettings());
 
   return `
@@ -4275,6 +4802,8 @@ function renderSettingsTab() {
 
       ${renderSettingsSection(t("settings.productSection"), [
         renderSettingsCell(t("settings.budgetTitle"), t("settings.budgetHint"), "", "budgets"),
+        renderSettingsCell(t("settings.rulesTitle"), t("settings.rulesHint"), "", "rules"),
+        renderSettingsCell(t("settings.recurringTitle"), t("settings.recurringHint"), "", "recurring"),
         renderSettingsCell(t("settings.languageTitle"), "", renderLanguageSwitch()),
         renderSettingsCell(t("settings.manualTitle"), "", "", "manual"),
         renderAppUpdateChecker(),
@@ -4455,6 +4984,61 @@ function renderProfileGenderChoice(value) {
   `;
 }
 
+function renderRuleSettings() {
+  normalizePreferenceCollections();
+  const rules = state.preferences.merchantRules || [];
+  return `
+    <div class="settings-page-body memory-settings">
+      <p class="settings-page-hint">${escapeHtml(t("settings.rulesPageHint"))}</p>
+      <div class="memory-rule-list">
+        ${rules.length ? rules.map((rule) => `
+          <article class="memory-rule-row">
+            <span class="metric-copy">
+              <strong>${escapeHtml(rule.basis)}</strong>
+              <span>${escapeHtml(`${t(`type.${rule.type}`)} · ${rule.useCount}×`)}</span>
+            </span>
+            <select class="memory-rule-select" data-rule-category="${escapeHtml(rule.id)}" aria-label="${escapeHtml(t("capture.category"))}">
+              ${categoriesForType(rule.type).map((category) => `
+                <option value="${escapeHtml(category)}" ${category === rule.category ? "selected" : ""}>${escapeHtml(category)}</option>
+              `).join("")}
+            </select>
+            <button class="btn ghost row-action-button danger-text" type="button" data-action="delete-merchant-rule" data-rule-id="${escapeHtml(rule.id)}">
+              ${escapeHtml(t("txn.delete"))}
+            </button>
+          </article>
+        `).join("") : `<div class="empty">${escapeHtml(t("settings.noRules"))}</div>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderRecurringSettings() {
+  normalizePreferenceCollections();
+  const rules = state.preferences.recurringTransactions || [];
+  return `
+    <div class="settings-page-body recurring-settings">
+      <p class="settings-page-hint">${escapeHtml(t("settings.recurringPageHint"))}</p>
+      <div class="recurring-list">
+        ${rules.length ? rules.map((rule) => `
+          <article class="recurring-row">
+            <div class="metric-row-head">
+              ${renderIconBadge(rule.category, "category", "small")}
+              <span class="metric-copy">
+                <strong>${escapeHtml(rule.title || rule.category)}</strong>
+                <span>${escapeHtml(`${dateKeyLabel(rule.nextDate, { weekday: true })} · ${t(`type.${rule.type}`)}`)}</span>
+              </span>
+              <span class="metric-amount">${escapeHtml(compactMoney(rule.amount, rule.currency))}</span>
+            </div>
+            <div class="recurring-actions">
+              <button class="btn ghost danger-text" type="button" data-action="delete-recurring-rule" data-rule-id="${escapeHtml(rule.id)}">${escapeHtml(t("txn.delete"))}</button>
+            </div>
+          </article>
+        `).join("") : `<div class="empty">${escapeHtml(t("settings.noRecurring"))}</div>`}
+      </div>
+    </div>
+  `;
+}
+
 function renderSettingsSection(title, cells) {
   return `
     <section class="settings-group" aria-label="${escapeHtml(title)}">
@@ -4473,7 +5057,7 @@ function renderSettingsCell(primary, secondary = "", right = "", action = "", di
     ${right ? `<span class="settings-cell-right">${right}</span>` : isButton ? `<span class="settings-chevron">›</span>` : ""}
   `;
   if (!isButton) return `<div class="settings-cell">${content}</div>`;
-  const isSettingsContent = ["manual", "budgets", "profile"].includes(action);
+  const isSettingsContent = ["manual", "budgets", "profile", "rules", "recurring"].includes(action);
   return `
     <button class="settings-cell" data-action="${escapeHtml(isSettingsContent ? "settings-content" : action)}" ${isSettingsContent ? `data-content="${escapeHtml(action)}"` : ""} ${disabled ? "disabled aria-busy=\"true\"" : ""}>
       ${content}
@@ -4770,6 +5354,7 @@ function renderCaptureForm(editingTransaction) {
         `).join("")}
       </div>
 
+      ${renderCaptureTemplateStrip()}
       ${renderCaptureCategoryBoard(txn)}
 
       <section class="amount-pad-panel" aria-label="${escapeHtml(t("capture.amount"))}">
@@ -4782,6 +5367,7 @@ function renderCaptureForm(editingTransaction) {
         </div>
         <div class="capture-detail-row ${txn.projectOnly ? "project-only" : ""}">
           <input type="hidden" name="occurredAt" value="${escapeHtml(toDateInputValue(txn.occurredAt || new Date()))}">
+          ${renderCaptureDateField(txn.occurredAt || new Date())}
           ${renderCaptureTimeChoice(txn.occurredAt || new Date())}
           <label class="capture-note-field">
             <span>${escapeHtml(t("capture.note"))}</span>
@@ -4802,6 +5388,41 @@ function renderCaptureForm(editingTransaction) {
         ${renderAmountKeypad(Boolean(editingTransaction))}
       </section>
     </form>
+  `;
+}
+
+function renderCaptureTemplateStrip() {
+  const templates = recentTemplates(activeLedgerState().transactions, 6);
+  if (!templates.length) return "";
+  return `
+    <section class="capture-template-strip" aria-label="${escapeHtml(t("capture.templatesTitle"))}">
+      <div class="capture-template-head">
+        <span>${escapeHtml(t("capture.templatesTitle"))}</span>
+      </div>
+      <div class="capture-template-list">
+        ${templates.map((template, index) => `
+          <button class="capture-template-chip ${template.type === "income" ? "income" : "expense"}" type="button" data-action="apply-template" data-template-index="${index}">
+            <span>${escapeHtml(template.title || template.merchant || template.category)}</span>
+            <strong>${escapeHtml(compactMoney(template.amount, template.currency))}</strong>
+          </button>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderCaptureDateField(value) {
+  const dateValue = captureDateValue(value);
+  return `
+    <div class="capture-date-field">
+      <label>
+        <span>${escapeHtml(t("capture.date"))}</span>
+        <input name="occurredDate" type="date" value="${escapeHtml(dateValue)}">
+      </label>
+      <button class="capture-date-today" type="button" data-action="set-capture-date" data-date="${escapeHtml(todayKey(new Date()))}">
+        ${escapeHtml(t("capture.today"))}
+      </button>
+    </div>
   `;
 }
 
@@ -4990,10 +5611,20 @@ function renderTransactionRow(txn) {
           <div class="amount ${transactionAmountClass(txn)}">${signedAmount(txn)}</div>
         </div>
         <div class="row-actions txn-actions">
+          <button class="btn ghost row-action-button txn-action-button" data-action="repeat-transaction" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.repeat"))}">
+            ${glyphSvg("plus")}
+            <span>${escapeHtml(t("txn.repeat"))}</span>
+          </button>
           <button class="btn ghost row-action-button txn-action-button" data-action="edit" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.edit"))}">
             ${glyphSvg("edit")}
             <span>${escapeHtml(t("txn.edit"))}</span>
           </button>
+          ${projectOnly ? "" : `
+            <button class="btn ghost row-action-button txn-action-button" data-action="make-recurring" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.recurring"))}">
+              ${glyphSvg("subscription")}
+              <span>${escapeHtml(t("txn.recurring"))}</span>
+            </button>
+          `}
           <button class="btn ghost row-action-button txn-action-button danger-text" data-action="delete" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.delete"))}">
             ${glyphSvg("trash")}
             <span>${escapeHtml(t("txn.delete"))}</span>
@@ -5085,8 +5716,19 @@ function syncProjectOnlyMode(form) {
   form.querySelector(".capture-detail-row")?.classList.toggle("project-only", projectOnly);
 }
 
+function syncOccurredAtDate(form) {
+  if (!form || form.getAttribute("id") !== "transaction-form") return;
+  const dateField = form.elements.namedItem("occurredDate");
+  const occurredAt = form.elements.namedItem("occurredAt");
+  if (!dateField || !occurredAt || !dateField.value) return;
+  const current = new Date(occurredAt.value || new Date());
+  const hour = Number.isNaN(current.getTime()) ? 12 : current.getHours();
+  occurredAt.value = dateInputValueForDateKey(dateField.value, hour);
+}
+
 function syncCaptureDraftFromForm(form) {
   if (!form || form.getAttribute("id") !== "transaction-form") return;
+  syncOccurredAtDate(form);
   syncProjectOnlyMode(form);
   if (state.editingTransactionId) return;
   const data = Object.fromEntries(new FormData(form).entries());
@@ -5477,6 +6119,7 @@ document.addEventListener("submit", (event) => {
   try {
     const data = formToTransaction(form);
     const existing = data.id ? state.transactions.find((txn) => txn.id === data.id) : null;
+    const pendingRecurringRuleId = state.pendingRecurringRuleId;
     let cloudTransaction = data;
     let cloudMode = "insert";
     if (existing) {
@@ -5491,13 +6134,19 @@ document.addEventListener("submit", (event) => {
       state.editingTransactionId = null;
       cloudTransaction = txn;
       cloudMode = "update";
+      rememberTransaction(txn);
       toast(t("toast.updated"));
     } else {
       state.transactions.unshift(data);
       state.captureDraft = null;
+      rememberTransaction(data);
+      if (pendingRecurringRuleId) {
+        advanceRecurringPreference(pendingRecurringRuleId, todayKey(data.occurredAt));
+      }
       toast(t("toast.saved"));
     }
     state.captureProjectOpen = false;
+    state.pendingRecurringRuleId = "";
     state.activeTab = "ledger";
     state.ledgerView = "flow";
     const preservePending = Boolean(state.cloudSync.pendingMutation);
@@ -5531,6 +6180,21 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  const ruleId = event.target?.dataset?.ruleCategory;
+  if (ruleId) {
+    state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules)
+      .map((rule) => rule.id === ruleId ? {
+        ...rule,
+        category: event.target.value,
+        updatedAt: new Date().toISOString(),
+      } : rule);
+    touchPreferences();
+    persist();
+    render();
+    toast(t("toast.ruleUpdated"));
+    return;
+  }
+
   if (event.target.id === "csv-import") {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -5627,6 +6291,7 @@ document.addEventListener("click", (event) => {
   if (action === "open-capture") {
     state.editingTransactionId = null;
     state.captureProjectOpen = false;
+    state.pendingRecurringRuleId = "";
     state.activeTab = "capture";
     render();
   }
@@ -5660,13 +6325,109 @@ document.addEventListener("click", (event) => {
     changeLedgerView(view);
   }
   if (action === "calendar-panel") {
-    state.calendarPanel = node.dataset.panel === "project" ? "project" : "summary";
+    state.calendarPanel = ["summary", "upcoming", "review", "project"].includes(node.dataset.panel)
+      ? node.dataset.panel
+      : "summary";
     render();
   }
   if (action === "select-calendar-project") {
     state.calendarPanel = "project";
     state.calendarProject = node.dataset.project || "";
     render();
+  }
+  if (action === "calendar-prev-month") {
+    changeCalendarMonth(-1);
+    render();
+  }
+  if (action === "calendar-next-month") {
+    changeCalendarMonth(1);
+    render();
+  }
+  if (action === "calendar-today") {
+    const key = todayKey(new Date());
+    setCalendarViewFromDateKey(key);
+    state.calendarSelectedDate = key;
+    render();
+  }
+  if (action === "calendar-select-day") {
+    const dateKey = node.dataset.date || todayKey(new Date());
+    state.calendarSelectedDate = dateKey;
+    setCalendarViewFromDateKey(dateKey);
+    render();
+  }
+  if (action === "close-day-sheet") {
+    state.calendarSelectedDate = "";
+    render();
+  }
+  if (action === "calendar-prev-day") {
+    state.calendarSelectedDate = shiftDateKey(state.calendarSelectedDate || todayKey(new Date()), -1);
+    setCalendarViewFromDateKey(state.calendarSelectedDate);
+    render();
+  }
+  if (action === "calendar-next-day") {
+    state.calendarSelectedDate = shiftDateKey(state.calendarSelectedDate || todayKey(new Date()), 1);
+    setCalendarViewFromDateKey(state.calendarSelectedDate);
+    render();
+  }
+  if (action === "backfill-from-date") {
+    const dateKey = node.dataset.date || state.calendarSelectedDate || todayKey(new Date());
+    state.captureDraft = {
+      ...defaultCaptureDraft(),
+      occurredAt: dateInputValueForDateKey(dateKey, 12),
+    };
+    state.editingTransactionId = null;
+    state.captureProjectOpen = false;
+    state.pendingRecurringRuleId = "";
+    state.activeTab = "capture";
+    render();
+  }
+  if (action === "apply-template") {
+    const templates = recentTemplates(activeLedgerState().transactions, 6);
+    applyTransactionTemplate(templates[Number(node.dataset.templateIndex || 0)]);
+    render();
+    toast(t("toast.templateApplied"));
+  }
+  if (action === "set-capture-date") {
+    const form = node.closest("#transaction-form");
+    const dateField = form?.elements?.namedItem("occurredDate");
+    if (dateField) {
+      dateField.value = node.dataset.date || todayKey(new Date());
+      syncCaptureDraftFromForm(form);
+    }
+  }
+  if (action === "repeat-transaction") {
+    repeatTransaction(node.dataset.id, node.dataset.date || "");
+    render();
+  }
+  if (action === "make-recurring") {
+    makeRecurringFromTransaction(node.dataset.id);
+    render();
+  }
+  if (action === "confirm-recurring") {
+    confirmRecurringOccurrence(node.dataset.ruleId, node.dataset.date);
+  }
+  if (action === "skip-recurring") {
+    skipRecurringOccurrence(node.dataset.ruleId, node.dataset.date);
+  }
+  if (action === "modify-recurring") {
+    modifyRecurringOccurrence(node.dataset.ruleId, node.dataset.date);
+    render();
+  }
+  if (action === "delete-merchant-rule") {
+    state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules)
+      .filter((rule) => rule.id !== node.dataset.ruleId);
+    touchPreferences();
+    persist();
+    render();
+    toast(t("toast.ruleDeleted"));
+  }
+  if (action === "delete-recurring-rule") {
+    state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions)
+      .filter((rule) => rule.id !== node.dataset.ruleId);
+    touchPreferences();
+    persist();
+    render();
+    toast(t("toast.recurringDeleted"));
   }
   if (action === "ledger-period-segment") {
     handleLedgerPeriodSegment(node, event);
@@ -5676,7 +6437,7 @@ document.addEventListener("click", (event) => {
   }
   if (action === "settings-content") {
     const content = node.dataset.content || "home";
-    if (!["home", "manual", "budgets", "profile"].includes(content)) return;
+    if (!["home", "manual", "budgets", "profile", "rules", "recurring"].includes(content)) return;
     if (content === "profile") {
       openProfileSettings();
       return;
@@ -5718,11 +6479,13 @@ document.addEventListener("click", (event) => {
   if (action === "cancel-edit") {
     state.editingTransactionId = null;
     state.captureProjectOpen = false;
+    state.pendingRecurringRuleId = "";
     render();
   }
   if (action === "edit") {
     state.captureDraft = null;
     state.captureProjectOpen = false;
+    state.pendingRecurringRuleId = "";
     state.editingTransactionId = node.dataset.id;
     state.activeTab = "capture";
     render();
