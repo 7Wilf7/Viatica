@@ -39,6 +39,7 @@ import {
   createRecurringRuleFromTransaction,
   dateInputValueForDateKey,
   localDateKey,
+  localMonthKey,
   normalizeMerchantRules,
   normalizeRecurringRules,
   parseDateKey,
