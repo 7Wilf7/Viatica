@@ -1,4 +1,4 @@
-const CACHE_NAME = "viatica-v6";
+const CACHE_NAME = "viatica-v7";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -38,13 +38,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   event.respondWith(
-    caches.match(event.request).then((cached) =>
-      cached || fetch(event.request).then((response) => {
+    caches.match(event.request).then(async (cached) => {
+      if (cached) return cached;
+      const response = await fetch(event.request);
+      if (response.ok && response.type === "basic") {
         const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        return response;
-      }).catch(() => caches.match("/index.html"))
-    )
+        event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)));
+      }
+      return response;
+    })
   );
 });
 
@@ -63,23 +65,19 @@ async function handleNavigationRequest(event) {
   const cached = await cache.match(request)
     || await cache.match("/")
     || await cache.match("/index.html");
-  const networkUpdate = fetch(request)
-    .then((response) => {
+
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
       event.waitUntil(cacheAppShellResponse(cache, request, response.clone()));
       return response;
-    })
-    .catch(() => null);
-
-  if (cached) {
-    event.waitUntil(networkUpdate);
-    return cached;
-  }
-
-  const response = await networkUpdate;
-  return response
-    || await cache.match("/index.html")
+    }
+    return cached || response;
+  } catch {
+    return cached
     || new Response("Viatica is offline and no cached app shell is available.", {
       status: 503,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
+  }
 }
