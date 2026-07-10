@@ -79,6 +79,8 @@ not grant shared access to private ledger data.
 - The official Viatica logo source lives at `resources/brand/viatica-logo.png`.
   The splash renders that exact desktop source from its first frame, including
   the double-line border, with no redraw, fade, scale, blur, sheen, or assembly.
+  Its splash-specific PNG changes only the area outside that border to
+  transparency; every visible source pixel inside the frame remains unchanged.
   Other in-app surfaces use the resized display copy through
   `src/assets/logo.js`; PWA launcher icons in `public/icons/` are generated
   copies of the same mark.
