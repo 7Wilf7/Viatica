@@ -3,7 +3,7 @@
 ## Purpose
 
 The finance loop turns isolated transaction capture into a repeatable daily
-workflow without giving an Agent permission to mutate the ledger:
+workflow while keeping true ledger mutations inside Viatica:
 
 ```text
 record or backfill
@@ -15,6 +15,8 @@ record or backfill
 
 The ledger remains the source of truth. Templates, memory, reminders, and recap
 signals assist capture and review; they are not a second transaction store.
+This does not prevent autonomous aggregate analysis or reporting; it prevents an
+Agent inference from silently becoming a real financial record.
 
 ## User Flow
 
@@ -79,6 +81,21 @@ first and use the normal cloud transaction mutation path when signed in.
 `buildAevumOverview()` is an aggregate-only candidate boundary: it exposes
 period totals and top-category totals, not recent transaction rows. It is not
 wired to Aevum at runtime yet.
+
+The target Agent connection keeps three channels separate:
+
+- **Query**: Aevum requests a current aggregate recap; temporary by default.
+- **Report**: Viatica proactively sends a meaningful aggregate change, budget
+  risk, anomaly candidate, or minimal policy-authorized fact.
+- **Action**: Aevum requests a Viatica-owned operation. Payments, transfers,
+  source-row deletion, and material budget/recurring-rule changes require Wilf;
+  explicitly authorized reversible classification or housekeeping may be
+  automatic with audit and undo.
+
+Scheduled Reports must be generated server-side from a watermark and only after
+a deterministic significance check. They do not include raw transaction rows,
+unrestricted merchant/note text, or credentials. A Report is evidence for
+Aevum policy, not permission to write Aevum memory directly.
 
 ## Implementation Map
 

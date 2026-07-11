@@ -17,19 +17,20 @@ Viatica is the standalone personal ledger in the Aevum product family. It owns
 transaction capture, editing, import/export, budgets, categories, legacy account
 compatibility, starting assets, local bookkeeping memory, recurring reminders,
 deterministic financial review, local ledger records, cloud sync, and APK/PWA
-distribution. Aevum should receive only overview snapshots and reviewed events
-from Viatica.
+distribution. Aevum should receive only privacy-trimmed Query results and
+policy-governed Reports from Viatica.
 
 ## Product Boundary
 
 - Viatica owns private ledger data, transaction rows, budgets, category
   statistics, starting assets, local backups, and ledger sync.
-- Aevum owns global entry points, reviewed events, memory inbox, permissions,
-  and future cross-domain Agent routing.
+- Aevum owns global entry points, cross-product policy, derived-memory
+  lifecycle, exception handling, and future cross-domain Agent routing.
 - Ultreia owns training. Sidera owns learning, capture/reflection, and
   knowledge graph.
-- Viatica may emit reviewed financial events, such as training gear purchases,
-  but other products must not read or edit Viatica's private ledger directly.
+- Viatica may autonomously emit authorized aggregate Reports or minimal facts,
+  such as a training-gear purchase without unrestricted ledger details, but
+  other products must not read or edit Viatica's private ledger directly.
 
 ## Brand Personality
 
@@ -81,9 +82,13 @@ and the Viatica mark.
   background.
 - Bookkeeping memory and recurring rules currently remain local-only under
   `preferences.merchantRules` and `preferences.recurringTransactions`; do not
-  describe them as cross-device features until a reviewed cloud schema exists.
-- Transaction details stay private unless an explicit reviewed event shares a
-  summary with Aevum.
+  describe them as cross-device features until an approved cloud schema exists.
+- Transaction details stay private. A standing policy may allow a minimal
+  aggregate or fact to reach Aevum; it never grants raw-table access.
+- Future Viatica Agent work starts with automatic aggregate analysis and
+  Reports. Payments, transfers, ledger deletion, and material budget or
+  recurring-rule changes remain `requires_user`; reversible classification or
+  housekeeping may be automated only after explicit standing authorization.
 - Product demos use a dedicated Aevum Demo account seeded from
   `src/core/demoData.js`, not an in-app Personal/Demo switch.
 
@@ -98,7 +103,9 @@ APK shorthand and versioning should stay aligned with Ultreia.
 The active milestone is a reliable daily finance loop: fast capture, calendar
 backfill, repeatable entries, manually confirmed recurring reminders,
 deterministic review, clear recovery, and sync confidence. The next trust gap is
-restore preview and conflict-safe recovery. AI features remain later work.
+restore preview and conflict-safe recovery. The first Agent integration after
+that is a narrow aggregate Query/Report adapter, not a chat surface or raw-ledger
+access.
 
 ## Accessibility & Inclusion
 

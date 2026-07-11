@@ -6,8 +6,8 @@ Aevum ecosystem. It owns transaction capture, editing, import/export, budgets,
 categories, legacy account compatibility, and local financial records. The
 legacy book field may remain in local data for compatibility, but multi-book
 workflow should not be foregrounded unless Wilf explicitly asks for it again.
-Aevum only keeps overview data, app entry points, and reviewed cross-product
-events.
+Aevum only keeps privacy-trimmed overview context, app entry points,
+policy-governed Reports, derived memory, and cross-product routing.
 
 ## Product Family
 Aevum, Ultreia, Viatica, and Sidera are family products in Wilf's personal tool
@@ -95,16 +95,25 @@ of copying training-specific behavior.
   a reviewed schema change.
 - Recurring reminders must stay confirmation-first, and financial Review must
   stay deterministic and read-only. Neither may silently mutate historical
-  transactions.
+  transactions. This protects ledger truth; it does not mean every Agent
+  Report, memory decision, or low-risk housekeeping action needs item-level
+  approval.
 - Local account records and opening balances may remain inside the `viatica:v1`
   model for backwards compatibility, but the current UI should not foreground a
   user-facing account workflow. Treat Assets as one starting-assets value plus
   ledger income/expense flow unless Wilf explicitly asks to bring account
   switching back.
-- Transaction details stay private to Viatica unless an explicit reviewed event
-  shares them with Aevum.
-- Aevum integration is overview-first and event-based. Do not let Aevum read or
-  edit Viatica's private ledger directly.
+- Transaction details stay private to Viatica. Future Reports share only
+  policy-authorized, privacy-trimmed aggregates or minimal facts with Aevum.
+- Aevum integration uses separate Query, Report, and Action contracts. Do not
+  let Aevum read or edit Viatica's private ledger directly.
+- Viatica may autonomously report aggregate trends, budget-risk changes, and
+  anomaly candidates. A Report cannot create a ledger row, expand its own
+  scope, or directly write Aevum memory.
+- Future Actions declare `auto`, `guarded`, or `requires_user`. Payments,
+  transfers, source-row deletion, and material budget or recurring-rule changes
+  require Wilf; explicitly authorized reversible classification/housekeeping
+  may run automatically with audit and undo.
 - Family-product alignment is a design and workflow constraint, not a data
   sharing permission. Do not let Aevum, Ultreia, or Sidera read or edit
   Viatica's private ledger directly.

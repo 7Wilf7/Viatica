@@ -8,8 +8,8 @@ Production PWA: <https://viatica.cash>
 
 ## Product Family
 
-- **Aevum**: global launcher, reviewed events, memory inbox, permissions, and
-  future cross-product Agent routing.
+- **Aevum**: global launcher, cross-product policy, derived-memory lifecycle,
+  exception handling, and future Agent routing.
 - **Ultreia**: endurance training, races, recovery, weather context, AI Coach,
   and training-specific Agent actions.
 - **Viatica**: private ledger, transaction capture, budgets, imports, exports,
@@ -18,7 +18,8 @@ Production PWA: <https://viatica.cash>
   review state, and Sidera Agent proposals.
 
 Viatica's private ledger remains inside Viatica. Cross-product use must go
-through Aevum reviewed events or memory.
+through Aevum Query, Report, or Action contracts under standing policy; raw
+ledger rows are not shared.
 
 ## Current Scope
 
