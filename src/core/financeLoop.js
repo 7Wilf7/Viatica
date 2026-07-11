@@ -142,13 +142,16 @@ export function updateMerchantRules(rules = [], txn = {}, now = new Date()) {
   ].slice(0, 40);
 }
 
-export function recentTemplates(transactions = [], limit = 6) {
+export function recentTemplates(transactions = [], limit = 6, type = "all") {
+  const activeType = type === "income" || type === "expense" ? type : "all";
   const byKey = new Map();
   for (const txn of transactions || []) {
     if (isProjectOnly(txn)) continue;
+    const transactionType = txn.type === "income" ? "income" : "expense";
+    if (activeType !== "all" && transactionType !== activeType) continue;
     const basis = ruleBasisFromTransaction(txn);
     const key = [
-      txn.type === "income" ? "income" : "expense",
+      transactionType,
       txn.category || "",
       normalizedKeyText(basis || txn.title),
     ].join(":");
@@ -158,7 +161,7 @@ export function recentTemplates(transactions = [], limit = 6) {
     if (!existing || occurredAt > asDate(existing.lastOccurredAt)) {
       byKey.set(key, {
         key,
-        type: txn.type === "income" ? "income" : "expense",
+        type: transactionType,
         category: txn.category || "",
         title: txn.title || basis,
         merchant: txn.merchant || "",

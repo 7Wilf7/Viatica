@@ -68,6 +68,8 @@ not grant shared access to private ledger data.
   chips, and a built-in amount keypad keeps the system keyboard out of the main
   path. A compact date control supports backfill, and recent templates or a
   repeated transaction may prefill a draft without saving it automatically.
+  Recent templates stay in one compact row, filter to the active expense or
+  income type, and share the middle scroll region with categories.
   Expense detail chips render in one tray below the full primary-category
   grid instead of between category rows, keeping the main category grid visually
   stable. Income categories can be saved without a detail chip when the detail
@@ -95,6 +97,10 @@ not grant shared access to private ledger data.
   attribution in project documentation rather than showing a Settings-home
   credit row.
 - Ledger owns filtering, editing, deletion, and the top Flow / Charts switch.
+  Long-press actions expand inline below the selected transaction so Repeat,
+  Edit, Recurring, and Delete remain visible without horizontal scrolling; the
+  open row stays open across background refreshes until an action or outside tap
+  closes it.
   Charts means statistics. Its top structure follows Ultreia's Training home
   rhythm, adapted to accounting: type filter on the left, Flow / Charts switch
   on the right, a four-part period switch below, then three compact metric cells

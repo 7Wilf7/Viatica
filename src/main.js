@@ -837,6 +837,25 @@ const MANUAL_SECTIONS = [
 
 const CHANGELOG_ENTRIES = [
   {
+    date: "2026-07-11",
+    title: {
+      zh: "移动端流水与添加页修复",
+      en: "Mobile Ledger And Capture Fixes",
+    },
+    items: {
+      zh: [
+        "长按流水后的再记、编辑、周期和删除改为在当前流水下方展开，不再被横向裁切，也不会因后台刷新自动消失。",
+        "最近常用按收入 / 支出分别显示，并压缩为一行；模板和分类共同在中间区域滚动，不再覆盖子分类。",
+        "编辑流水时，分类内容可以滚动，金额键盘和保存修改按钮保持在底部可见。",
+      ],
+      en: [
+        "Long-press actions now expand below the current entry, stay visible across background refreshes, and keep Repeat, Edit, Recurring, and Delete reachable without horizontal clipping.",
+        "Recent templates are filtered by income or expense and compressed into one row; templates and categories now share the middle scroll area without covering subcategories.",
+        "When editing an entry, category content scrolls while the amount keypad and Save Changes action remain visible at the bottom.",
+      ],
+    },
+  },
+  {
     date: "2026-07-10",
     title: {
       zh: "记账闭环基础",
@@ -3584,10 +3603,23 @@ function modifyRecurringOccurrence(ruleId, occurrenceDate) {
 let longPressTimer = 0;
 let longPressTarget = null;
 let longPressPoint = null;
+let openTransactionActionId = "";
+
+function setActionRowExpanded(row, expanded) {
+  if (!row) return;
+  row.classList.toggle("action-open", expanded);
+  row.setAttribute("aria-expanded", expanded ? "true" : "false");
+  const actions = row.querySelector(".txn-actions");
+  actions?.setAttribute("aria-hidden", expanded ? "false" : "true");
+  actions?.querySelectorAll("button").forEach((button) => {
+    button.tabIndex = expanded ? 0 : -1;
+  });
+}
 
 function closeActionRows(except = null) {
+  openTransactionActionId = except?.dataset?.transactionId || "";
   document.querySelectorAll(".action-row.action-open").forEach((row) => {
-    if (row !== except) row.classList.remove("action-open");
+    if (row !== except) setActionRowExpanded(row, false);
   });
 }
 
@@ -3601,9 +3633,9 @@ function clearLongPress() {
 }
 
 function openActionRow(row) {
-  if (!row) return;
+  if (!row?.dataset?.transactionId) return;
   closeActionRows(row);
-  row.classList.add("action-open");
+  setActionRowExpanded(row, true);
 }
 
 function runLongPressAction(node) {
@@ -5322,8 +5354,12 @@ function renderCaptureForm(editingTransaction) {
         `).join("")}
       </div>
 
-      ${renderCaptureTemplateStrip()}
-      ${renderCaptureCategoryBoard(txn)}
+      <div class="capture-choice-scroll">
+        <div class="capture-template-slot">
+          ${renderCaptureTemplateStrip(txn.type)}
+        </div>
+        ${renderCaptureCategoryBoard(txn)}
+      </div>
 
       <section class="amount-pad-panel" aria-label="${escapeHtml(t("capture.amount"))}">
         <div class="amount-readout">
@@ -5359,8 +5395,8 @@ function renderCaptureForm(editingTransaction) {
   `;
 }
 
-function renderCaptureTemplateStrip() {
-  const templates = recentTemplates(activeLedgerState().transactions, 6);
+function renderCaptureTemplateStrip(type = "all") {
+  const templates = recentTemplates(activeLedgerState().transactions, 6, type);
   if (!templates.length) return "";
   return `
     <section class="capture-template-strip" aria-label="${escapeHtml(t("capture.templatesTitle"))}">
@@ -5369,7 +5405,7 @@ function renderCaptureTemplateStrip() {
       </div>
       <div class="capture-template-list">
         ${templates.map((template, index) => `
-          <button class="capture-template-chip ${template.type === "income" ? "income" : "expense"}" type="button" data-action="apply-template" data-template-index="${index}">
+          <button class="capture-template-chip ${template.type === "income" ? "income" : "expense"}" type="button" data-action="apply-template" data-template-index="${index}" data-template-type="${escapeHtml(template.type)}">
             <span>${escapeHtml(template.title || template.merchant || template.category)}</span>
             <strong>${escapeHtml(compactMoney(template.amount, template.currency))}</strong>
           </button>
@@ -5566,8 +5602,9 @@ function renderTransactionRow(txn) {
         ${projectOnly ? `<span>${escapeHtml(t("txn.projectOnly"))}</span>` : ""}
       </span>`
     : "";
+  const actionsOpen = openTransactionActionId === txn.id;
   return `
-    <article class="txn-row action-row ${escapeHtml(transactionTone(txn))} ${projectOnly ? "project-only" : ""}" data-long-press-actions>
+    <article class="txn-row action-row ${escapeHtml(transactionTone(txn))} ${projectOnly ? "project-only" : ""} ${actionsOpen ? "action-open" : ""}" data-long-press-actions data-transaction-id="${escapeHtml(txn.id)}" tabindex="0" aria-expanded="${actionsOpen ? "true" : "false"}">
       <div class="txn-main">
         ${renderTransactionIconBadge(txn)}
         <div class="txn-copy">
@@ -5578,26 +5615,26 @@ function renderTransactionRow(txn) {
         <div class="txn-side">
           <div class="amount ${transactionAmountClass(txn)}">${signedAmount(txn)}</div>
         </div>
-        <div class="row-actions txn-actions">
-          <button class="btn ghost row-action-button txn-action-button" data-action="repeat-transaction" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.repeat"))}">
-            ${glyphSvg("plus")}
-            <span>${escapeHtml(t("txn.repeat"))}</span>
+      </div>
+      <div class="row-actions txn-actions" aria-hidden="${actionsOpen ? "false" : "true"}">
+        <button class="btn ghost row-action-button txn-action-button" data-action="repeat-transaction" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.repeat"))}" tabindex="${actionsOpen ? "0" : "-1"}">
+          ${glyphSvg("plus")}
+          <span>${escapeHtml(t("txn.repeat"))}</span>
+        </button>
+        <button class="btn ghost row-action-button txn-action-button" data-action="edit" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.edit"))}" tabindex="${actionsOpen ? "0" : "-1"}">
+          ${glyphSvg("edit")}
+          <span>${escapeHtml(t("txn.edit"))}</span>
+        </button>
+        ${projectOnly ? "" : `
+          <button class="btn ghost row-action-button txn-action-button" data-action="make-recurring" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.recurring"))}" tabindex="${actionsOpen ? "0" : "-1"}">
+            ${glyphSvg("subscription")}
+            <span>${escapeHtml(t("txn.recurring"))}</span>
           </button>
-          <button class="btn ghost row-action-button txn-action-button" data-action="edit" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.edit"))}">
-            ${glyphSvg("edit")}
-            <span>${escapeHtml(t("txn.edit"))}</span>
-          </button>
-          ${projectOnly ? "" : `
-            <button class="btn ghost row-action-button txn-action-button" data-action="make-recurring" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.recurring"))}">
-              ${glyphSvg("subscription")}
-              <span>${escapeHtml(t("txn.recurring"))}</span>
-            </button>
-          `}
-          <button class="btn ghost row-action-button txn-action-button danger-text" data-action="delete" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.delete"))}">
-            ${glyphSvg("trash")}
-            <span>${escapeHtml(t("txn.delete"))}</span>
-          </button>
-        </div>
+        `}
+        <button class="btn ghost row-action-button txn-action-button danger-text" data-action="delete" data-id="${escapeHtml(txn.id)}" aria-label="${escapeHtml(t("txn.delete"))}" tabindex="${actionsOpen ? "0" : "-1"}">
+          ${glyphSvg("trash")}
+          <span>${escapeHtml(t("txn.delete"))}</span>
+        </button>
       </div>
     </article>
   `;
@@ -5735,6 +5772,12 @@ function refreshCaptureCategoryBoard(form) {
   }
 }
 
+function refreshCaptureTemplateStrip(form) {
+  const type = form?.elements?.namedItem("type")?.value || "expense";
+  const slot = form?.querySelector(".capture-template-slot");
+  if (slot) slot.innerHTML = renderCaptureTemplateStrip(type);
+}
+
 function fillForm(values) {
   const form = document.querySelector("#transaction-form");
   if (!form) return;
@@ -5761,6 +5804,7 @@ function pickFormField(button) {
     const title = form.elements.namedItem("title");
     if (category) category.value = defaultCategoryForType(value);
     if (title) title.value = "";
+    refreshCaptureTemplateStrip(form);
     refreshCaptureCategoryBoard(form);
   }
   if (field === "category") {
@@ -6005,10 +6049,18 @@ document.addEventListener("touchcancel", handlePagerTouchEnd, { capture: true, p
 document.addEventListener("click", suppressClickAfterPagerDrag, true);
 
 document.addEventListener("keydown", (event) => {
+  if (!["Enter", " "].includes(event.key)) return;
   const target = event.target.closest?.("[data-long-press-action]");
-  if (!target || !["Enter", " "].includes(event.key)) return;
+  const row = event.target.closest?.("[data-long-press-actions]");
+  if (!target && (!row || event.target !== row)) return;
   event.preventDefault();
-  runLongPressAction(target);
+  if (target) {
+    runLongPressAction(target);
+  } else if (row.classList.contains("action-open")) {
+    closeActionRows();
+  } else {
+    openActionRow(row);
+  }
 });
 
 document.addEventListener("submit", (event) => {
@@ -6175,6 +6227,7 @@ document.addEventListener("click", (event) => {
     return;
   }
   const action = node.dataset.action;
+  if (!node.closest(".action-row.action-open") || node.closest(".txn-actions")) closeActionRows();
   if (!node.closest("[data-ledger-period-control]")) closeLedgerPeriodMenu();
 
   if (action === "toggle-choice") {
@@ -6331,7 +6384,11 @@ document.addEventListener("click", (event) => {
     render();
   }
   if (action === "apply-template") {
-    const templates = recentTemplates(activeLedgerState().transactions, 6);
+    const templates = recentTemplates(
+      activeLedgerState().transactions,
+      6,
+      node.dataset.templateType || "all",
+    );
     applyTransactionTemplate(templates[Number(node.dataset.templateIndex || 0)]);
     render();
     toast(t("toast.templateApplied"));

@@ -51,15 +51,25 @@ test("learns merchant rules and keeps recent templates deterministic", () => {
     category: "餐饮",
     occurredAt: "2026-07-09T08:00:00+08:00",
   });
+  const income = normalizeTransaction({
+    type: "income",
+    amount: 12000,
+    title: "薪酬",
+    category: "薪酬",
+    occurredAt: "2026-07-10T08:00:00+08:00",
+  });
 
   const rules = updateMerchantRules(updateMerchantRules([], first, new Date("2026-07-08T00:00:00Z")), second, new Date("2026-07-09T00:00:00Z"));
-  const templates = recentTemplates([second, first]);
+  const templates = recentTemplates([income, second, first], 6, "expense");
+  const incomeTemplates = recentTemplates([income, second, first], 6, "income");
 
   assert.equal(rules.length, 1);
   assert.equal(rules[0].basis, "Starbucks");
   assert.equal(rules[0].useCount, 2);
   assert.equal(templates[0].merchant, "Starbucks");
   assert.equal(templates[0].amount, 36);
+  assert.equal(templates.every((template) => template.type === "expense"), true);
+  assert.deepEqual(incomeTemplates.map((template) => template.title), ["薪酬"]);
 });
 
 test("advances monthly recurring rules with end-of-month clamp", () => {
