@@ -42,6 +42,18 @@ Agent inference from silently becoming a real financial record.
   for review in Settings. It does not currently rewrite new entries
   automatically.
 
+### Projects
+
+- Calendar -> Projects owns the project catalog. Its first row keeps the
+  project chips and a compact `+` action for creation and management.
+- Add selects an existing project from Viatica's internal picker. It does not
+  accept a second free-text project name.
+- Renaming a project updates the project tags on every linked transaction and
+  refreshes their `updatedAt` values so the normal transaction sync path carries
+  the rename. Only empty catalog projects can be deleted directly.
+- The selected chip is the sole project name/amount summary. Project detail
+  shows an entry-count badge beside Project Entries and the related rows below.
+
 ### Recurring reminders
 
 - A saved transaction can become a monthly recurring rule.
@@ -70,12 +82,15 @@ The local state keeps these collections under `preferences`:
 
 - `merchantRules`
 - `recurringTransactions`
+- `projects`
 
-They are normalized by `src/core/financeLoop.js` and persisted inside the
+They are normalized by the relevant core modules and persisted inside the
 active `viatica:v1` or account-specific local cache. The current
 `viatica_preferences` cloud row stores only supported scalar preferences such
-as locale and starting assets. Bookkeeping memory and recurring rules therefore
-do not sync across devices yet.
+as locale and starting assets. Bookkeeping memory, recurring rules, and empty
+project placeholders therefore do not sync across devices yet. A project
+attached to a transaction does sync through that transaction and is rebuilt in
+the catalog on another device.
 
 Confirmed recurring occurrences are ordinary transactions. They save locally
 first and use the normal cloud transaction mutation path when signed in.
@@ -106,8 +121,8 @@ Aevum policy, not permission to write Aevum memory directly.
 - `src/core/financeLoop.test.js`: boundary and heuristic coverage.
 - `src/main.js`: capture, Calendar, Settings, persistence, and confirmation UI.
 - `src/core/storage.js`: local preference defaults.
-- `src/core/cloudSync.js`: current cloud boundary; it does not serialize the two
-  local collections above.
+- `src/core/cloudSync.js`: current cloud boundary; it does not serialize the
+  three local collections above.
 
 ## Verification
 
@@ -125,7 +140,8 @@ Never reset real browser storage to prepare a test.
 
 ## Known Gaps
 
-- Bookkeeping memory and recurring rules are device-local.
+- Bookkeeping memory, recurring rules, and empty project placeholders are
+  device-local.
 - JSON restore preview and conflict-safe recovery are not implemented.
 - Recurring rules are monthly only.
 - Review signals do not explain causal relationships beyond their deterministic

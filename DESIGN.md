@@ -128,6 +128,12 @@ not grant shared access to private ledger data.
   top of Calendar's own scroll area. Viatica replaces Ultreia moss with restrained
   ledger brass. Calendar day numbers sit at the top center of each cell so daily
   income/expense values stay scannable.
+- Calendar → Projects keeps project creation and management in its first row.
+  The selected project chip is the only repeated place for that project's name
+  and amount; do not add a second project heading or expense metric card below
+  it. Put the compact entry count beside the Project Entries heading. Add uses a
+  horizontal internal project picker and never opens a native menu or free-text
+  project field.
 - Charts under Ledger stay focused on category statistics and trends. Project
   totals and their related entries live together under Calendar → Projects and
   should not be duplicated in Charts. Category statistics are actual spending

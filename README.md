@@ -29,7 +29,9 @@ ledger rows are not shared.
 - Ledger Flow / Charts, period filters, compact metrics, search, editing, and
   deletion.
 - Calendar month navigation, day details, date backfill, recurring reminders,
-  deterministic review, and grouped-project review.
+  deterministic review, and an inline managed project catalog.
+- Add selects existing projects from that catalog instead of accepting free-text
+  project names.
 - Recent transaction templates, repeat-entry drafts, and visible local
   bookkeeping memory.
 - Monthly recurring items shown as overdue or next-30-day reminders that
@@ -80,11 +82,14 @@ and sync with the shared Aevum Supabase project using `viatica_*` tables. First
 sync is merge-first rather than overwrite-first, and mutations save locally
 before background cloud writes.
 
-`preferences.merchantRules` and `preferences.recurringTransactions` currently
-stay in the active device's local cache. They are not columns in
-`viatica_preferences` and therefore do not sync across devices. A recurring
-item becomes cloud-backed only after Wilf confirms it and Viatica saves the
-resulting normal transaction.
+`preferences.merchantRules`, `preferences.recurringTransactions`, and
+`preferences.projects` currently stay in the active device's local cache. They
+are not columns in `viatica_preferences` and therefore do not sync as
+collections across devices. Project names attached to ordinary transactions do
+sync with those transactions, so projects with entries reappear on other
+devices; empty project placeholders remain device-local. A recurring item
+becomes cloud-backed only after Wilf confirms it and Viatica saves the resulting
+normal transaction.
 
 ## Android APK Release Flow
 

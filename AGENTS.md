@@ -148,6 +148,10 @@ of copying training-specific behavior.
   editable monthly targets saved under `viatica:v1`.
 - Keep project totals and related entries in Calendar's Project view. Do not
   duplicate project statistics under Ledger Charts.
+- Create and manage the project catalog inside Calendar's Project view; Add
+  selects existing projects instead of accepting free-text project names. Empty
+  catalog projects are local-only until an approved cloud schema exists, while
+  projects attached to transactions follow normal transaction sync.
 - Calendar owns Month Summary, Pending Recurring, Review, Projects, and
   date-bound day details. Keep these as focused views instead of adding another
   dashboard.

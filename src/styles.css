@@ -1653,8 +1653,17 @@ label span {
   gap: 10px;
 }
 
+.calendar-project-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: stretch;
+  gap: 6px;
+}
+
 .calendar-project-list {
+  min-width: 0;
   display: flex;
+  align-items: stretch;
   gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -1711,51 +1720,181 @@ label span {
   box-shadow: 0 0 0 1px oklch(0.700 0.052 86 / 0.16) inset;
 }
 
+.calendar-project-add {
+  width: 36px;
+  min-height: 42px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  background: oklch(0.145 0.006 95 / 0.70);
+  color: var(--accent-strong);
+}
+
+.calendar-project-add:hover,
+.calendar-project-add:focus-visible {
+  border-color: oklch(0.700 0.052 86 / 0.70);
+  background: oklch(0.210 0.016 86 / 0.64);
+  outline: none;
+}
+
+.calendar-project-add .glyph {
+  width: 17px;
+  height: 17px;
+}
+
+.calendar-project-empty-label {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  color: var(--ink-3);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.calendar-project-manager {
+  display: grid;
+  gap: 6px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.calendar-project-create-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.calendar-project-create-row input,
+.calendar-project-manage-row input {
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 9px;
+}
+
+.calendar-project-create-row .btn {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid oklch(0.700 0.052 86 / 0.54);
+  background: oklch(0.210 0.016 86 / 0.64);
+  color: var(--accent-strong);
+  font-size: 11px;
+}
+
+.calendar-project-manage-list {
+  display: grid;
+}
+
+.calendar-project-manage-row {
+  min-width: 0;
+  min-height: 40px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.calendar-project-manage-row.editing {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding-top: 6px;
+}
+
+.calendar-project-manage-copy {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.calendar-project-manage-copy strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-project-manage-copy small {
+  flex: 0 0 auto;
+  color: var(--ink-3);
+  font-size: 10px;
+}
+
+.project-manager-icon,
+.project-manager-action {
+  min-height: 30px;
+  padding: 4px 7px;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.project-manager-icon {
+  width: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.project-manager-icon .glyph {
+  width: 14px;
+  height: 14px;
+}
+
+.project-manager-action.muted {
+  color: var(--ink-3);
+}
+
+.project-manager-action.danger {
+  background: oklch(0.225 0.030 25 / 0.58);
+  color: var(--danger);
+}
+
+.project-manager-icon:hover,
+.project-manager-icon:focus-visible,
+.project-manager-action:hover,
+.project-manager-action:focus-visible {
+  background: oklch(0.220 0.010 95 / 0.72);
+  color: var(--ink);
+  outline: none;
+}
+
 .calendar-project-detail {
   display: grid;
   gap: 10px;
 }
 
-.calendar-project-heading {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.calendar-project-heading > div {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.calendar-project-heading h2 {
-  margin: 0;
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 15px;
-  line-height: 1.2;
-  font-weight: 780;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.calendar-project-heading span {
-  overflow: hidden;
-  color: var(--ink-3);
-  font-size: 11px;
-  font-weight: 680;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.calendar-project-metrics {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .calendar-project-flow-title {
   margin-top: 0;
+}
+
+.calendar-project-flow-title h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendar-project-count {
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-2);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 760;
 }
 
 .calendar-project-flow {
@@ -2259,14 +2398,12 @@ label span {
   font-size: 12px;
 }
 
-.capture-note-field,
-.capture-project-field {
+.capture-note-field {
   position: relative;
   display: block;
 }
 
-.capture-note-field span,
-.capture-project-field span {
+.capture-note-field span {
   position: absolute;
   left: 10px;
   top: 50%;
@@ -2294,10 +2431,6 @@ label span {
   display: grid;
 }
 
-.capture-project-field input {
-  padding-left: 48px;
-}
-
 .capture-project-only-field {
   min-height: 38px;
   padding: 0 10px;
@@ -2319,6 +2452,64 @@ label span {
   height: 14px;
   padding: 0;
   accent-color: var(--accent-strong);
+}
+
+.capture-project-only-field:has(input:disabled) {
+  color: var(--ink-3);
+  opacity: 0.56;
+}
+
+.capture-project-choice {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.capture-project-choice-list {
+  min-width: 0;
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.capture-project-choice-list::-webkit-scrollbar {
+  display: none;
+}
+
+.capture-project-option {
+  flex: 0 0 auto;
+  max-width: 150px;
+  min-height: 36px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: oklch(0.145 0.006 95 / 0.74);
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capture-project-option:hover,
+.capture-project-option:focus-visible,
+.capture-project-option.active {
+  border-color: oklch(0.700 0.052 86 / 0.62);
+  background: oklch(0.210 0.016 86 / 0.72);
+  color: var(--ink);
+  outline: none;
+}
+
+.capture-project-create-link {
+  min-height: 24px;
+  padding: 2px 4px;
+  justify-self: start;
+  background: transparent;
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 680;
 }
 
 .capture-time-choice {
@@ -2470,7 +2661,7 @@ body.wheel-picker-open {
 .wheel-picker-layer {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: 90;
   display: grid;
   place-items: center;
   padding: 16px;
@@ -2487,8 +2678,6 @@ body.wheel-picker-open {
   border: 0;
   border-radius: 0;
   background: oklch(0.080 0.006 95 / 0.68);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 .wheel-picker-dialog {
@@ -2497,7 +2686,7 @@ body.wheel-picker-open {
   border: 1px solid var(--line-strong);
   border-radius: 14px;
   background: oklch(0.155 0.008 95 / 0.98);
-  box-shadow: 0 18px 50px oklch(0 0 0 / 0.42);
+  box-shadow: 0 6px 8px oklch(0 0 0 / 0.30);
   animation: wheel-picker-in 180ms var(--ease-out);
 }
 

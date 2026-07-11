@@ -30,6 +30,16 @@ export function normalizeProjectLabel(input) {
   return String(input || "").trim().replace(/\s+/g, " ");
 }
 
+export function normalizeProjectNames(input = []) {
+  const seen = new Set();
+  return (Array.isArray(input) ? input : []).flatMap((item) => {
+    const label = normalizeProjectLabel(typeof item === "string" ? item : item?.name);
+    if (!label || seen.has(label)) return [];
+    seen.add(label);
+    return [label];
+  });
+}
+
 function decodeProjectLabel(input) {
   try {
     return decodeURIComponent(input);
@@ -103,6 +113,32 @@ export function summarizeProjects(transactions = []) {
     });
 }
 
+export function projectNamesForLedger(projectNames = [], transactions = []) {
+  return normalizeProjectNames([
+    ...normalizeProjectNames(projectNames),
+    ...summarizeProjects(transactions).map((item) => item.project),
+  ]);
+}
+
+export function renameProjectTransactions(transactions = [], fromProject = "", toProject = "", now = new Date()) {
+  const fromLabel = normalizeProjectLabel(fromProject);
+  const toLabel = normalizeProjectLabel(toProject);
+  if (!fromLabel || !toLabel || fromLabel === toLabel) return [...transactions];
+  const updatedAt = now.toISOString();
+  return transactions.map((txn) => {
+    const project = normalizeProjectLabel(txn.project || projectLabelFromTags(txn.tags));
+    if (project !== fromLabel) return txn;
+    const projectOnly = isProjectOnlyTransaction(txn);
+    return {
+      ...txn,
+      project: toLabel,
+      projectOnly,
+      tags: tagsWithProject(txn.tags, toLabel, projectOnly),
+      updatedAt,
+    };
+  });
+}
+
 function parseBoolean(input) {
   if (typeof input === "boolean") return input;
   return ["true", "1", "yes", "y"].includes(String(input || "").trim().toLowerCase());
@@ -155,6 +191,19 @@ function normalizeCategory(type, input) {
   }
   const normalized = normalizeExpenseCategory(category);
   return CATEGORIES.includes(normalized) ? normalized : "其他";
+}
+
+function canonicalExpensePresentation(category, title) {
+  const aliases = {
+    "运动:运动饮料": "补给",
+    "运动:康复": "按摩",
+    "其他:提现手续费": "手续费",
+  };
+  const canonicalTitle = aliases[`${category}:${title}`] || title;
+  if (category === "其他" && canonicalTitle === "还款") {
+    return { category: "还款", title: "还款" };
+  }
+  return { category, title: canonicalTitle };
 }
 
 export function normalizeAccount(input = {}, now = new Date()) {
@@ -219,12 +268,15 @@ export function normalizeTransaction(input = {}, now = new Date()) {
     throw new Error("时间格式无效");
   }
 
-  const category = normalizeCategory(type, input.category);
+  const normalizedCategory = normalizeCategory(type, input.category);
   const account = LEDGER_ACCOUNT_NAME;
   const book = BOOKS.includes(input.book) ? input.book : "日常账本";
   const currency = CURRENCIES.includes(input.currency) ? input.currency : "CNY";
-  const title = String(input.title || input.merchant || category).trim();
-  if (!title) throw new Error("标题不能为空");
+  const normalizedTitle = String(input.title || input.merchant || normalizedCategory).trim();
+  if (!normalizedTitle) throw new Error("标题不能为空");
+  const presentation = type === "expense"
+    ? canonicalExpensePresentation(normalizedCategory, normalizedTitle)
+    : { category: normalizedCategory, title: normalizedTitle };
 
   const createdAt = input.createdAt || now.toISOString();
   const updatedAt = input.updatedAt || now.toISOString();
@@ -242,8 +294,8 @@ export function normalizeTransaction(input = {}, now = new Date()) {
     currency,
     book,
     account,
-    category,
-    title,
+    category: presentation.category,
+    title: presentation.title,
     merchant: String(input.merchant || "").trim(),
     note: String(input.note || "").trim(),
     tags,

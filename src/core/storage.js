@@ -12,6 +12,7 @@ export const EMPTY_STATE = {
     deletedTransactionIds: [],
     merchantRules: [],
     recurringTransactions: [],
+    projects: [],
   },
 };
 

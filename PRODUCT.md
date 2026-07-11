@@ -54,8 +54,10 @@ and the Viatica mark.
 - Ledger owns Flow / Charts, period switching, compact metrics, search, editing,
   and deletion.
 - Calendar owns month navigation, day details, date backfill, upcoming recurring
-  reminders, deterministic review, and grouped project totals. Charts stays
-  focused on category statistics and trends instead of duplicating those views.
+  reminders, deterministic review, and the project catalog. Project creation,
+  rename, safe empty-project deletion, totals, and related entries stay there;
+  Add only selects an existing project. Charts stays focused on category
+  statistics and trends instead of duplicating those views.
 - Add may reuse recent transactions as templates or repeat drafts, but it still
   requires an explicit save.
 - Recurring reminders never write silently. Confirm creates a normal
@@ -80,9 +82,12 @@ and the Viatica mark.
   when ids match and protect an empty PWA from wiping an APK with data.
 - Signed-in mutations save locally first, then write and retry in the
   background.
-- Bookkeeping memory and recurring rules currently remain local-only under
-  `preferences.merchantRules` and `preferences.recurringTransactions`; do not
-  describe them as cross-device features until an approved cloud schema exists.
+- Bookkeeping memory, recurring rules, and the empty-project catalog currently
+  remain local-only under `preferences.merchantRules`,
+  `preferences.recurringTransactions`, and `preferences.projects`; do not
+  describe those collections as cross-device features until an approved cloud
+  schema exists. Projects attached to synced transactions can still be rebuilt
+  from those transactions on another device.
 - Transaction details stay private. A standing policy may allow a minimal
   aggregate or fact to reach Aevum; it never grants raw-table access.
 - Future Viatica Agent work starts with automatic aggregate analysis and

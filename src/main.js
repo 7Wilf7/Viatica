@@ -59,8 +59,11 @@ import {
   isProjectOnlyTransaction,
   normalizeBudgets,
   normalizeProjectLabel,
+  normalizeProjectNames,
   normalizeTransaction,
+  projectNamesForLedger,
   projectLabelFromTags,
+  renameProjectTransactions,
   summarizeLedger,
   summarizeProjects,
 } from "./core/ledger.js";
@@ -180,6 +183,9 @@ const state = {
   },
   calendarSelectedDate: "",
   calendarProject: "",
+  calendarProjectManagerOpen: false,
+  calendarProjectEditing: "",
+  calendarProjectDeleteConfirm: "",
   budgetKeypadCategory: "",
   budgetDraft: null,
   startingAssetsFormOpen: false,
@@ -233,6 +239,7 @@ state.preferences = {
   startingAssets: 0,
   merchantRules: [],
   recurringTransactions: [],
+  projects: [],
   ...state.preferences,
 };
 delete state.preferences.dataMode;
@@ -241,6 +248,7 @@ state.preferences.startingAssets = normalizeStartingAssets(state.preferences.sta
 if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
 state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
 state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
+state.preferences.projects = normalizeProjectNames(state.preferences.projects);
 state.accounts = [];
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
 state.filters.book = "all";
@@ -640,8 +648,6 @@ const SUBCATEGORY_META = {
   "家居": { icon: "sofa", thing: "sofa" },
   "装备": { icon: "shirt", thing: "runningShoes" },
   "补给": { icon: "food", thing: "energyDrink" },
-  "运动饮料": { icon: "food", thing: "energyDrink" },
-  "康复": { icon: "health", thing: "bandAid" },
   "按摩": { icon: "health", thing: "massageGun" },
   "训练课": { icon: "training", thing: "stopwatch" },
   "赛事报名": { icon: "ticket", thing: "trophy" },
@@ -663,9 +669,7 @@ const SUBCATEGORY_META = {
   "住宿": { icon: "hotel", thing: "hotel" },
   "旅行:餐饮": { icon: "food", thing: "restaurant" },
   "门票": { icon: "ticket", thing: "ticket" },
-  "提现手续费": { icon: "fee", thing: "file" },
   "手续费": { icon: "fee", thing: "receipt" },
-  "还款": { icon: "subscription", thing: "openBook" },
   "其他:其他": { icon: "more", thing: "questionMark" },
   "工资": { icon: "salary", thing: "briefcase" },
   "家教费": { icon: "learning", thing: "teacher" },
@@ -755,13 +759,13 @@ const MANUAL_SECTIONS = [
         "“账本”顶部是类型筛选 + 流水 / 图表切换：流水用于查单笔记录，图表就是统计。",
         "“日历”用于快速定位日期，并查看本月支出、收入和有记录的天数。",
         "账本周期可切换所有时间、本周、本月、今年；支出、收入和记录数会跟着周期变化。需要时点放大镜搜索，或用分类筛选。长按单笔流水可以编辑或删除。",
-        "项目用于把一次比赛、一次旅行这类相关流水归在一起；在“日历 → 项目”里可以查看项目总额和相关流水。已经在记账起点前付过的钱，可以勾选“仅记录项目”，它只进项目汇总，不影响资产和日常支出，也不会显示日期或时间段。",
+        "项目用于把一次比赛、一次旅行这类相关流水归在一起；在“日历 → 项目”右侧点 + 创建和管理项目，再在“加一笔”里直接选择。项目页只在选中的项目标签显示名称和金额，流水数跟在“项目流水”标题旁。已经在记账起点前付过的钱，可以勾选“仅记录项目”，它只进项目汇总，不影响资产和日常支出，也不会显示日期或时间段。",
       ],
       en: [
         "Ledger starts with type filtering plus Flow / Charts: Flow reviews individual entries, and Charts means statistics.",
         "Calendar locates dates quickly and shows monthly spending, income, and active ledger days.",
         "Switch the Ledger period between All Time, This Week, This Month, and This Year. Expense, income, and entry count follow that period. Use the magnifier for search or Category when needed. Long-press an entry to edit or delete it.",
-        "Projects group related entries for a race, trip, or similar event. Review project totals and entries under Calendar → Projects. For money paid before your ledger start date, mark it Project only: it counts toward the project without changing assets, normal spending, or date/time ledger context.",
+        "Projects group related entries for a race, trip, or similar event. Create and manage them with + under Calendar → Projects, then select one directly in Add. The selected project chip owns its name and amount, while the entry count sits beside Project Entries. For money paid before your ledger start date, mark it Project only: it counts toward the project without changing assets, normal spending, or date/time ledger context.",
       ],
     },
   },
@@ -858,12 +862,18 @@ const CHANGELOG_ENTRIES = [
         "日期和时段改为产品内置滚轮，不再调起系统日历或系统选择器；后台同步也不会让选择面板自动消失。",
         "子分类直接展开在对应主分类行下方，再点一次主分类即可收起；日期、时段和备注收在同一行。",
         "运动饮料恢复为“补给”，并统一运动装备、按摩和娱乐餐饮的图标质感。",
+        "历史流水按当前“加一笔”的分类名称和图标显示；账本行不再重复写“支出 / 收入”。",
+        "日期滚轮改为局部更新，滑动年、月、日时不再重绘整个页面。",
+        "项目改为在“日历 → 项目”创建和管理，“加一笔”直接选择已有项目；项目页移除重复标题和统计卡，只在“项目流水”旁显示数量。",
       ],
       en: [
         "Calendar now follows Ultreia's compact month navigation and sticky month-grid structure, adapted to Viatica's graphite and ledger-brass palette.",
         "Date and time-period selection now use built-in wheels instead of system pickers, and background sync no longer dismisses them.",
         "Subcategories expand directly below their parent row and collapse on a second tap; date, time period, and note now share one row.",
         "Sports Drink is restored to Supply, with more consistent icons for sports gear, massage, and entertainment dining.",
+        "Historical entries now use the current Add labels and icons, while ledger rows no longer repeat Expense or Income in metadata.",
+        "Date wheels now update only the affected column instead of rerendering the whole page while scrolling.",
+        "Projects are created and managed under Calendar → Projects, then selected directly in Add; duplicate headings and metric cards are replaced by a compact entry-count badge.",
       ],
     },
   },
@@ -1515,7 +1525,8 @@ const MESSAGES = {
     "capture.tags": "标签",
     "capture.project": "项目",
     "capture.projectToggle": "项目选项",
-    "capture.projectPlaceholder": "比赛 / 旅行名",
+    "capture.noProject": "不关联项目",
+    "capture.createProjectHint": "去日历 → 项目点击 + 创建",
     "capture.projectOnly": "仅记录项目",
     "capture.note": "备注",
     "capture.notePlaceholder": "点击填写备注",
@@ -1696,11 +1707,22 @@ const MESSAGES = {
     "calendar.reviewTab": "复盘",
     "calendar.projectTab": "项目",
     "calendar.projectTitle": "项目",
-    "calendar.projectExpense": "支出",
-    "calendar.projectEntries": "流水数",
-    "calendar.projectBackfills": "补录",
     "calendar.projectFlowTitle": "项目流水",
-    "calendar.noProject": "还没有项目流水。加一笔时填写项目名后，这里会按项目汇总。",
+    "calendar.noProject": "还没有项目，点击右侧 + 创建。",
+    "calendar.noProjectFlow": "这个项目还没有流水。",
+    "calendar.projectManage": "项目管理",
+    "calendar.projectCreate": "创建项目",
+    "calendar.projectNamePlaceholder": "项目名称",
+    "calendar.projectRename": "重命名项目",
+    "calendar.projectSave": "保存",
+    "calendar.projectDelete": "删除",
+    "calendar.projectDeleteConfirm": "确认删除",
+    "calendar.projectNameRequired": "请输入项目名称。",
+    "calendar.projectNameDuplicate": "已经有同名项目。",
+    "calendar.projectCreated": "项目已创建。",
+    "calendar.projectRenamed": "项目已重命名，相关流水已同步更新。",
+    "calendar.projectDeleted": "空项目已删除。",
+    "calendar.projectDeleteLinked": "已有流水的项目不能直接删除，可以先重命名。",
     "calendar.activeDays": "记账天数",
     "calendar.prevMonth": "上个月",
     "calendar.nextMonth": "下个月",
@@ -1794,7 +1816,8 @@ const MESSAGES = {
     "capture.tags": "Tags",
     "capture.project": "Project",
     "capture.projectToggle": "Project Options",
-    "capture.projectPlaceholder": "Race / trip name",
+    "capture.noProject": "No project",
+    "capture.createProjectHint": "Go to Calendar → Projects and tap +",
     "capture.projectOnly": "Project only",
     "capture.note": "Note",
     "capture.notePlaceholder": "Tap to add a note",
@@ -1975,11 +1998,22 @@ const MESSAGES = {
     "calendar.reviewTab": "Review",
     "calendar.projectTab": "Projects",
     "calendar.projectTitle": "Projects",
-    "calendar.projectExpense": "Spent",
-    "calendar.projectEntries": "Entries",
-    "calendar.projectBackfills": "Backfills",
     "calendar.projectFlowTitle": "Project Entries",
-    "calendar.noProject": "No project entries yet. Add a project name while capturing an entry to group it here.",
+    "calendar.noProject": "No projects yet. Tap + to create one.",
+    "calendar.noProjectFlow": "This project has no entries yet.",
+    "calendar.projectManage": "Manage Projects",
+    "calendar.projectCreate": "Create",
+    "calendar.projectNamePlaceholder": "Project name",
+    "calendar.projectRename": "Rename project",
+    "calendar.projectSave": "Save",
+    "calendar.projectDelete": "Delete",
+    "calendar.projectDeleteConfirm": "Confirm",
+    "calendar.projectNameRequired": "Enter a project name.",
+    "calendar.projectNameDuplicate": "A project with that name already exists.",
+    "calendar.projectCreated": "Project created.",
+    "calendar.projectRenamed": "Project renamed and linked entries updated.",
+    "calendar.projectDeleted": "Empty project deleted.",
+    "calendar.projectDeleteLinked": "Projects with entries cannot be deleted directly. Rename it instead.",
     "calendar.activeDays": "Active Days",
     "calendar.prevMonth": "Previous Month",
     "calendar.nextMonth": "Next Month",
@@ -2173,6 +2207,7 @@ function touchPreferences() {
 function normalizePreferenceCollections() {
   state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
   state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
+  state.preferences.projects = normalizeProjectNames(state.preferences.projects);
 }
 
 function chunkList(items, size) {
@@ -2278,6 +2313,7 @@ function applyLedgerState(nextState, { preserveLocale = true } = {}) {
   if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
   state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
   state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
+  state.preferences.projects = normalizeProjectNames(state.preferences.projects);
   state.accounts = [];
 }
 
@@ -2342,6 +2378,10 @@ function switchLedgerStorageOwner(user) {
   state.captureExpandedCategory = "";
   state.captureProjectOpen = false;
   state.wheelPicker = null;
+  state.calendarProject = "";
+  state.calendarProjectManagerOpen = false;
+  state.calendarProjectEditing = "";
+  state.calendarProjectDeleteConfirm = "";
   state.searchOpen = false;
   state.actionRowId = "";
   state.cloudSync.status = "idle";
@@ -3574,10 +3614,6 @@ function transactionAmountClass(txn) {
   return "negative";
 }
 
-function transactionTypeLabel(txn) {
-  return t(txn.type === "income" ? "type.income" : "type.expense");
-}
-
 function download(name, text, type = "application/json;charset=utf-8") {
   const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
@@ -3891,7 +3927,7 @@ function render() {
       </nav>
     </main>
     ${state.auth.loginOpen ? renderAuthDialog() : ""}
-    ${renderWheelPickerModal()}
+    <div data-wheel-picker-root>${renderWheelPickerModal()}</div>
     <input id="csv-import" type="file" accept=".csv,text/csv" hidden>
   `;
   ledgerViewMotionDir = 0;
@@ -4049,6 +4085,7 @@ function renderTransactionIconBadge(txn) {
   const category = txn.category || "其他";
   const title = String(txn.title || "").trim();
   const hasSubcategoryIcon = title
+    && title !== category
     && (SUBCATEGORY_META[`${category}:${title}`] || SUBCATEGORY_META[title]);
   return hasSubcategoryIcon
     ? renderIconBadge(title, "subcategory", "", category)
@@ -4681,55 +4718,108 @@ function selectedCalendarProjectSummary(projects = []) {
   return projects.find((item) => item.project === selected) || projects[0] || null;
 }
 
+function availableProjectNames() {
+  return projectNamesForLedger(state.preferences.projects, activeLedgerState().transactions);
+}
+
+function calendarProjectSummaries() {
+  const summaries = summarizeProjects(activeLedgerState().transactions);
+  const byName = new Map(summaries.map((item) => [item.project, item]));
+  return availableProjectNames().map((project) => byName.get(project) || {
+    project,
+    expense: 0,
+    income: 0,
+    net: 0,
+    count: 0,
+    projectOnlyCount: 0,
+    lastAt: "",
+    transactions: [],
+  });
+}
+
+function renderCalendarProjectManager(projects) {
+  return `
+    <section class="calendar-project-manager" aria-label="${escapeHtml(t("calendar.projectManage"))}">
+      <div class="calendar-project-create-row">
+        <input data-project-create-input maxlength="40" placeholder="${escapeHtml(t("calendar.projectNamePlaceholder"))}">
+        <button class="btn compact" type="button" data-action="create-calendar-project">
+          ${escapeHtml(t("calendar.projectCreate"))}
+        </button>
+      </div>
+      ${projects.length ? `
+        <div class="calendar-project-manage-list">
+          ${projects.map((project) => {
+            const editing = state.calendarProjectEditing === project.project;
+            const confirmingDelete = state.calendarProjectDeleteConfirm === project.project;
+            return `
+              <div class="calendar-project-manage-row ${editing ? "editing" : ""}">
+                ${editing ? `
+                  <input data-project-rename-input maxlength="40" value="${escapeHtml(project.project)}" aria-label="${escapeHtml(t("calendar.projectRename"))}">
+                  <button class="project-manager-action" type="button" data-action="save-calendar-project-name" data-project="${escapeHtml(project.project)}">${escapeHtml(t("calendar.projectSave"))}</button>
+                  <button class="project-manager-action muted" type="button" data-action="cancel-calendar-project-name">${escapeHtml(t("capture.cancel"))}</button>
+                ` : `
+                  <span class="calendar-project-manage-copy">
+                    <strong>${escapeHtml(project.project)}</strong>
+                    <small>${escapeHtml(t("stats.projectCount", { count: project.count }))}</small>
+                  </span>
+                  <button class="project-manager-icon" type="button" data-action="edit-calendar-project-name" data-project="${escapeHtml(project.project)}" aria-label="${escapeHtml(t("calendar.projectRename"))}">
+                    ${glyphSvg("edit")}
+                  </button>
+                  ${project.count ? "" : `
+                    <button class="project-manager-action ${confirmingDelete ? "danger" : "muted"}" type="button" data-action="${confirmingDelete ? "confirm-delete-calendar-project" : "request-delete-calendar-project"}" data-project="${escapeHtml(project.project)}">
+                      ${escapeHtml(confirmingDelete ? t("calendar.projectDeleteConfirm") : t("calendar.projectDelete"))}
+                    </button>
+                  `}
+                `}
+              </div>
+            `;
+          }).join("")}
+        </div>
+      ` : ""}
+    </section>
+  `;
+}
+
 function renderCalendarProjectPanel() {
-  const projects = summarizeProjects(activeLedgerState().transactions);
+  const projects = calendarProjectSummaries();
   const selected = selectedCalendarProjectSummary(projects);
-  if (!selected) {
-    return `<div class="calendar-detail-body"><div class="empty">${escapeHtml(t("calendar.noProject"))}</div></div>`;
-  }
-  const meta = [
-    t("stats.projectCount", { count: selected.count }),
-    selected.projectOnlyCount ? `${selected.projectOnlyCount} ${t("calendar.projectBackfills")}` : "",
-  ].filter(Boolean).join(" · ");
   return `
     <div class="calendar-detail-body calendar-project-body">
-      <div class="calendar-project-list" role="tablist" aria-label="${escapeHtml(t("calendar.projectTitle"))}">
-        ${projects.map((project) => `
-          <button
-            class="calendar-project-chip ${project.project === selected.project ? "active" : ""}"
-            type="button"
-            role="tab"
-            aria-selected="${project.project === selected.project ? "true" : "false"}"
-            data-action="select-calendar-project"
-            data-project="${escapeHtml(project.project)}"
-          >
-            <span>${escapeHtml(project.project)}</span>
-            <strong>${escapeHtml(compactMoney(project.expense))}</strong>
-          </button>
-        `).join("")}
+      <div class="calendar-project-toolbar">
+        <div class="calendar-project-list" role="tablist" aria-label="${escapeHtml(t("calendar.projectTitle"))}">
+          ${projects.length ? projects.map((project) => `
+            <button
+              class="calendar-project-chip ${project.project === selected?.project ? "active" : ""}"
+              type="button"
+              role="tab"
+              aria-selected="${project.project === selected?.project ? "true" : "false"}"
+              data-action="select-calendar-project"
+              data-project="${escapeHtml(project.project)}"
+            >
+              <span>${escapeHtml(project.project)}</span>
+              <strong>${escapeHtml(compactMoney(project.expense))}</strong>
+            </button>
+          `).join("") : `<span class="calendar-project-empty-label">${escapeHtml(t("calendar.noProject"))}</span>`}
+        </div>
+        <button class="calendar-project-add" type="button" data-action="toggle-calendar-project-manager" aria-label="${escapeHtml(t("calendar.projectCreate"))}" aria-expanded="${state.calendarProjectManagerOpen ? "true" : "false"}">
+          ${glyphSvg("plus")}
+        </button>
       </div>
-
-      <div class="calendar-project-detail">
-        <div class="calendar-project-heading">
-          ${renderIconBadge("旅行", "category", "small")}
-          <div>
-            <h2>${escapeHtml(selected.project)}</h2>
-            <span>${escapeHtml(meta)}</span>
+      ${state.calendarProjectManagerOpen ? renderCalendarProjectManager(projects) : ""}
+      ${selected ? `
+        <div class="calendar-project-detail">
+          <div class="section-title inline-section-title calendar-project-flow-title">
+            <div>
+              <h2>${escapeHtml(t("calendar.projectFlowTitle"))}<span class="calendar-project-count">${selected.count}</span></h2>
+            </div>
+          </div>
+          <div class="list calendar-project-flow">
+            ${selected.transactions.length
+              ? selected.transactions.map(renderTransactionRow).join("")
+              : `<div class="empty">${escapeHtml(t("calendar.noProjectFlow"))}</div>`}
           </div>
         </div>
-        <div class="hero-grid calendar-project-metrics">
-          ${renderStat(t("calendar.projectExpense"), compactMoney(selected.expense))}
-          ${renderStat(t("calendar.projectEntries"), String(selected.count))}
-        </div>
-        <div class="section-title inline-section-title calendar-project-flow-title">
-          <div>
-            <h2>${escapeHtml(t("calendar.projectFlowTitle"))}</h2>
-          </div>
-        </div>
-        <div class="list calendar-project-flow">
-          ${selected.transactions.map(renderTransactionRow).join("")}
-        </div>
-      </div>
+      ` : ""}
     </div>
   `;
 }
@@ -5473,6 +5563,31 @@ function renderStat(label, value) {
   `;
 }
 
+function renderCaptureProjectChoice(selectedProject = "") {
+  const selected = normalizeProjectLabel(selectedProject);
+  const projects = normalizeProjectNames([selected, ...availableProjectNames()]);
+  return `
+    <div class="capture-project-choice">
+      <input type="hidden" name="project" value="${escapeHtml(selected)}">
+      <div class="capture-project-choice-list" role="listbox" aria-label="${escapeHtml(t("capture.project"))}">
+        <button class="capture-project-option ${selected ? "" : "active"}" type="button" role="option" aria-selected="${selected ? "false" : "true"}" data-action="pick-capture-project" data-project="">
+          ${escapeHtml(t("capture.noProject"))}
+        </button>
+        ${projects.map((project) => `
+          <button class="capture-project-option ${selected === project ? "active" : ""}" type="button" role="option" aria-selected="${selected === project ? "true" : "false"}" data-action="pick-capture-project" data-project="${escapeHtml(project)}">
+            ${escapeHtml(project)}
+          </button>
+        `).join("")}
+      </div>
+      ${projects.length ? "" : `
+        <button class="capture-project-create-link" type="button" data-action="open-calendar-project-manager">
+          ${escapeHtml(t("capture.createProjectHint"))}
+        </button>
+      `}
+    </div>
+  `;
+}
+
 function renderCaptureForm(editingTransaction) {
   const sourceTxn = editingTransaction
     ? { ...editingTransaction, ...(state.captureDraft || {}) }
@@ -5532,12 +5647,9 @@ function renderCaptureForm(editingTransaction) {
           </label>
         </div>
         <div class="capture-project-row ${projectPanelOpen ? "open" : ""}">
-          <label class="capture-project-field">
-            <span>${escapeHtml(t("capture.project"))}</span>
-            <input name="project" value="${escapeHtml(txn.project || "")}" placeholder="${escapeHtml(t("capture.projectPlaceholder"))}">
-          </label>
+          ${renderCaptureProjectChoice(txn.project)}
           <label class="capture-project-only-field">
-            <input type="checkbox" name="projectOnly" value="true" ${txn.projectOnly ? "checked" : ""}>
+            <input type="checkbox" name="projectOnly" value="true" ${txn.projectOnly ? "checked" : ""} ${txn.project ? "" : "disabled"}>
             <span>${escapeHtml(t("capture.projectOnly"))}</span>
           </label>
         </div>
@@ -5724,10 +5836,13 @@ function syncWheelColumnSelection(column, value) {
   });
 }
 
-function positionWheelPickerColumns() {
+function positionWheelPickerColumns(fieldName = "") {
   const picker = state.wheelPicker;
   if (!picker) return;
-  document.querySelectorAll("[data-wheel-column]").forEach((column) => {
+  const selector = fieldName
+    ? `[data-wheel-column][data-wheel-field="${fieldName}"]`
+    : "[data-wheel-column]";
+  document.querySelectorAll(selector).forEach((column) => {
     const field = column.dataset.wheelField;
     const value = picker[field];
     const options = [...column.querySelectorAll(".wheel-option")];
@@ -5735,6 +5850,32 @@ function positionWheelPickerColumns() {
     column.scrollTop = index * WHEEL_ITEM_HEIGHT;
     syncWheelColumnSelection(column, value);
   });
+}
+
+function syncWheelPickerLayer() {
+  document.body.classList.toggle("wheel-picker-open", Boolean(state.wheelPicker));
+  const root = document.querySelector("[data-wheel-picker-root]");
+  if (!root) return;
+  root.innerHTML = renderWheelPickerModal();
+  requestAnimationFrame(positionWheelPickerColumns);
+}
+
+function refreshWheelPickerDayColumn() {
+  const picker = state.wheelPicker;
+  const current = document.querySelector("[data-wheel-picker-root] .wheel-column-day");
+  if (!picker || picker.kind !== "date" || !current) return;
+  const maxDay = daysInPickerMonth(picker.year, picker.month);
+  if (current.querySelectorAll(".wheel-option").length === maxDay) {
+    requestAnimationFrame(() => positionWheelPickerColumns("day"));
+    return;
+  }
+  current.outerHTML = renderWheelColumn(
+    "day",
+    wheelNumberOptions(1, maxDay, "picker.day"),
+    picker.day,
+    t("picker.day"),
+  );
+  requestAnimationFrame(() => positionWheelPickerColumns("day"));
 }
 
 function renderAmountKeypad(isEditing = false) {
@@ -5846,7 +5987,6 @@ function renderTransactionRow(txn) {
   const accountMeta = [
     projectOnly ? "" : formatWhen(txn.occurredAt),
     projectOnly ? "" : captureTimeSegmentLabel(txn.occurredAt),
-    transactionTypeLabel(txn),
   ].filter(Boolean).join(" · ");
   const projectMeta = project || projectOnly
     ? `<span class="txn-project-meta">
@@ -6302,7 +6442,7 @@ function openWheelPicker(kind, context, trigger) {
       context: "capture",
       segment: captureTimeSegmentId(occurredAt),
     };
-    render();
+    syncWheelPickerLayer();
     return;
   }
 
@@ -6324,7 +6464,7 @@ function openWheelPicker(kind, context, trigger) {
     minYear: Math.min(baseMinYear, parts.year),
     maxYear: Math.max(baseMaxYear, parts.year),
   };
-  render();
+  syncWheelPickerLayer();
 }
 
 function updateWheelPickerField(field, rawValue) {
@@ -6337,6 +6477,9 @@ function updateWheelPickerField(field, rawValue) {
   }
   if (!["year", "month", "day"].includes(field)) return false;
   const value = Number(rawValue);
+  if (field === "year" && (value < picker.minYear || value > picker.maxYear)) return false;
+  if (field === "month" && (value < 1 || value > 12)) return false;
+  if (field === "day" && (value < 1 || value > daysInPickerMonth(picker.year, picker.month))) return false;
   if (!Number.isInteger(value) || picker[field] === value) return false;
   picker[field] = value;
   picker.day = Math.min(picker.day, daysInPickerMonth(picker.year, picker.month));
@@ -6359,7 +6502,7 @@ function selectWheelItem(option) {
   const index = Math.max(0, options.indexOf(option));
   column?.scrollTo({ top: index * WHEEL_ITEM_HEIGHT, behavior: "auto" });
   syncWheelColumnSelection(column, value);
-  if (changed && ["year", "month"].includes(field)) render();
+  if (changed && ["year", "month"].includes(field)) refreshWheelPickerDayColumn();
 }
 
 function settleWheelColumnsFromDom() {
@@ -6378,7 +6521,8 @@ function handleWheelColumnScroll(event) {
     const value = wheelColumnValue(column);
     const changed = updateWheelPickerField(field, value);
     if (changed && ["year", "month"].includes(field)) {
-      render();
+      syncWheelColumnSelection(column, value);
+      refreshWheelPickerDayColumn();
       return;
     }
     syncWheelColumnSelection(column, value);
@@ -6388,7 +6532,7 @@ function handleWheelColumnScroll(event) {
 
 function closeWheelPicker() {
   state.wheelPicker = null;
-  render();
+  syncWheelPickerLayer();
 }
 
 function confirmWheelPicker() {
@@ -6396,24 +6540,128 @@ function confirmWheelPicker() {
   settleWheelColumnsFromDom();
   const picker = { ...state.wheelPicker };
   if (picker.context === "profile") {
+    const dateValue = pickerDateKey(picker);
     state.profile.draft = {
       ...state.profile.draft,
-      birthDate: pickerDateKey(picker),
+      birthDate: dateValue,
     };
+    const form = document.querySelector("#profile-form");
+    const field = form?.elements?.namedItem("birthDate");
+    if (field) field.value = dateValue;
+    const trigger = form?.querySelector(".profile-date-trigger");
+    if (trigger) trigger.textContent = formatPickerDateLabel(dateValue);
   } else {
     const form = document.querySelector("#transaction-form");
     if (picker.kind === "date") {
+      const dateValue = pickerDateKey(picker);
       const dateField = form?.elements?.namedItem("occurredDate");
-      if (dateField) dateField.value = pickerDateKey(picker);
+      if (dateField) dateField.value = dateValue;
+      const label = form?.querySelector(".capture-date-trigger > span:first-child");
+      if (label) label.textContent = formatPickerDateLabel(dateValue);
     } else {
       const segment = CAPTURE_TIME_SEGMENTS.find((item) => item.id === picker.segment) || CAPTURE_TIME_SEGMENTS[0];
       const occurredAt = form?.elements?.namedItem("occurredAt");
       if (occurredAt) occurredAt.value = dateInputValueWithHour(occurredAt.value || new Date(), segment.hour);
+      const label = form?.querySelector(".capture-time-trigger > span:first-child");
+      if (label) label.textContent = t(segment.labelKey);
     }
     syncCaptureDraftFromForm(form);
   }
   state.wheelPicker = null;
+  syncWheelPickerLayer();
+}
+
+function projectNameFromInput(scope, selector) {
+  return normalizeProjectLabel(scope?.querySelector(selector)?.value || "");
+}
+
+function validateProjectName(name, currentName = "") {
+  if (!name) {
+    toast(t("calendar.projectNameRequired"));
+    return false;
+  }
+  const duplicate = availableProjectNames().some((item) => item === name && item !== currentName);
+  if (duplicate) {
+    toast(t("calendar.projectNameDuplicate"));
+    return false;
+  }
+  return true;
+}
+
+function createCalendarProject(trigger) {
+  const manager = trigger.closest(".calendar-project-manager");
+  const project = projectNameFromInput(manager, "[data-project-create-input]");
+  if (!validateProjectName(project)) return;
+  state.preferences.projects = normalizeProjectNames([...(state.preferences.projects || []), project]);
+  state.calendarProject = project;
+  state.calendarProjectEditing = "";
+  state.calendarProjectDeleteConfirm = "";
+  touchPreferences();
+  persist();
   render();
+  toast(t("calendar.projectCreated"));
+}
+
+function saveCalendarProjectName(trigger) {
+  const currentName = normalizeProjectLabel(trigger.dataset.project);
+  const row = trigger.closest(".calendar-project-manage-row");
+  const nextName = projectNameFromInput(row, "[data-project-rename-input]");
+  if (!validateProjectName(nextName, currentName)) return;
+  state.preferences.projects = normalizeProjectNames(
+    (state.preferences.projects || []).map((project) => (
+      normalizeProjectLabel(project) === currentName ? nextName : project
+    )),
+  );
+  state.transactions = renameProjectTransactions(state.transactions, currentName, nextName);
+  if (normalizeProjectLabel(state.calendarProject) === currentName) state.calendarProject = nextName;
+  state.calendarProjectEditing = "";
+  state.calendarProjectDeleteConfirm = "";
+  touchPreferences();
+  persist();
+  render();
+  toast(t("calendar.projectRenamed"));
+}
+
+function deleteCalendarProject(projectName) {
+  const project = calendarProjectSummaries().find((item) => item.project === normalizeProjectLabel(projectName));
+  if (!project) return;
+  if (project.count) {
+    state.calendarProjectDeleteConfirm = "";
+    toast(t("calendar.projectDeleteLinked"));
+    render();
+    return;
+  }
+  state.preferences.projects = normalizeProjectNames(
+    (state.preferences.projects || []).filter((item) => normalizeProjectLabel(item) !== project.project),
+  );
+  const remaining = availableProjectNames();
+  if (normalizeProjectLabel(state.calendarProject) === project.project) state.calendarProject = remaining[0] || "";
+  state.calendarProjectEditing = "";
+  state.calendarProjectDeleteConfirm = "";
+  touchPreferences();
+  persist();
+  render();
+  toast(t("calendar.projectDeleted"));
+}
+
+function pickCaptureProject(trigger) {
+  const form = trigger.closest("#transaction-form");
+  if (!form) return;
+  const project = normalizeProjectLabel(trigger.dataset.project);
+  const field = form.elements.namedItem("project");
+  if (field) field.value = project;
+  form.querySelectorAll("[data-action=\"pick-capture-project\"]").forEach((option) => {
+    const active = normalizeProjectLabel(option.dataset.project) === project;
+    option.classList.toggle("active", active);
+    option.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  const projectOnly = form.elements.namedItem("projectOnly");
+  if (projectOnly) {
+    projectOnly.disabled = !project;
+    if (!project) projectOnly.checked = false;
+  }
+  syncProjectOnlyMode(form);
+  syncCaptureDraftFromForm(form);
 }
 
 document.addEventListener("pointerdown", (event) => {
@@ -6458,6 +6706,16 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && state.wheelPicker) {
     event.preventDefault();
     closeWheelPicker();
+    return;
+  }
+  if (event.key === "Enter" && event.target.matches?.("[data-project-create-input]")) {
+    event.preventDefault();
+    event.target.closest(".calendar-project-manager")?.querySelector("[data-action=\"create-calendar-project\"]")?.click();
+    return;
+  }
+  if (event.key === "Enter" && event.target.matches?.("[data-project-rename-input]")) {
+    event.preventDefault();
+    event.target.closest(".calendar-project-manage-row")?.querySelector("[data-action=\"save-calendar-project-name\"]")?.click();
     return;
   }
   if (!["Enter", " "].includes(event.key)) return;
@@ -6681,6 +6939,19 @@ document.addEventListener("click", (event) => {
     state.captureProjectOpen = !state.captureProjectOpen;
     render();
   }
+  if (action === "pick-capture-project") {
+    pickCaptureProject(node);
+  }
+  if (action === "open-calendar-project-manager") {
+    syncCaptureDraftFromForm(node.closest("#transaction-form"));
+    state.activeTab = "calendar";
+    state.calendarPanel = "project";
+    state.calendarProjectManagerOpen = true;
+    state.calendarProjectEditing = "";
+    state.calendarProjectDeleteConfirm = "";
+    render();
+    requestAnimationFrame(() => document.querySelector("[data-project-create-input]")?.focus());
+  }
   if (action === "activate-budget-keypad") {
     syncBudgetDraftFromForm(node.closest("form"));
     state.budgetKeypadCategory = state.budgetKeypadCategory === node.dataset.category
@@ -6749,6 +7020,43 @@ document.addEventListener("click", (event) => {
       ? node.dataset.panel
       : "summary";
     render();
+  }
+  if (action === "toggle-calendar-project-manager") {
+    state.calendarProjectManagerOpen = !state.calendarProjectManagerOpen;
+    state.calendarProjectEditing = "";
+    state.calendarProjectDeleteConfirm = "";
+    render();
+    if (state.calendarProjectManagerOpen) {
+      requestAnimationFrame(() => document.querySelector("[data-project-create-input]")?.focus());
+    }
+  }
+  if (action === "create-calendar-project") {
+    createCalendarProject(node);
+  }
+  if (action === "edit-calendar-project-name") {
+    state.calendarProjectEditing = normalizeProjectLabel(node.dataset.project);
+    state.calendarProjectDeleteConfirm = "";
+    render();
+    requestAnimationFrame(() => {
+      const input = document.querySelector("[data-project-rename-input]");
+      input?.focus();
+      input?.select();
+    });
+  }
+  if (action === "cancel-calendar-project-name") {
+    state.calendarProjectEditing = "";
+    render();
+  }
+  if (action === "save-calendar-project-name") {
+    saveCalendarProjectName(node);
+  }
+  if (action === "request-delete-calendar-project") {
+    state.calendarProjectDeleteConfirm = normalizeProjectLabel(node.dataset.project);
+    state.calendarProjectEditing = "";
+    render();
+  }
+  if (action === "confirm-delete-calendar-project") {
+    deleteCalendarProject(node.dataset.project);
   }
   if (action === "select-calendar-project") {
     state.calendarPanel = "project";

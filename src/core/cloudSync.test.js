@@ -274,6 +274,26 @@ test("keeps local starting assets when cloud only has the default zero", () => {
   assert.equal(merged.preferences.startingAssets, 1977.45);
 });
 
+test("keeps the local-only project catalog during cloud merge", () => {
+  const merged = mergeLedgerStates({
+    transactions: [],
+    budgets: {},
+    preferences: {
+      projects: ["东北 100 家", "崇礼越野赛"],
+      updatedAt: "2026-07-12T10:00:00+08:00",
+    },
+  }, {
+    transactions: [],
+    budgets: {},
+    preferences: {
+      locale: "zh",
+      updatedAt: "2026-07-12T11:00:00+08:00",
+    },
+  });
+
+  assert.deepEqual(merged.preferences.projects, ["东北 100 家", "崇礼越野赛"]);
+});
+
 test("uses newer non-zero cloud starting assets", () => {
   const merged = mergeLedgerStates({
     transactions: [],

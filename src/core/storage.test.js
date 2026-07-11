@@ -54,7 +54,7 @@ test("detects whether an account-specific cache exists", () => {
   assert.equal(hasStateForOwner("user-456", storage), false);
 });
 
-test("fills missing starting assets preference with zero", () => {
+test("fills missing local preference collections with safe defaults", () => {
   const storage = createMemoryStorage();
   saveStateForOwner({
     transactions: [],
@@ -63,5 +63,7 @@ test("fills missing starting assets preference with zero", () => {
     preferences: {},
   }, "user-123", storage);
 
-  assert.equal(loadStateForOwner("user-123", storage).preferences.startingAssets, 0);
+  const preferences = loadStateForOwner("user-123", storage).preferences;
+  assert.equal(preferences.startingAssets, 0);
+  assert.deepEqual(preferences.projects, []);
 });

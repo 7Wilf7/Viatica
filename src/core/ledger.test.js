@@ -5,8 +5,11 @@ import {
   filterTransactions,
   isProjectOnlyTransaction,
   normalizeBudgets,
+  normalizeProjectNames,
   normalizeTransaction,
+  projectNamesForLedger,
   projectLabelFromTags,
+  renameProjectTransactions,
   sanitizeLedgerAccounts,
   summarizeLedger,
   summarizeProjects,
@@ -122,6 +125,49 @@ test("keeps repayment as an expense category and retires learning to other", () 
   assert.equal(budgets["还款"], 2000);
   assert.equal(budgets["其他"], 600);
   assert.equal("学习" in budgets, false);
+});
+
+test("updates legacy capture labels to the current category presentation", () => {
+  const legacyRepayment = normalizeTransaction({ amount: 1800, category: "其他", title: "还款" });
+  const legacySupply = normalizeTransaction({ amount: 18, category: "运动", title: "运动饮料" });
+  const legacyMassage = normalizeTransaction({ amount: 120, category: "运动", title: "康复" });
+  const legacyFee = normalizeTransaction({ amount: 2, category: "其他", title: "提现手续费" });
+
+  assert.deepEqual(
+    [legacyRepayment, legacySupply, legacyMassage, legacyFee].map(({ category, title }) => ({ category, title })),
+    [
+      { category: "还款", title: "还款" },
+      { category: "运动", title: "补给" },
+      { category: "运动", title: "按摩" },
+      { category: "其他", title: "手续费" },
+    ],
+  );
+});
+
+test("normalizes a project catalog and renames linked transaction tags", () => {
+  const transaction = normalizeTransaction({
+    id: "txn_project",
+    amount: 388,
+    category: "运动",
+    title: "报名费",
+    project: "东北 100",
+    projectOnly: true,
+    tags: ["race"],
+  });
+  const catalog = normalizeProjectNames([" 东北 100 ", "东北 100", { name: "崇礼越野赛" }, ""]);
+  const renamed = renameProjectTransactions(
+    [transaction],
+    "东北 100",
+    "东北 100 家",
+    new Date("2026-07-12T08:00:00Z"),
+  );
+
+  assert.deepEqual(catalog, ["东北 100", "崇礼越野赛"]);
+  assert.deepEqual(projectNamesForLedger(["新项目"], [transaction]), ["新项目", "东北 100"]);
+  assert.equal(renamed[0].project, "东北 100 家");
+  assert.equal(projectLabelFromTags(renamed[0].tags), "东北 100 家");
+  assert.equal(isProjectOnlyTransaction(renamed[0]), true);
+  assert.equal(renamed[0].updatedAt, "2026-07-12T08:00:00.000Z");
 });
 
 test("filters transactions by book and query", () => {
