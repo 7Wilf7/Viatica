@@ -64,6 +64,7 @@ import {
   summarizeLedger,
   summarizeProjects,
 } from "./core/ledger.js";
+import { clearPwaCacheAndReload } from "./core/pwa.js";
 import {
   DEFAULT_LEDGER_PERIOD,
   ledgerPeriodRange,
@@ -1551,9 +1552,9 @@ const MESSAGES = {
     "settings.recurringPageHint": "周期项目只生成待确认提醒，不会自动写入正式账本。",
     "settings.noRecurring": "还没有周期账单。长按流水或在日期明细里点“设为周期”。",
     "settings.pwaTitle": "PWA 更新",
-    "settings.pwaHint": "更新后仍看到旧界面时使用；不会清除 viatica:v1 账本数据。",
-    "settings.clearing": "正在清理...",
-    "settings.clearCache": "清缓存并重载",
+    "settings.pwaHint": "更新后强制加载最新版本，不会删除本机数据",
+    "settings.clearing": "正在清理缓存…",
+    "settings.clearCache": "清除缓存并重载",
     "settings.version": "版本",
     "settings.viewRecent": "查看最近更新",
     "settings.checkUpdate": "检查更新",
@@ -1823,9 +1824,9 @@ const MESSAGES = {
     "settings.recurringPageHint": "Recurring items create pending reminders only. They never enter the official ledger without confirmation.",
     "settings.noRecurring": "No recurring bills yet. Long-press an entry or use day details to mark one recurring.",
     "settings.pwaTitle": "PWA Refresh",
-    "settings.pwaHint": "Use this when the app still shows an old interface; viatica:v1 ledger data is kept.",
-    "settings.clearing": "Clearing...",
-    "settings.clearCache": "Clear Cache And Reload",
+    "settings.pwaHint": "Force the latest version after an update without deleting local data",
+    "settings.clearing": "Clearing cache…",
+    "settings.clearCache": "Clear Cache & Reload",
     "settings.version": "Version",
     "settings.viewRecent": "View Recent Updates",
     "settings.checkUpdate": "Check Updates",
@@ -4779,7 +4780,7 @@ function renderSettingsTab() {
       ${isNativeApp() ? "" : renderSettingsSection(t("settings.localSection"), [
         renderSettingsCell(
           state.pwaRefreshInProgress ? t("settings.clearing") : t("settings.clearCache"),
-          "",
+          state.pwaRefreshInProgress ? "" : t("settings.pwaHint"),
           "",
           "clear-cache-reload",
           state.pwaRefreshInProgress,
@@ -5814,25 +5815,6 @@ function applyAmountKey(button) {
   }
 }
 
-async function clearPwaCacheAndReload() {
-  if (state.pwaRefreshInProgress) return;
-  state.pwaRefreshInProgress = true;
-  render();
-  try {
-    if ("serviceWorker" in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map((registration) => registration.unregister()));
-    }
-    if ("caches" in globalThis) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((key) => caches.delete(key)));
-    }
-  } catch (err) {
-    console.warn("[clear-cache] failed:", err);
-  }
-  window.location.reload();
-}
-
 async function checkForAppUpdate() {
   if (state.update.status === "checking") return;
   state.update.showNotes = false;
@@ -6487,7 +6469,10 @@ document.addEventListener("click", (event) => {
     }));
   }
   if (action === "clear-cache-reload") {
-    clearPwaCacheAndReload();
+    if (state.pwaRefreshInProgress) return;
+    state.pwaRefreshInProgress = true;
+    render();
+    void clearPwaCacheAndReload();
   }
   if (action === "check-update") {
     checkForAppUpdate();

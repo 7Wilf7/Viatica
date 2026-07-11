@@ -1,5 +1,10 @@
 # PWA Stale-Shell Recovery
 
+The Settings action labelled `清除缓存并重载` uses the same family-wide
+refresh flow as Aevum, Ultreia, and Sidera: unregister service workers, delete
+Cache Storage, then reload through a timestamped URL. It does not delete the
+local `viatica:v1` ledger or account session.
+
 ## Problem
 
 An installed PWA can keep an old HTML shell that references a hashed JavaScript
