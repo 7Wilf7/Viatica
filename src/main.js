@@ -145,6 +145,10 @@ let bootSplashDismissTimer = 0;
 const bootSplashStartedAt = globalThis.performance?.now?.() || Date.now();
 let ledgerStorageOwnerId = "";
 let signedOutLedgerDirty = false;
+const tabScrollPositions = new Map();
+let ledgerEditReturnAnchor = null;
+let pendingLedgerReturnAnchor = null;
+let scrollRestoreRevision = 0;
 const storedState = loadState();
 const storedTransactions = normalizeTransactionList(storedState.transactions);
 const state = {
@@ -839,19 +843,23 @@ const CHANGELOG_ENTRIES = [
   {
     date: "2026-07-11",
     title: {
-      zh: "移动端流水与添加页修复",
-      en: "Mobile Ledger And Capture Fixes",
+      zh: "移动端滚动、日历与添加页修复",
+      en: "Mobile Scroll, Calendar, And Capture Fixes",
     },
     items: {
       zh: [
         "长按流水后的再记、编辑、周期和删除改为在当前流水下方展开，不再被横向裁切，也不会因后台刷新自动消失。",
         "最近常用按收入 / 支出分别显示，并压缩为一行；模板和分类共同在中间区域滚动，不再覆盖子分类。",
         "编辑流水时，分类内容可以滚动，金额键盘和保存修改按钮保持在底部可见。",
+        "账本和日历在后台同步或切换局部视图后保留滚动位置；编辑流水保存或取消后回到原流水。",
+        "日历标题栏压缩并把回到今天移到月份右侧；常用模板改为按使用次数排序，并把备注纳入匹配。",
       ],
       en: [
         "Long-press actions now expand below the current entry, stay visible across background refreshes, and keep Repeat, Edit, Recurring, and Delete reachable without horizontal clipping.",
         "Recent templates are filtered by income or expense and compressed into one row; templates and categories now share the middle scroll area without covering subcategories.",
         "When editing an entry, category content scrolls while the amount keypad and Save Changes action remain visible at the bottom.",
+        "Ledger and Calendar now preserve their scroll position across background sync and local view changes; saving or cancelling an edit returns to the original row.",
+        "The Calendar header is denser with Today beside the month; frequent templates now rank by use count and include notes in their match pattern.",
       ],
     },
   },
@@ -1483,7 +1491,7 @@ const MESSAGES = {
     "capture.keypadClear": "清空",
     "capture.saveEdit": "保存修改",
     "capture.save": "保存流水",
-    "capture.templatesTitle": "最近常用",
+    "capture.templatesTitle": "常用",
     "capture.noTemplates": "保存几笔后会出现常用模板。",
     "ledger.title": "账本",
     "ledger.overview": "账本概览",
@@ -1755,7 +1763,7 @@ const MESSAGES = {
     "capture.keypadClear": "Clear",
     "capture.saveEdit": "Save Changes",
     "capture.save": "Save Entry",
-    "capture.templatesTitle": "Recent Templates",
+    "capture.templatesTitle": "Frequent",
     "capture.noTemplates": "Saved repeats will appear here.",
     "ledger.title": "Ledger",
     "ledger.overview": "Ledger Overview",
@@ -2502,6 +2510,57 @@ function syncTransactionDelete(id, options = {}) {
 
 function activePagerPane() {
   return document.querySelector(".tab-pager-pane[data-active=\"true\"]");
+}
+
+function captureTabScrollPositions() {
+  app.querySelectorAll(".tab-pager-pane[data-tab-id]").forEach((pane) => {
+    const tabId = pane.dataset.tabId;
+    if (tabId) tabScrollPositions.set(tabId, pane.scrollTop || 0);
+  });
+}
+
+function restoreStoredTabScrollPositions() {
+  app.querySelectorAll(".tab-pager-pane[data-tab-id]").forEach((pane) => {
+    const storedTop = tabScrollPositions.get(pane.dataset.tabId);
+    if (Number.isFinite(storedTop)) pane.scrollTop = storedTop;
+  });
+}
+
+function transactionReturnAnchor(node) {
+  const row = node?.closest?.(".txn-row[data-transaction-id]");
+  const pane = row?.closest?.(".tab-pager-pane[data-tab-id=\"ledger\"]");
+  if (!row || !pane) return null;
+  return {
+    id: row.dataset.transactionId || "",
+    offsetTop: row.getBoundingClientRect().top - pane.getBoundingClientRect().top,
+  };
+}
+
+function restorePendingLedgerAnchor() {
+  if (!pendingLedgerReturnAnchor || state.activeTab !== "ledger") return;
+  const pane = document.querySelector(".tab-pager-pane[data-tab-id=\"ledger\"]");
+  const row = [...document.querySelectorAll(".txn-row[data-transaction-id]")]
+    .find((item) => item.dataset.transactionId === pendingLedgerReturnAnchor.id);
+  if (!pane || !row) {
+    pendingLedgerReturnAnchor = null;
+    return;
+  }
+  const delta = row.getBoundingClientRect().top
+    - pane.getBoundingClientRect().top
+    - pendingLedgerReturnAnchor.offsetTop;
+  pane.scrollTop += delta;
+  tabScrollPositions.set("ledger", pane.scrollTop);
+  pendingLedgerReturnAnchor = null;
+}
+
+function restoreScrollPositionsAfterRender() {
+  const revision = ++scrollRestoreRevision;
+  restoreStoredTabScrollPositions();
+  requestAnimationFrame(() => {
+    if (revision !== scrollRestoreRevision) return;
+    restoreStoredTabScrollPositions();
+    restorePendingLedgerAnchor();
+  });
 }
 
 function tabStageScrollTop() {
@@ -3474,7 +3533,7 @@ function applyTransactionTemplate(template) {
     merchant: template.merchant || "",
     amount: template.amount || "",
     currency: template.currency || "CNY",
-    note: "",
+    note: template.note || "",
   };
   state.captureProjectOpen = false;
   state.editingTransactionId = null;
@@ -3722,6 +3781,7 @@ function renderPagerStripStyle() {
 }
 
 function render() {
+  captureTabScrollPositions();
   document.documentElement.lang = state.preferences.locale === "en" ? "en" : "zh-CN";
   syncPagerForRender();
   const activeState = activeLedgerState();
@@ -3748,6 +3808,7 @@ function render() {
     <input id="csv-import" type="file" accept=".csv,text/csv" hidden>
   `;
   ledgerViewMotionDir = 0;
+  restoreScrollPositionsAfterRender();
   scheduleBootSplashDismiss();
 }
 
@@ -4355,7 +4416,7 @@ function renderStatsCharts(transactions, entries, total) {
 function renderCalendarTab() {
   const view = state.calendarView || { year: new Date().getFullYear(), month: new Date().getMonth() };
   return `
-    <section class="panel">
+    <section class="panel calendar-month-panel">
       <div class="calendar-toolbar">
         <button class="icon-button calendar-nav-button" type="button" data-action="calendar-prev-month" aria-label="${escapeHtml(t("calendar.prevMonth"))}">
           ‹
@@ -5404,12 +5465,16 @@ function renderCaptureTemplateStrip(type = "all") {
         <span>${escapeHtml(t("capture.templatesTitle"))}</span>
       </div>
       <div class="capture-template-list">
-        ${templates.map((template, index) => `
-          <button class="capture-template-chip ${template.type === "income" ? "income" : "expense"}" type="button" data-action="apply-template" data-template-index="${index}" data-template-type="${escapeHtml(template.type)}">
-            <span>${escapeHtml(template.title || template.merchant || template.category)}</span>
-            <strong>${escapeHtml(compactMoney(template.amount, template.currency))}</strong>
-          </button>
-        `).join("")}
+        ${templates.map((template, index) => {
+          const title = template.title || template.merchant || template.category;
+          const label = template.note ? `${title} · ${template.note}` : title;
+          return `
+            <button class="capture-template-chip ${template.type === "income" ? "income" : "expense"}" type="button" data-action="apply-template" data-template-index="${index}" data-template-type="${escapeHtml(template.type)}">
+              <span>${escapeHtml(label)}</span>
+              <strong>${escapeHtml(compactMoney(template.amount, template.currency))}</strong>
+            </button>
+          `;
+        }).join("")}
       </div>
     </section>
   `;
@@ -6133,6 +6198,8 @@ document.addEventListener("submit", (event) => {
       });
       state.transactions = state.transactions.map((item) => item.id === txn.id ? txn : item);
       state.editingTransactionId = null;
+      pendingLedgerReturnAnchor = ledgerEditReturnAnchor;
+      ledgerEditReturnAnchor = null;
       cloudTransaction = txn;
       cloudMode = "update";
       rememberTransaction(txn);
@@ -6140,6 +6207,7 @@ document.addEventListener("submit", (event) => {
     } else {
       state.transactions.unshift(data);
       state.captureDraft = null;
+      tabScrollPositions.set("ledger", 0);
       rememberTransaction(data);
       if (pendingRecurringRuleId) {
         advanceRecurringPreference(pendingRecurringRuleId, todayKey(data.occurredAt));
@@ -6227,6 +6295,7 @@ document.addEventListener("click", (event) => {
     return;
   }
   const action = node.dataset.action;
+  const editReturnAnchor = action === "edit" ? transactionReturnAnchor(node) : null;
   if (!node.closest(".action-row.action-open") || node.closest(".txn-actions")) closeActionRows();
   if (!node.closest("[data-ledger-period-control]")) closeLedgerPeriodMenu();
 
@@ -6292,6 +6361,8 @@ document.addEventListener("click", (event) => {
   }
   if (action === "open-capture") {
     state.editingTransactionId = null;
+    ledgerEditReturnAnchor = null;
+    pendingLedgerReturnAnchor = null;
     state.captureProjectOpen = false;
     state.pendingRecurringRuleId = "";
     state.activeTab = "capture";
@@ -6483,12 +6554,20 @@ document.addEventListener("click", (event) => {
     toast(t("settings.budgetResetDone"));
   }
   if (action === "cancel-edit") {
+    const returningToLedger = Boolean(state.editingTransactionId);
+    if (returningToLedger) pendingLedgerReturnAnchor = ledgerEditReturnAnchor;
+    ledgerEditReturnAnchor = null;
     state.editingTransactionId = null;
     state.captureProjectOpen = false;
     state.pendingRecurringRuleId = "";
+    if (returningToLedger) {
+      state.activeTab = "ledger";
+      state.ledgerView = "flow";
+    }
     render();
   }
   if (action === "edit") {
+    ledgerEditReturnAnchor = editReturnAnchor;
     state.captureDraft = null;
     state.captureProjectOpen = false;
     state.pendingRecurringRuleId = "";

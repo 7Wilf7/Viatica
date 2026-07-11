@@ -154,6 +154,7 @@ export function recentTemplates(transactions = [], limit = 6, type = "all") {
       transactionType,
       txn.category || "",
       normalizedKeyText(basis || txn.title),
+      normalizedKeyText(txn.note),
     ].join(":");
     if (!basis && !txn.title) continue;
     const existing = byKey.get(key);
@@ -167,7 +168,7 @@ export function recentTemplates(transactions = [], limit = 6, type = "all") {
         merchant: txn.merchant || "",
         amount: Number(txn.amount || 0),
         currency: txn.currency || "CNY",
-        note: "",
+        note: String(txn.note || "").trim(),
         lastOccurredAt: occurredAt.toISOString(),
         count: (existing?.count || 0) + 1,
       });
@@ -176,7 +177,10 @@ export function recentTemplates(transactions = [], limit = 6, type = "all") {
     }
   }
   return [...byKey.values()]
-    .sort((a, b) => Number(new Date(b.lastOccurredAt)) - Number(new Date(a.lastOccurredAt)))
+    .sort((a, b) => (
+      b.count - a.count
+      || Number(new Date(b.lastOccurredAt)) - Number(new Date(a.lastOccurredAt))
+    ))
     .slice(0, limit);
 }
 

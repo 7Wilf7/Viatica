@@ -68,8 +68,10 @@ not grant shared access to private ledger data.
   chips, and a built-in amount keypad keeps the system keyboard out of the main
   path. A compact date control supports backfill, and recent templates or a
   repeated transaction may prefill a draft without saving it automatically.
-  Recent templates stay in one compact row, filter to the active expense or
-  income type, and share the middle scroll region with categories.
+  Frequent templates stay in one compact row, filter to the active expense or
+  income type, rank by use count with recency as the tie-breaker, and share the
+  middle scroll region with categories. Notes are part of a template's pattern
+  so otherwise similar entries with different fixed notes stay separate.
   Expense detail chips render in one tray below the full primary-category
   grid instead of between category rows, keeping the main category grid visually
   stable. Income categories can be saved without a detail chip when the detail
@@ -97,6 +99,9 @@ not grant shared access to private ledger data.
   attribution in project documentation rather than showing a Settings-home
   credit row.
 - Ledger owns filtering, editing, deletion, and the top Flow / Charts switch.
+  Ledger and Calendar retain their independent scroll positions across
+  background sync and local view renders. Editing a ledger row stores a row
+  anchor so Save or Cancel returns to the same row instead of the top.
   Long-press actions expand inline below the selected transaction so Repeat,
   Edit, Recurring, and Delete remain visible without horizontal scrolling; the
   open row stays open across background refreshes until an action or outside tap
@@ -113,7 +118,8 @@ not grant shared access to private ledger data.
 - Calendar owns month navigation and four focused secondary views: Month
   Summary, Pending Recurring, Review, and Projects. Tapping a day opens its
   entries and a date-bound backfill action. Recurring reminders require Confirm,
-  Skip, or Modify This Time; Review is read-only and calculated locally.
+  Skip, or Modify This Time; Review is read-only and calculated locally. Keep
+  the month header compact, with the Today action beside the month title.
   Calendar day numbers sit at the top center of each cell so daily income/expense
   values stay scannable.
 - Charts under Ledger stay focused on category statistics and trends. Project

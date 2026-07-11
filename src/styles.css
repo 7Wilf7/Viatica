@@ -725,6 +725,29 @@ label span {
 
 .capture-switch {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: transparent;
+}
+
+.capture-switch::after {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 1px solid var(--line);
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+}
+
+.capture-segment {
+  position: relative;
+  z-index: 1;
+}
+
+.capture-segment:focus-visible {
+  z-index: 3;
 }
 
 .segmented button,
@@ -1235,20 +1258,26 @@ label span {
 
 .calendar-toolbar {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.calendar-month-panel {
+  padding: 8px;
 }
 
 .calendar-heading {
   min-width: 0;
-  display: grid;
-  justify-items: center;
-  gap: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .calendar-heading h2 {
+  margin: 0;
   max-width: 100%;
   overflow: hidden;
   font-size: 15px;
@@ -1258,21 +1287,30 @@ label span {
 }
 
 .calendar-nav-button {
-  width: 40px;
-  height: 40px;
-  font-size: 24px;
+  width: 34px;
+  height: 34px;
+  font-size: 22px;
   line-height: 1;
 }
 
 .calendar-today-button {
-  min-height: 24px;
-  padding: 3px 8px;
+  position: relative;
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 3px 7px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: oklch(0.145 0.006 95 / 0.70);
   color: var(--ink-2);
   font-size: 11px;
   font-weight: 760;
+  white-space: nowrap;
+}
+
+.calendar-today-button::before {
+  position: absolute;
+  inset: -6px;
+  content: "";
 }
 
 .calendar-today-button:hover {
@@ -1293,7 +1331,7 @@ label span {
 }
 
 .calendar-weekday {
-  min-height: 30px;
+  min-height: 26px;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   display: grid;
@@ -1306,7 +1344,7 @@ label span {
 
 .calendar-cell {
   position: relative;
-  min-height: 62px;
+  min-height: 60px;
   padding: 7px 3px 5px;
   border: 0;
   border-right: 1px solid var(--line);

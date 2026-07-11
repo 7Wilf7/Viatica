@@ -72,6 +72,52 @@ test("learns merchant rules and keeps recent templates deterministic", () => {
   assert.deepEqual(incomeTemplates.map((template) => template.title), ["薪酬"]);
 });
 
+test("ranks frequent templates by count and treats notes as part of the pattern", () => {
+  const transactions = [
+    normalizeTransaction({
+      type: "expense",
+      amount: 28,
+      title: "午餐",
+      category: "餐饮",
+      note: "工作日套餐",
+      occurredAt: "2026-07-08T12:00:00+08:00",
+    }),
+    normalizeTransaction({
+      type: "expense",
+      amount: 30,
+      title: "午餐",
+      category: "餐饮",
+      note: "工作日套餐",
+      occurredAt: "2026-07-09T12:00:00+08:00",
+    }),
+    normalizeTransaction({
+      type: "expense",
+      amount: 36,
+      title: "午餐",
+      category: "餐饮",
+      note: "周末加餐",
+      occurredAt: "2026-07-10T12:00:00+08:00",
+    }),
+    normalizeTransaction({
+      type: "expense",
+      amount: 18,
+      title: "交通",
+      category: "交通",
+      occurredAt: "2026-07-11T08:00:00+08:00",
+    }),
+  ];
+
+  const templates = recentTemplates(transactions, 6, "expense");
+
+  assert.equal(templates[0].count, 2);
+  assert.equal(templates[0].note, "工作日套餐");
+  assert.equal(templates[0].amount, 30);
+  assert.deepEqual(
+    templates.filter((template) => template.title === "午餐").map((template) => template.note),
+    ["工作日套餐", "周末加餐"],
+  );
+});
+
 test("advances monthly recurring rules with end-of-month clamp", () => {
   assert.equal(addMonthsDateKey("2026-01-31", 1, 31), "2026-02-28");
   assert.equal(addMonthsDateKey("2026-02-28", 1, 31), "2026-03-31");
