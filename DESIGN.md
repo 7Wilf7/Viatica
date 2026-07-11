@@ -72,14 +72,17 @@ not grant shared access to private ledger data.
   income type, rank by use count with recency as the tie-breaker, and share the
   middle scroll region with categories. Notes are part of a template's pattern
   so otherwise similar entries with different fixed notes stay separate.
-  Expense detail chips render in one tray below the full primary-category
-  grid instead of between category rows, keeping the main category grid visually
-  stable. Income categories can be saved without a detail chip when the detail
-  would only repeat the category. On mobile, the amount readout and keypad stay
-  pinned at the bottom of the Add surface while the category/detail area scrolls
-  independently, so long detail rows do not push the keypad away. Do not show
-  account chips in the primary Add flow unless account switching becomes a real
-  high-frequency need again.
+  Expense detail chips expand directly below the four-category row containing
+  their parent, so the relationship stays visible; tapping the same parent again
+  collapses that detail group. Income categories can be saved without a detail
+  chip when the detail would only repeat the category. Date and time-period
+  selection use Viatica's built-in five-row scroll-snap wheels rather than native
+  system pickers, and their open state survives background sync renders. The
+  compact date trigger, time-period trigger, and note field share one row. On
+  mobile, the amount readout and keypad stay pinned at the bottom of the Add
+  surface while the category/detail area scrolls independently, so long detail
+  rows do not push the keypad away. Do not show account chips in the primary Add
+  flow unless account switching becomes a real high-frequency need again.
 - The official Viatica logo source lives at `resources/brand/viatica-logo.png`.
   The splash renders that exact desktop source from its first frame, including
   the double-line border, with no redraw, fade, scale, blur, sheen, or assembly.
@@ -118,10 +121,13 @@ not grant shared access to private ledger data.
 - Calendar owns month navigation and four focused secondary views: Month
   Summary, Pending Recurring, Review, and Projects. Tapping a day opens its
   entries and a date-bound backfill action. Recurring reminders require Confirm,
-  Skip, or Modify This Time; Review is read-only and calculated locally. Keep
-  the month header compact, with the Today action beside the month title.
-  Calendar day numbers sit at the top center of each cell so daily income/expense
-  values stay scannable.
+  Skip, or Modify This Time; Review is read-only and calculated locally. Its
+  mobile month block follows Ultreia's current Calendar pattern: previous month,
+  centered month title, next month, and Today sit in one compact navigation row;
+  weekday labels and the 6×7 grid form one graphite block that stays fixed at the
+  top of Calendar's own scroll area. Viatica replaces Ultreia moss with restrained
+  ledger brass. Calendar day numbers sit at the top center of each cell so daily
+  income/expense values stay scannable.
 - Charts under Ledger stay focused on category statistics and trends. Project
   totals and their related entries live together under Calendar → Projects and
   should not be duplicated in Charts. Category statistics are actual spending
@@ -144,6 +150,10 @@ not grant shared access to private ledger data.
   product iteration history live together. Long content such as the guide and
   category budget editor opens as a second-level page, not inline on the
   Settings home.
+- Visible date, time, and option selection controls use Viatica-owned buttons,
+  menus, or wheels. Do not expose browser/OS date pickers or native select menus
+  in the product UI; profile birth date and bookkeeping-memory category editing
+  follow the same internal-control rule as Add.
 - Settings includes an Ultreia-style app update row: show the installed version,
   check GitHub Releases, expand recent release notes when current, and expose a
   compact update/download action when a newer APK exists. Native APK builds use

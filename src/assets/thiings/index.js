@@ -16,12 +16,12 @@ import coffeeUrl from "./coffee.png";
 import creditCardUrl from "./creditCard.png";
 import croissantUrl from "./croissant.png";
 import desktopComputerUrl from "./desktopComputer.png";
+import diningPlateUrl from "./diningPlate.png";
 import diceUrl from "./dice.png";
 import dumbbellUrl from "./dumbbell.png";
 import energyDrinkUrl from "./energyDrink.png";
 import fileUrl from "./file.png";
 import forkUrl from "./fork.png";
-import foodFestivalUrl from "./foodFestival.png";
 import gameControllerUrl from "./gameController.png";
 import gearUrl from "./gear.png";
 import graduationCapUrl from "./graduationCap.png";
@@ -33,7 +33,7 @@ import keyUrl from "./key.png";
 import mobilePhoneUrl from "./mobilePhone.png";
 import moneyUrl from "./money.png";
 import moonUrl from "./moon.png";
-import massageUrl from "./massage.png";
+import massageGunUrl from "./massageGun.png";
 import mobileGameUrl from "./mobileGame.png";
 import movieUrl from "./movie.png";
 import openBookUrl from "./openBook.png";
@@ -41,7 +41,6 @@ import partyPopperUrl from "./partyPopper.png";
 import phoneUrl from "./phone.png";
 import pillBottleUrl from "./pillBottle.png";
 import plateUrl from "./plate.png";
-import proteinBarUrl from "./proteinBar.png";
 import questionMarkUrl from "./questionMark.png";
 import ramenUrl from "./ramen.png";
 import receiptUrl from "./receipt.png";
@@ -50,6 +49,7 @@ import refundUrl from "./refund.png";
 import restaurantUrl from "./restaurant.png";
 import riceBowlUrl from "./riceBowl.png";
 import robotUrl from "./robot.png";
+import runningShoesUrl from "./runningShoes.png";
 import sandwichUrl from "./sandwich.png";
 import scissorsUrl from "./scissors.png";
 import shishKebabUrl from "./shishKebab.png";
@@ -61,7 +61,6 @@ import stethoscopeUrl from "./stethoscope.png";
 import stopwatchUrl from "./stopwatch.png";
 import subscriptionUrl from "./subscription.png";
 import suitcaseUrl from "./suitcase.png";
-import tShirtsUrl from "./tShirts.png";
 import tShirtUrl from "./tShirt.png";
 import taxiUrl from "./taxi.png";
 import teacherUrl from "./teacher.png";
@@ -90,12 +89,12 @@ export const thiingsIconUrls = {
   creditCard: creditCardUrl,
   croissant: croissantUrl,
   desktopComputer: desktopComputerUrl,
+  diningPlate: diningPlateUrl,
   dice: diceUrl,
   dumbbell: dumbbellUrl,
   energyDrink: energyDrinkUrl,
   file: fileUrl,
   fork: forkUrl,
-  foodFestival: foodFestivalUrl,
   gameController: gameControllerUrl,
   gear: gearUrl,
   graduationCap: graduationCapUrl,
@@ -107,7 +106,7 @@ export const thiingsIconUrls = {
   mobilePhone: mobilePhoneUrl,
   money: moneyUrl,
   moon: moonUrl,
-  massage: massageUrl,
+  massageGun: massageGunUrl,
   mobileGame: mobileGameUrl,
   movie: movieUrl,
   openBook: openBookUrl,
@@ -115,7 +114,6 @@ export const thiingsIconUrls = {
   phone: phoneUrl,
   pillBottle: pillBottleUrl,
   plate: plateUrl,
-  proteinBar: proteinBarUrl,
   questionMark: questionMarkUrl,
   ramen: ramenUrl,
   receipt: receiptUrl,
@@ -124,6 +122,7 @@ export const thiingsIconUrls = {
   restaurant: restaurantUrl,
   riceBowl: riceBowlUrl,
   robot: robotUrl,
+  runningShoes: runningShoesUrl,
   sandwich: sandwichUrl,
   scissors: scissorsUrl,
   shishKebab: shishKebabUrl,
@@ -135,7 +134,6 @@ export const thiingsIconUrls = {
   stopwatch: stopwatchUrl,
   subscription: subscriptionUrl,
   suitcase: suitcaseUrl,
-  tShirts: tShirtsUrl,
   tShirt: tShirtUrl,
   taxi: taxiUrl,
   teacher: teacherUrl,

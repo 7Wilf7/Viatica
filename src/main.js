@@ -128,6 +128,7 @@ const PAGER_DRAG_DISTANCE_FRACTION = 0.18;
 const PAGER_DRAG_MAX_DISTANCE_PX = 86;
 const PAGER_DRAG_VELOCITY_PX_PER_MS = 0.38;
 const PAGER_EDGE_RESISTANCE = 0.32;
+const WHEEL_ITEM_HEIGHT = 38;
 const DEMO_ACCOUNT_EMAIL = "demo@demo.com";
 const ApkInstaller = registerPlugin("ApkInstaller");
 const ApkDownloader = registerPlugin("ApkDownloader");
@@ -149,6 +150,7 @@ const tabScrollPositions = new Map();
 let ledgerEditReturnAnchor = null;
 let pendingLedgerReturnAnchor = null;
 let scrollRestoreRevision = 0;
+let openChoiceKey = "";
 const storedState = loadState();
 const storedTransactions = normalizeTransactionList(storedState.transactions);
 const state = {
@@ -167,7 +169,9 @@ const state = {
   },
   searchOpen: false,
   captureDraft: null,
+  captureExpandedCategory: "",
   captureProjectOpen: false,
+  wheelPicker: null,
   pendingRecurringRuleId: "",
   calendarPanel: "summary",
   calendarView: {
@@ -634,11 +638,11 @@ const SUBCATEGORY_META = {
   "服饰": { icon: "shirt", thing: "tShirt" },
   "数码": { icon: "device", thing: "desktopComputer" },
   "家居": { icon: "sofa", thing: "sofa" },
-  "装备": { icon: "shirt", thing: "tShirts" },
-  "补给": { icon: "food", thing: "proteinBar" },
+  "装备": { icon: "shirt", thing: "runningShoes" },
+  "补给": { icon: "food", thing: "energyDrink" },
   "运动饮料": { icon: "food", thing: "energyDrink" },
   "康复": { icon: "health", thing: "bandAid" },
-  "按摩": { icon: "health", thing: "massage" },
+  "按摩": { icon: "health", thing: "massageGun" },
   "训练课": { icon: "training", thing: "stopwatch" },
   "赛事报名": { icon: "ticket", thing: "trophy" },
   "房租": { icon: "home", thing: "key" },
@@ -653,7 +657,7 @@ const SUBCATEGORY_META = {
   "App": { icon: "app", thing: "mobilePhone" },
   "电影": { icon: "movie", thing: "movie" },
   "游戏": { icon: "game", thing: "mobileGame" },
-  "娱乐:餐饮": { icon: "food", thing: "foodFestival" },
+  "娱乐:餐饮": { icon: "food", thing: "diningPlate" },
   "娱乐:其他": { icon: "more", thing: "partyPopper" },
   "旅行:交通": { icon: "transport", thing: "airplane" },
   "住宿": { icon: "hotel", thing: "hotel" },
@@ -680,7 +684,7 @@ const EXPENSE_CAPTURE_CATEGORY_GROUPS = [
   { category: "餐饮", items: ["早餐", "午餐", "晚餐", "宵夜", "咖啡奶茶", "水果", "零食", "其他"] },
   { category: "交通", items: ["共享单车", "地铁", "打车"] },
   { category: "购物", items: ["日用品", "服饰", "数码", "家居"] },
-  { category: "运动", items: ["装备", "运动饮料", "按摩", "训练课", "赛事报名"] },
+  { category: "运动", items: ["装备", "补给", "按摩", "训练课", "赛事报名"] },
   { category: "生活", items: ["房租", "理发", "话费"] },
   { category: "健康", items: ["保险", "医疗", "药品"] },
   { category: "AI 工具", items: ["ChatGPT", "Aevum"] },
@@ -730,11 +734,13 @@ const MANUAL_SECTIONS = [
       zh: [
         "从底部中间的“+”开始，先点支出或收入，再点对应类型的分类、子项和金额。",
         "新增流水默认使用内置金额键盘，尽量避免调出系统金额键盘；账本不再区分微信、支付宝、银行卡这类子账户。",
+        "再点一次已展开的主分类可以收起子项；日期和时段使用产品内置滚轮，备注与它们在同一行。",
         "支出和收入使用不同分类：收入不会出现交通、购物这类支出入口。",
       ],
       en: [
         "Start from the centered + tab. Pick expense or income, then the matching category, detail, and amount.",
         "New entries use the built-in amount keypad first; the ledger no longer separates wallet or bank sub-accounts.",
+        "Tap an expanded parent category again to collapse its details. Date and time period use built-in wheels, with the note on the same row.",
         "Expense and income use different categories, so income no longer shows spending categories like transport or shopping.",
       ],
     },
@@ -840,6 +846,27 @@ const MANUAL_SECTIONS = [
 ];
 
 const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-07-12",
+    title: {
+      zh: "日历与添加页交互统一",
+      en: "Unified Calendar And Capture Controls",
+    },
+    items: {
+      zh: [
+        "日历顶部改为与 Ultreia 一致的紧凑月份导航和固定月格结构，并沿用 Viatica 的石墨与账本黄铜配色。",
+        "日期和时段改为产品内置滚轮，不再调起系统日历或系统选择器；后台同步也不会让选择面板自动消失。",
+        "子分类直接展开在对应主分类行下方，再点一次主分类即可收起；日期、时段和备注收在同一行。",
+        "运动饮料恢复为“补给”，并统一运动装备、按摩和娱乐餐饮的图标质感。",
+      ],
+      en: [
+        "Calendar now follows Ultreia's compact month navigation and sticky month-grid structure, adapted to Viatica's graphite and ledger-brass palette.",
+        "Date and time-period selection now use built-in wheels instead of system pickers, and background sync no longer dismisses them.",
+        "Subcategories expand directly below their parent row and collapse on a second tap; date, time period, and note now share one row.",
+        "Sports Drink is restored to Supply, with more consistent icons for sports gear, massage, and entertainment dining.",
+      ],
+    },
+  },
   {
     date: "2026-07-11",
     title: {
@@ -1478,6 +1505,13 @@ const MESSAGES = {
     "capture.timeAfternoon": "下午",
     "capture.timeEvening": "晚上",
     "capture.timeLate": "凌晨",
+    "picker.cancel": "取消",
+    "picker.done": "完成",
+    "picker.dateTitle": "选择日期",
+    "picker.timeTitle": "选择时段",
+    "picker.year": "年",
+    "picker.month": "月",
+    "picker.day": "日",
     "capture.tags": "标签",
     "capture.project": "项目",
     "capture.projectToggle": "项目选项",
@@ -1750,6 +1784,13 @@ const MESSAGES = {
     "capture.timeAfternoon": "Afternoon",
     "capture.timeEvening": "Evening",
     "capture.timeLate": "Late",
+    "picker.cancel": "Cancel",
+    "picker.done": "Done",
+    "picker.dateTitle": "Choose Date",
+    "picker.timeTitle": "Choose Period",
+    "picker.year": "Year",
+    "picker.month": "Month",
+    "picker.day": "Day",
     "capture.tags": "Tags",
     "capture.project": "Project",
     "capture.projectToggle": "Project Options",
@@ -2057,6 +2098,35 @@ function captureDateValue(value = new Date()) {
   return localDateKey(value);
 }
 
+function formatPickerDateLabel(value) {
+  const date = parseDateKey(captureDateValue(value)) || new Date();
+  return new Intl.DateTimeFormat(displayLocale(), {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function pickerDateParts(value, fallback = new Date()) {
+  const date = parseDateKey(captureDateValue(value)) || fallback;
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+    day: date.getDate(),
+  };
+}
+
+function daysInPickerMonth(year, month) {
+  return new Date(Number(year), Number(month), 0).getDate();
+}
+
+function pickerDateKey(picker) {
+  const year = String(picker?.year || new Date().getFullYear()).padStart(4, "0");
+  const month = String(picker?.month || 1).padStart(2, "0");
+  const day = String(picker?.day || 1).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function dateKeyLabel(dateKey, options = {}) {
   const date = parseDateKey(dateKey) || new Date();
   return new Intl.DateTimeFormat(displayLocale(), {
@@ -2269,7 +2339,9 @@ function switchLedgerStorageOwner(user) {
   if (nextOwnerId && !isDemoAccountUser(user)) signedOutLedgerDirty = false;
   state.editingTransactionId = null;
   state.captureDraft = null;
+  state.captureExpandedCategory = "";
   state.captureProjectOpen = false;
+  state.wheelPicker = null;
   state.searchOpen = false;
   state.actionRowId = "";
   state.cloudSync.status = "idle";
@@ -2584,6 +2656,7 @@ function refreshLedgerFromTab() {
 
 function applyActiveTabSideEffects(tabId) {
   if (tabId !== "capture") state.captureProjectOpen = false;
+  if (tabId === "capture") state.captureExpandedCategory = "";
   if (tabId === "settings") state.settingsContent = "home";
 }
 
@@ -3301,12 +3374,21 @@ function renderFilterChoice(filterKey, value, options) {
   `;
 }
 
-function renderChoiceControl({ name = "", filterKey = "", value, options }) {
+function renderChoiceControl({
+  name = "",
+  filterKey = "",
+  choiceKey = "",
+  ruleId = "",
+  value,
+  options,
+}) {
   const selected = options.find((option) => option.value === value) || options[0];
+  const stableKey = choiceKey || (name ? `name:${name}` : `filter:${filterKey}`);
+  const open = stableKey === openChoiceKey;
   return `
-    <div class="choice-control" data-choice ${name ? `data-choice-name="${escapeHtml(name)}"` : ""} ${filterKey ? `data-choice-filter="${escapeHtml(filterKey)}"` : ""}>
+    <div class="choice-control ${open ? "open" : ""}" data-choice data-choice-key="${escapeHtml(stableKey)}" ${name ? `data-choice-name="${escapeHtml(name)}"` : ""} ${filterKey ? `data-choice-filter="${escapeHtml(filterKey)}"` : ""} ${ruleId ? `data-rule-category-choice="${escapeHtml(ruleId)}"` : ""}>
       ${name ? `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(selected.value)}">` : ""}
-      <button class="choice-trigger" type="button" data-action="toggle-choice" aria-expanded="false">
+      <button class="choice-trigger" type="button" data-action="toggle-choice" aria-expanded="${open ? "true" : "false"}">
         <span>${escapeHtml(selected.label)}</span>
         <span class="choice-chevron" aria-hidden="true">▼</span>
       </button>
@@ -3536,6 +3618,7 @@ function applyTransactionTemplate(template) {
     note: template.note || "",
   };
   state.captureProjectOpen = false;
+  state.captureExpandedCategory = "";
   state.editingTransactionId = null;
   state.activeTab = "capture";
 }
@@ -3571,6 +3654,7 @@ function repeatTransaction(id, dateKey = "") {
   if (!draft) return;
   state.captureDraft = draft;
   state.captureProjectOpen = Boolean(draft.project);
+  state.captureExpandedCategory = "";
   state.editingTransactionId = null;
   state.pendingRecurringRuleId = "";
   state.activeTab = "capture";
@@ -3656,6 +3740,7 @@ function modifyRecurringOccurrence(ruleId, occurrenceDate) {
   state.pendingRecurringRuleId = ruleId;
   state.editingTransactionId = null;
   state.captureProjectOpen = false;
+  state.captureExpandedCategory = "";
   state.activeTab = "capture";
 }
 
@@ -3783,6 +3868,7 @@ function renderPagerStripStyle() {
 function render() {
   captureTabScrollPositions();
   document.documentElement.lang = state.preferences.locale === "en" ? "en" : "zh-CN";
+  document.body.classList.toggle("wheel-picker-open", Boolean(state.wheelPicker));
   syncPagerForRender();
   const activeState = activeLedgerState();
   const summary = summarizeLedger(activeState.transactions, activeState.budgets, new Date(), activeState.accounts);
@@ -3805,10 +3891,12 @@ function render() {
       </nav>
     </main>
     ${state.auth.loginOpen ? renderAuthDialog() : ""}
+    ${renderWheelPickerModal()}
     <input id="csv-import" type="file" accept=".csv,text/csv" hidden>
   `;
   ledgerViewMotionDir = 0;
   restoreScrollPositionsAfterRender();
+  requestAnimationFrame(positionWheelPickerColumns);
   scheduleBootSplashDismiss();
 }
 
@@ -4416,18 +4504,16 @@ function renderStatsCharts(transactions, entries, total) {
 function renderCalendarTab() {
   const view = state.calendarView || { year: new Date().getFullYear(), month: new Date().getMonth() };
   return `
-    <section class="panel calendar-month-panel">
+    <section class="calendar-month-block">
       <div class="calendar-toolbar">
         <button class="icon-button calendar-nav-button" type="button" data-action="calendar-prev-month" aria-label="${escapeHtml(t("calendar.prevMonth"))}">
           ‹
         </button>
-        <div class="calendar-heading">
-          <h2>${escapeHtml(t("today.calendarTitle", { month: monthLabel(view.year, view.month) }))}</h2>
-          <button class="calendar-today-button" type="button" data-action="calendar-today">${escapeHtml(t("calendar.monthToday"))}</button>
-        </div>
+        <h2 class="calendar-month-title">${escapeHtml(t("today.calendarTitle", { month: monthLabel(view.year, view.month) }))}</h2>
         <button class="icon-button calendar-nav-button" type="button" data-action="calendar-next-month" aria-label="${escapeHtml(t("calendar.nextMonth"))}">
           ›
         </button>
+        <button class="calendar-today-button" type="button" data-action="calendar-today">${escapeHtml(t("calendar.monthToday"))}</button>
       </div>
       ${renderMonthCalendar()}
     </section>
@@ -5011,7 +5097,10 @@ function renderProfileSettings() {
       </label>
       <label>
         <span>${escapeHtml(t("profile.birthDate"))}</span>
-        <input name="birthDate" data-profile-field="birthDate" type="date" value="${escapeHtml(draft.birthDate)}" ${busy ? "disabled" : ""}>
+        <input name="birthDate" type="hidden" value="${escapeHtml(draft.birthDate)}">
+        <button class="profile-date-trigger" type="button" data-action="open-wheel-picker" data-picker-kind="date" data-picker-context="profile" ${busy ? "disabled" : ""}>
+          ${escapeHtml(draft.birthDate ? formatPickerDateLabel(draft.birthDate) : "—")}
+        </button>
       </label>
       <div class="profile-choice-field">
         <span>${escapeHtml(t("profile.gender"))}</span>
@@ -5027,10 +5116,11 @@ function renderProfileSettings() {
 function renderProfileGenderChoice(value) {
   const options = profileGenderOptions(true);
   const selected = options.find((option) => option.value === value) || options[0];
+  const open = openChoiceKey === "profile:gender";
   return `
-    <div class="choice-control profile-gender-choice" data-choice data-profile-choice="gender">
+    <div class="choice-control profile-gender-choice ${open ? "open" : ""}" data-choice data-choice-key="profile:gender" data-profile-choice="gender">
       <input type="hidden" name="gender" value="${escapeHtml(selected.value)}">
-      <button class="choice-trigger" type="button" data-action="toggle-choice" aria-expanded="false">
+      <button class="choice-trigger" type="button" data-action="toggle-choice" aria-expanded="${open ? "true" : "false"}">
         <span>${escapeHtml(selected.label)}</span>
         <span class="choice-chevron" aria-hidden="true">▼</span>
       </button>
@@ -5058,11 +5148,14 @@ function renderRuleSettings() {
               <strong>${escapeHtml(rule.basis)}</strong>
               <span>${escapeHtml(`${t(`type.${rule.type}`)} · ${rule.useCount}×`)}</span>
             </span>
-            <select class="memory-rule-select" data-rule-category="${escapeHtml(rule.id)}" aria-label="${escapeHtml(t("capture.category"))}">
-              ${categoriesForType(rule.type).map((category) => `
-                <option value="${escapeHtml(category)}" ${category === rule.category ? "selected" : ""}>${escapeHtml(category)}</option>
-              `).join("")}
-            </select>
+            <div class="memory-rule-choice">
+              ${renderChoiceControl({
+                value: rule.category,
+                options: itemOptions(categoriesForType(rule.type)),
+                choiceKey: `rule:${rule.id}`,
+                ruleId: rule.id,
+              })}
+            </div>
             <button class="btn ghost row-action-button danger-text" type="button" data-action="delete-merchant-rule" data-rule-id="${escapeHtml(rule.id)}">
               ${escapeHtml(t("txn.delete"))}
             </button>
@@ -5381,10 +5474,9 @@ function renderStat(label, value) {
 }
 
 function renderCaptureForm(editingTransaction) {
-  const sourceTxn = editingTransaction || {
-    ...defaultCaptureDraft(),
-    ...(state.captureDraft || {}),
-  };
+  const sourceTxn = editingTransaction
+    ? { ...editingTransaction, ...(state.captureDraft || {}) }
+    : { ...defaultCaptureDraft(), ...(state.captureDraft || {}) };
   const type = sourceTxn.type === "income" ? "income" : "expense";
   const txn = {
     ...sourceTxn,
@@ -5484,12 +5576,10 @@ function renderCaptureDateField(value) {
   const dateValue = captureDateValue(value);
   return `
     <div class="capture-date-field">
-      <label>
-        <span>${escapeHtml(t("capture.date"))}</span>
-        <input name="occurredDate" type="date" value="${escapeHtml(dateValue)}">
-      </label>
-      <button class="capture-date-today" type="button" data-action="set-capture-date" data-date="${escapeHtml(todayKey(new Date()))}">
-        ${escapeHtml(t("capture.today"))}
+      <input name="occurredDate" type="hidden" value="${escapeHtml(dateValue)}">
+      <button class="capture-picker-trigger capture-date-trigger" type="button" data-action="open-wheel-picker" data-picker-kind="date" data-picker-context="capture" aria-label="${escapeHtml(t("capture.date"))}">
+        <span>${escapeHtml(formatPickerDateLabel(dateValue))}</span>
+        <span class="capture-picker-chevron" aria-hidden="true">⌄</span>
       </button>
     </div>
   `;
@@ -5500,33 +5590,44 @@ function renderCaptureCategoryBoard(txn) {
   const selectedTitle = txn.title || "";
   const groups = captureGroupsForType(txn.type);
   const rows = chunkList(groups, 4);
-  const selectedGroup = groups.find((group) => group.category === selectedCategory);
-  const selectedItems = selectedGroup?.items || [];
+  const expandedCategory = groups.some((group) => group.category === state.captureExpandedCategory)
+    ? state.captureExpandedCategory
+    : "";
   return `
     <section class="capture-category-board" aria-label="${escapeHtml(t("capture.category"))}">
-      ${rows.map((row) => `
+      ${rows.map((row) => {
+        const expandedGroup = row.find((group) => group.category === expandedCategory);
+        return `
         <div class="capture-category-row">
           <div class="capture-category-grid">
             ${row.map((group) => `
-              <button class="capture-category-button ${selectedCategory === group.category ? "active" : ""}" type="button" data-action="pick-field" data-field="category" data-value="${escapeHtml(group.category)}" data-pick-button>
+              <button class="capture-category-button ${expandedCategory === group.category ? "active" : ""}" type="button" data-action="pick-field" data-field="category" data-value="${escapeHtml(group.category)}" data-pick-button aria-expanded="${expandedCategory === group.category && group.items.length ? "true" : "false"}">
                 ${renderIconBadge(group.category, "category")}
                 <span>${escapeHtml(group.category)}</span>
               </button>
             `).join("")}
           </div>
+          ${expandedGroup?.items?.length ? renderCaptureSubcategoryGrid(
+            expandedGroup.category,
+            expandedGroup.items,
+            selectedCategory === expandedGroup.category ? selectedTitle : "",
+          ) : ""}
         </div>
-      `).join("")}
-      ${selectedItems.length ? `
-        <div class="capture-subcategory-grid active" data-subcategory-group="${escapeHtml(selectedCategory)}">
-          ${selectedItems.map((item) => `
-            <button class="capture-subcategory-button ${selectedTitle === item ? "active" : ""}" type="button" data-action="pick-subcategory" data-category="${escapeHtml(selectedCategory)}" data-title="${escapeHtml(item)}">
-              ${renderIconBadge(item, "subcategory", "tiny", selectedCategory)}
-              <span>${escapeHtml(item)}</span>
-            </button>
-          `).join("")}
-        </div>
-      ` : ""}
+      `;}).join("")}
     </section>
+  `;
+}
+
+function renderCaptureSubcategoryGrid(category, items, selectedTitle) {
+  return `
+    <div class="capture-subcategory-grid active" data-subcategory-group="${escapeHtml(category)}">
+      ${items.map((item) => `
+        <button class="capture-subcategory-button ${selectedTitle === item ? "active" : ""}" type="button" data-action="pick-subcategory" data-category="${escapeHtml(category)}" data-title="${escapeHtml(item)}">
+          ${renderIconBadge(item, "subcategory", "tiny", category)}
+          <span>${escapeHtml(item)}</span>
+        </button>
+      `).join("")}
+    </div>
   `;
 }
 
@@ -5534,20 +5635,106 @@ function renderCaptureTimeChoice(value) {
   const selected = captureTimeSegmentId(value);
   const selectedItem = CAPTURE_TIME_SEGMENTS.find((item) => item.id === selected) || CAPTURE_TIME_SEGMENTS[0];
   return `
-    <div class="choice-control capture-time-choice" data-choice data-choice-time aria-label="${escapeHtml(t("capture.time"))}">
-      <button class="choice-trigger" type="button" data-action="toggle-choice" aria-expanded="false">
+    <div class="capture-time-choice">
+      <button class="capture-picker-trigger capture-time-trigger" type="button" data-action="open-wheel-picker" data-picker-kind="time" data-picker-context="capture" aria-label="${escapeHtml(t("capture.time"))}">
         <span>${escapeHtml(t(selectedItem.labelKey))}</span>
-        <span class="choice-chevron" aria-hidden="true">▼</span>
+        <span class="capture-picker-chevron" aria-hidden="true">⌄</span>
       </button>
-      <div class="choice-menu">
-      ${CAPTURE_TIME_SEGMENTS.map((item) => `
-          <button class="choice-option ${selected === item.id ? "active" : ""}" type="button" data-action="choose-option" data-choice-value="${escapeHtml(item.id)}" data-hour="${item.hour}">
-          ${escapeHtml(t(item.labelKey))}
-        </button>
-        `).join("")}
-      </div>
     </div>
   `;
+}
+
+function wheelNumberOptions(start, end, unitKey) {
+  const suffix = state.preferences.locale === "zh" ? t(unitKey) : "";
+  return Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => {
+    const value = start + index;
+    return { value: String(value), label: suffix ? `${value}${suffix}` : String(value) };
+  });
+}
+
+function renderWheelColumn(field, options, selectedValue, ariaLabel) {
+  const selected = String(selectedValue ?? "");
+  return `
+    <div class="wheel-column-shell wheel-column-${escapeHtml(field)}">
+      <div class="wheel-column" data-wheel-column data-wheel-field="${escapeHtml(field)}" role="listbox" aria-label="${escapeHtml(ariaLabel)}">
+        <div class="wheel-column-spacer" aria-hidden="true"></div>
+        ${options.map((option) => `
+          <button
+            class="wheel-option ${String(option.value) === selected ? "active" : ""}"
+            type="button"
+            role="option"
+            aria-selected="${String(option.value) === selected ? "true" : "false"}"
+            data-action="pick-wheel-item"
+            data-wheel-field="${escapeHtml(field)}"
+            data-wheel-value="${escapeHtml(option.value)}"
+          >${escapeHtml(option.label)}</button>
+        `).join("")}
+        <div class="wheel-column-spacer" aria-hidden="true"></div>
+      </div>
+      <div class="wheel-selection-band" aria-hidden="true"></div>
+    </div>
+  `;
+}
+
+function renderWheelPickerModal() {
+  const picker = state.wheelPicker;
+  if (!picker) return "";
+  const dateMode = picker.kind === "date";
+  const title = dateMode ? t("picker.dateTitle") : t("picker.timeTitle");
+  let columns = "";
+  if (dateMode) {
+    const maxDay = daysInPickerMonth(picker.year, picker.month);
+    columns = `
+      ${renderWheelColumn("year", wheelNumberOptions(picker.minYear, picker.maxYear, "picker.year"), picker.year, t("picker.year"))}
+      ${renderWheelColumn("month", wheelNumberOptions(1, 12, "picker.month"), picker.month, t("picker.month"))}
+      ${renderWheelColumn("day", wheelNumberOptions(1, maxDay, "picker.day"), Math.min(picker.day, maxDay), t("picker.day"))}
+    `;
+  } else {
+    columns = renderWheelColumn(
+      "segment",
+      CAPTURE_TIME_SEGMENTS.map((item) => ({ value: item.id, label: t(item.labelKey) })),
+      picker.segment,
+      t("capture.time"),
+    );
+  }
+  return `
+    <section class="wheel-picker-layer" aria-label="${escapeHtml(title)}">
+      <button class="wheel-picker-backdrop" type="button" data-action="close-wheel-picker" aria-label="${escapeHtml(t("picker.cancel"))}"></button>
+      <div class="wheel-picker-dialog ${dateMode ? "date-mode" : "time-mode"}" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
+        <div class="wheel-picker-head">
+          <button type="button" data-action="close-wheel-picker">${escapeHtml(t("picker.cancel"))}</button>
+          <strong>${escapeHtml(title)}</strong>
+          <button class="wheel-picker-confirm" type="button" data-action="confirm-wheel-picker">${escapeHtml(t("picker.done"))}</button>
+        </div>
+        <div class="wheel-picker-columns">
+          ${columns}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function syncWheelColumnSelection(column, value) {
+  if (!column) return;
+  const selected = String(value ?? "");
+  column.querySelectorAll(".wheel-option").forEach((option) => {
+    const active = option.dataset.wheelValue === selected;
+    option.classList.toggle("active", active);
+    option.setAttribute("aria-selected", active ? "true" : "false");
+  });
+}
+
+function positionWheelPickerColumns() {
+  const picker = state.wheelPicker;
+  if (!picker) return;
+  document.querySelectorAll("[data-wheel-column]").forEach((column) => {
+    const field = column.dataset.wheelField;
+    const value = picker[field];
+    const options = [...column.querySelectorAll(".wheel-option")];
+    const index = Math.max(0, options.findIndex((option) => option.dataset.wheelValue === String(value)));
+    column.scrollTop = index * WHEEL_ITEM_HEIGHT;
+    syncWheelColumnSelection(column, value);
+  });
 }
 
 function renderAmountKeypad(isEditing = false) {
@@ -5760,7 +5947,10 @@ function syncPickButtons(form) {
   form.querySelectorAll("[data-pick-button]").forEach((button) => {
     const field = button.dataset.field;
     const input = field ? form.elements.namedItem(field) : null;
-    button.classList.toggle("active", Boolean(input && button.dataset.value === input.value));
+    const active = field === "category"
+      ? button.dataset.value === state.captureExpandedCategory
+      : Boolean(input && button.dataset.value === input.value);
+    button.classList.toggle("active", active);
   });
 
   const category = form.elements.namedItem("category")?.value || "";
@@ -5800,7 +5990,6 @@ function syncCaptureDraftFromForm(form) {
   if (!form || form.getAttribute("id") !== "transaction-form") return;
   syncOccurredAtDate(form);
   syncProjectOnlyMode(form);
-  if (state.editingTransactionId) return;
   const data = Object.fromEntries(new FormData(form).entries());
   const type = data.type === "income" ? "income" : "expense";
   state.captureDraft = {
@@ -5865,6 +6054,7 @@ function pickFormField(button) {
   if (!form || !field || value == null || !input) return;
   input.value = value;
   if (field === "type") {
+    state.captureExpandedCategory = "";
     const category = form.elements.namedItem("category");
     const title = form.elements.namedItem("title");
     if (category) category.value = defaultCategoryForType(value);
@@ -5873,6 +6063,8 @@ function pickFormField(button) {
     refreshCaptureCategoryBoard(form);
   }
   if (field === "category") {
+    const collapse = state.captureExpandedCategory === value;
+    state.captureExpandedCategory = collapse ? "" : value;
     const title = form.elements.namedItem("title");
     if (title) title.value = "";
     refreshCaptureCategoryBoard(form);
@@ -5884,6 +6076,7 @@ function pickFormField(button) {
 }
 
 function pickCaptureSubcategory(button) {
+  state.captureExpandedCategory = button.dataset.category || "";
   fillForm({
     category: button.dataset.category || "其他",
     title: button.dataset.title || "",
@@ -6031,12 +6224,14 @@ function closeChoiceMenus(except = null) {
     choice.classList.remove("open");
     choice.querySelector(".choice-trigger")?.setAttribute("aria-expanded", "false");
   });
+  if (!except) openChoiceKey = "";
 }
 
 function toggleChoiceMenu(choice) {
   if (!choice) return;
   const willOpen = !choice.classList.contains("open");
   closeChoiceMenus(choice);
+  openChoiceKey = willOpen ? choice.dataset.choiceKey || "" : "";
   choice.classList.toggle("open", willOpen);
   choice.querySelector(".choice-trigger")?.setAttribute("aria-expanded", willOpen ? "true" : "false");
 }
@@ -6057,6 +6252,21 @@ function chooseOption(optionNode) {
   const choiceName = choice.dataset.choiceName;
   if (choiceName) syncChoiceGroup(choice.closest("form"), choiceName);
 
+  const ruleId = choice.dataset.ruleCategoryChoice;
+  if (ruleId) {
+    state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules)
+      .map((rule) => rule.id === ruleId ? {
+        ...rule,
+        category: value,
+        updatedAt: new Date().toISOString(),
+      } : rule);
+    touchPreferences();
+    persist();
+    render();
+    toast(t("toast.ruleUpdated"));
+    return;
+  }
+
   if (choice.dataset.choiceTime != null) {
     const form = choice.closest("form");
     const input = form?.elements?.namedItem("occurredAt");
@@ -6074,6 +6284,136 @@ function chooseOption(optionNode) {
     }
     render();
   }
+}
+
+const wheelSettleTimers = new WeakMap();
+
+function openWheelPicker(kind, context, trigger) {
+  const pickerKind = kind === "time" ? "time" : "date";
+  const pickerContext = context === "profile" ? "profile" : "capture";
+  closeChoiceMenus();
+
+  if (pickerKind === "time") {
+    const form = trigger?.closest?.("#transaction-form");
+    syncCaptureDraftFromForm(form);
+    const occurredAt = form?.elements?.namedItem("occurredAt")?.value || new Date();
+    state.wheelPicker = {
+      kind: "time",
+      context: "capture",
+      segment: captureTimeSegmentId(occurredAt),
+    };
+    render();
+    return;
+  }
+
+  const now = new Date();
+  const form = trigger?.closest?.("#transaction-form");
+  if (pickerContext === "capture") syncCaptureDraftFromForm(form);
+  const rawValue = pickerContext === "profile"
+    ? state.profile.draft?.birthDate || `${now.getFullYear() - 30}-01-01`
+    : form?.elements?.namedItem("occurredDate")?.value || captureDateValue(now);
+  const parts = pickerDateParts(rawValue, now);
+  const baseMinYear = pickerContext === "profile" ? 1900 : now.getFullYear() - 20;
+  const baseMaxYear = pickerContext === "profile" ? now.getFullYear() : now.getFullYear() + 2;
+  state.wheelPicker = {
+    kind: "date",
+    context: pickerContext,
+    year: parts.year,
+    month: parts.month,
+    day: parts.day,
+    minYear: Math.min(baseMinYear, parts.year),
+    maxYear: Math.max(baseMaxYear, parts.year),
+  };
+  render();
+}
+
+function updateWheelPickerField(field, rawValue) {
+  const picker = state.wheelPicker;
+  if (!picker) return false;
+  if (field === "segment") {
+    if (!CAPTURE_TIME_SEGMENTS.some((item) => item.id === rawValue) || picker.segment === rawValue) return false;
+    picker.segment = rawValue;
+    return true;
+  }
+  if (!["year", "month", "day"].includes(field)) return false;
+  const value = Number(rawValue);
+  if (!Number.isInteger(value) || picker[field] === value) return false;
+  picker[field] = value;
+  picker.day = Math.min(picker.day, daysInPickerMonth(picker.year, picker.month));
+  return true;
+}
+
+function wheelColumnValue(column) {
+  const options = [...column.querySelectorAll(".wheel-option")];
+  if (!options.length) return "";
+  const index = Math.min(options.length - 1, Math.max(0, Math.round(column.scrollTop / WHEEL_ITEM_HEIGHT)));
+  return options[index]?.dataset.wheelValue || "";
+}
+
+function selectWheelItem(option) {
+  const field = option.dataset.wheelField || "";
+  const value = option.dataset.wheelValue || "";
+  const changed = updateWheelPickerField(field, value);
+  const column = option.closest("[data-wheel-column]");
+  const options = [...(column?.querySelectorAll(".wheel-option") || [])];
+  const index = Math.max(0, options.indexOf(option));
+  column?.scrollTo({ top: index * WHEEL_ITEM_HEIGHT, behavior: "auto" });
+  syncWheelColumnSelection(column, value);
+  if (changed && ["year", "month"].includes(field)) render();
+}
+
+function settleWheelColumnsFromDom() {
+  document.querySelectorAll("[data-wheel-column]").forEach((column) => {
+    updateWheelPickerField(column.dataset.wheelField || "", wheelColumnValue(column));
+  });
+}
+
+function handleWheelColumnScroll(event) {
+  const column = event.target;
+  if (!(column instanceof HTMLElement) || !column.matches("[data-wheel-column]")) return;
+  window.clearTimeout(wheelSettleTimers.get(column));
+  const timer = window.setTimeout(() => {
+    if (!column.isConnected || !state.wheelPicker) return;
+    const field = column.dataset.wheelField || "";
+    const value = wheelColumnValue(column);
+    const changed = updateWheelPickerField(field, value);
+    if (changed && ["year", "month"].includes(field)) {
+      render();
+      return;
+    }
+    syncWheelColumnSelection(column, value);
+  }, 90);
+  wheelSettleTimers.set(column, timer);
+}
+
+function closeWheelPicker() {
+  state.wheelPicker = null;
+  render();
+}
+
+function confirmWheelPicker() {
+  if (!state.wheelPicker) return;
+  settleWheelColumnsFromDom();
+  const picker = { ...state.wheelPicker };
+  if (picker.context === "profile") {
+    state.profile.draft = {
+      ...state.profile.draft,
+      birthDate: pickerDateKey(picker),
+    };
+  } else {
+    const form = document.querySelector("#transaction-form");
+    if (picker.kind === "date") {
+      const dateField = form?.elements?.namedItem("occurredDate");
+      if (dateField) dateField.value = pickerDateKey(picker);
+    } else {
+      const segment = CAPTURE_TIME_SEGMENTS.find((item) => item.id === picker.segment) || CAPTURE_TIME_SEGMENTS[0];
+      const occurredAt = form?.elements?.namedItem("occurredAt");
+      if (occurredAt) occurredAt.value = dateInputValueWithHour(occurredAt.value || new Date(), segment.hour);
+    }
+    syncCaptureDraftFromForm(form);
+  }
+  state.wheelPicker = null;
+  render();
 }
 
 document.addEventListener("pointerdown", (event) => {
@@ -6112,8 +6452,14 @@ document.addEventListener("touchmove", handlePagerTouchMove, { capture: true, pa
 document.addEventListener("touchend", handlePagerTouchEnd, { capture: true, passive: false });
 document.addEventListener("touchcancel", handlePagerTouchEnd, { capture: true, passive: false });
 document.addEventListener("click", suppressClickAfterPagerDrag, true);
+document.addEventListener("scroll", handleWheelColumnScroll, true);
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && state.wheelPicker) {
+    event.preventDefault();
+    closeWheelPicker();
+    return;
+  }
   if (!["Enter", " "].includes(event.key)) return;
   const target = event.target.closest?.("[data-long-press-action]");
   const row = event.target.closest?.("[data-long-press-actions]");
@@ -6198,6 +6544,7 @@ document.addEventListener("submit", (event) => {
       });
       state.transactions = state.transactions.map((item) => item.id === txn.id ? txn : item);
       state.editingTransactionId = null;
+      state.captureDraft = null;
       pendingLedgerReturnAnchor = ledgerEditReturnAnchor;
       ledgerEditReturnAnchor = null;
       cloudTransaction = txn;
@@ -6215,6 +6562,8 @@ document.addEventListener("submit", (event) => {
       toast(t("toast.saved"));
     }
     state.captureProjectOpen = false;
+    state.captureExpandedCategory = "";
+    state.wheelPicker = null;
     state.pendingRecurringRuleId = "";
     state.activeTab = "ledger";
     state.ledgerView = "flow";
@@ -6249,21 +6598,6 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("change", (event) => {
-  const ruleId = event.target?.dataset?.ruleCategory;
-  if (ruleId) {
-    state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules)
-      .map((rule) => rule.id === ruleId ? {
-        ...rule,
-        category: event.target.value,
-        updatedAt: new Date().toISOString(),
-      } : rule);
-    touchPreferences();
-    persist();
-    render();
-    toast(t("toast.ruleUpdated"));
-    return;
-  }
-
   if (event.target.id === "csv-import") {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -6320,6 +6654,18 @@ document.addEventListener("click", (event) => {
     });
     closeChoiceMenus();
   }
+  if (action === "open-wheel-picker") {
+    openWheelPicker(node.dataset.pickerKind, node.dataset.pickerContext, node);
+  }
+  if (action === "close-wheel-picker") {
+    closeWheelPicker();
+  }
+  if (action === "confirm-wheel-picker") {
+    confirmWheelPicker();
+  }
+  if (action === "pick-wheel-item") {
+    selectWheelItem(node);
+  }
   if (action === "pick-field") {
     pickFormField(node);
   }
@@ -6364,6 +6710,7 @@ document.addEventListener("click", (event) => {
     ledgerEditReturnAnchor = null;
     pendingLedgerReturnAnchor = null;
     state.captureProjectOpen = false;
+    state.captureExpandedCategory = "";
     state.pendingRecurringRuleId = "";
     state.activeTab = "capture";
     render();
@@ -6464,14 +6811,6 @@ document.addEventListener("click", (event) => {
     render();
     toast(t("toast.templateApplied"));
   }
-  if (action === "set-capture-date") {
-    const form = node.closest("#transaction-form");
-    const dateField = form?.elements?.namedItem("occurredDate");
-    if (dateField) {
-      dateField.value = node.dataset.date || todayKey(new Date());
-      syncCaptureDraftFromForm(form);
-    }
-  }
   if (action === "repeat-transaction") {
     repeatTransaction(node.dataset.id, node.dataset.date || "");
     render();
@@ -6558,7 +6897,11 @@ document.addEventListener("click", (event) => {
     if (returningToLedger) pendingLedgerReturnAnchor = ledgerEditReturnAnchor;
     ledgerEditReturnAnchor = null;
     state.editingTransactionId = null;
+    state.captureDraft = null;
     state.captureProjectOpen = false;
+    state.captureExpandedCategory = "";
+    state.captureExpandedCategory = "";
+    state.wheelPicker = null;
     state.pendingRecurringRuleId = "";
     if (returningToLedger) {
       state.activeTab = "ledger";
@@ -6570,6 +6913,7 @@ document.addEventListener("click", (event) => {
     ledgerEditReturnAnchor = editReturnAnchor;
     state.captureDraft = null;
     state.captureProjectOpen = false;
+    state.captureExpandedCategory = "";
     state.pendingRecurringRuleId = "";
     state.editingTransactionId = node.dataset.id;
     state.activeTab = "capture";

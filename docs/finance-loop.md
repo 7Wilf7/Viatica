@@ -22,7 +22,9 @@ Agent inference from silently becoming a real financial record.
 
 ### Dates and day details
 
-- Add exposes a compact date control.
+- Add exposes compact built-in date and time-period wheels rather than native
+  browser/OS pickers. Their state survives background sync renders, and the
+  confirmed date writes back into the transaction draft.
 - Calendar can move between months and return to the current month.
 - Tapping a day opens its income, expense, and transaction list.
 - "Backfill this day" opens Add with that date preselected.

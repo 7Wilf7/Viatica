@@ -89,8 +89,8 @@ of copying training-specific behavior.
   without noisy toast popups. Manual sync may show compact syncing/saved/error
   feedback, but routine capture should feel as close to invisible sync as
   possible.
-- `preferences.merchantRules` and `preferences.recurringTransactions` are
-  local-only today; confirmed recurring entries sync as normal transactions,
+- `preferences.merchantRules` and `preferences.recurringTransactions` remain
+  local-only in the current schema; confirmed recurring entries sync as normal transactions,
   but the rules themselves do not. Do not claim cross-device rule sync without
   a reviewed schema change.
 - Recurring reminders must stay confirmation-first, and financial Review must
@@ -151,6 +151,8 @@ of copying training-specific behavior.
 - Calendar owns Month Summary, Pending Recurring, Review, Projects, and
   date-bound day details. Keep these as focused views instead of adding another
   dashboard.
+- Visible date, time, and option selectors must use Viatica-owned menus or
+  scroll-snap wheels, not browser/OS date pickers or native select menus.
 - Settings should follow Ultreia's compact mobile pattern: a short settings
   list first, with the manual and changelog combined into one second-level
   guide page. Budget editing and other long explanatory content also open as

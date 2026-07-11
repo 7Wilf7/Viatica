@@ -23,7 +23,8 @@ ledger rows are not shared.
 
 ## Current Scope
 
-- Fast mobile transaction capture.
+- Fast mobile transaction capture with row-inline subcategories and built-in
+  date/time wheels.
 - Bottom-tab app shell: Ledger, Calendar, Add, Assets, Settings.
 - Ledger Flow / Charts, period filters, compact metrics, search, editing, and
   deletion.
