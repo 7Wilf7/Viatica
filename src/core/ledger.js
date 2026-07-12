@@ -68,6 +68,21 @@ export function isProjectOnlyTransaction(txn = {}) {
   return Boolean(txn.projectOnly) || parseTags(txn.tags).includes(PROJECT_ONLY_TAG);
 }
 
+function timestampValue(value) {
+  const time = Number(new Date(value || 0));
+  return Number.isFinite(time) ? time : 0;
+}
+
+export function compareTransactionsNewestFirst(a = {}, b = {}) {
+  const occurredDiff = timestampValue(b.occurredAt) - timestampValue(a.occurredAt);
+  if (occurredDiff) return occurredDiff;
+  const createdDiff = timestampValue(b.createdAt) - timestampValue(a.createdAt);
+  if (createdDiff) return createdDiff;
+  const updatedDiff = timestampValue(b.updatedAt) - timestampValue(a.updatedAt);
+  if (updatedDiff) return updatedDiff;
+  return String(b.id || "").localeCompare(String(a.id || ""));
+}
+
 export function summarizeProjects(transactions = []) {
   const byProject = new Map();
 
@@ -104,7 +119,7 @@ export function summarizeProjects(transactions = []) {
       expense: Math.round(item.expense * 100) / 100,
       income: Math.round(item.income * 100) / 100,
       net: Math.round((item.income - item.expense) * 100) / 100,
-      transactions: [...item.transactions].sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt)),
+      transactions: [...item.transactions].sort(compareTransactionsNewestFirst),
     }))
     .sort((a, b) => {
       const dateDiff = new Date(b.lastAt || 0) - new Date(a.lastAt || 0);

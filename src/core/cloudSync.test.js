@@ -51,6 +51,12 @@ function createMemorySupabase(initial = {}, options = {}) {
       });
     }
     if (state.kind === "update") {
+      if (options.missingDeletedAtColumn && Object.prototype.hasOwnProperty.call(state.payload, "deleted_at")) {
+        return Promise.resolve({
+          data: null,
+          error: { message: "Could not find the 'deleted_at' column in the schema cache" },
+        });
+      }
       operations.push({ type: "update", table, row: clone(state.payload), filters: clone(state.filters) });
       const updated = [];
       for (const row of rows) {
@@ -110,6 +116,14 @@ function createMemorySupabase(initial = {}, options = {}) {
         },
         insert(row) {
           const rowsToInsert = Array.isArray(row) ? row : [row];
+          if (options.missingDeletedAtColumn && rowsToInsert.some((item) => (
+            Object.prototype.hasOwnProperty.call(item, "deleted_at")
+          ))) {
+            return Promise.resolve({
+              data: null,
+              error: { message: "Could not find the 'deleted_at' column in the schema cache" },
+            });
+          }
           operations.push({ type: "insert", table, row: clone(row) });
           if (table === "viatica_accounts") {
             const conflict = rowsToInsert.some((item) =>
@@ -517,6 +531,67 @@ test("does not resurrect locally deleted transactions during merge", () => {
   assert.deepEqual(merged.preferences.deletedTransactionIds, ["txn_deleted"]);
 });
 
+test("propagates a newer cloud deletion tombstone to another device", () => {
+  const merged = mergeLedgerStates({
+    transactions: [{
+      id: "txn_deleted_elsewhere",
+      type: "expense",
+      occurredAt: "2026-07-12T08:00:00+08:00",
+      amount: 188,
+      category: "运动",
+      title: "赛事报名",
+      createdAt: "2026-07-12T08:00:00+08:00",
+      updatedAt: "2026-07-12T08:01:00+08:00",
+    }],
+    preferences: {},
+  }, {
+    transactions: [],
+    preferences: {
+      deletedTransactionIds: ["txn_deleted_elsewhere"],
+      deletedTransactionTombstones: [{
+        id: "txn_deleted_elsewhere",
+        deletedAt: "2026-07-12T09:00:00+08:00",
+      }],
+    },
+  }, new Date("2026-07-12T10:00:00+08:00"));
+
+  assert.deepEqual(merged.transactions, []);
+  assert.deepEqual(merged.preferences.deletedTransactionIds, ["txn_deleted_elsewhere"]);
+  assert.deepEqual(merged.preferences.deletedTransactionTombstones, [{
+    id: "txn_deleted_elsewhere",
+    deletedAt: "2026-07-12T09:00:00+08:00",
+  }]);
+});
+
+test("keeps a transaction that is newer than an older deletion tombstone", () => {
+  const merged = mergeLedgerStates({
+    transactions: [{
+      id: "txn_restored",
+      type: "expense",
+      occurredAt: "2026-07-12T08:00:00+08:00",
+      amount: 12,
+      category: "交通",
+      title: "交通",
+      createdAt: "2026-07-12T08:00:00+08:00",
+      updatedAt: "2026-07-12T10:00:00+08:00",
+    }],
+    preferences: {},
+  }, {
+    transactions: [],
+    preferences: {
+      deletedTransactionIds: ["txn_restored"],
+      deletedTransactionTombstones: [{
+        id: "txn_restored",
+        deletedAt: "2026-07-12T09:00:00+08:00",
+      }],
+    },
+  }, new Date("2026-07-12T11:00:00+08:00"));
+
+  assert.deepEqual(merged.transactions.map((txn) => txn.id), ["txn_restored"]);
+  assert.deepEqual(merged.preferences.deletedTransactionIds, []);
+  assert.deepEqual(merged.preferences.deletedTransactionTombstones, []);
+});
+
 test("matches a cloud sync result only to the account that started it", () => {
   assert.equal(cloudUserMatchesExpected({ id: "user_1" }, { id: "user_1" }), true);
   assert.equal(cloudUserMatchesExpected({ id: "user_2" }, { id: "user_1" }), false);
@@ -647,6 +722,79 @@ test("pushes cloud state without requiring database conflict constraints", async
   assert.equal(supabase.tables.viatica_preferences[0].starting_assets, 2100);
   assert.equal(supabase.tables.viatica_accounts.length, 0);
   assert.equal(supabase.operations.some((operation) => operation.type === "upsert"), false);
+});
+
+test("keeps cloud transaction tombstones instead of physically deleting rows", async () => {
+  const supabase = createMemorySupabase({
+    viatica_transactions: [{
+      user_id: "user_1",
+      client_id: "txn_soft_deleted",
+      type: "expense",
+      occurred_at: "2026-07-12T08:00:00+08:00",
+      amount: 188,
+      currency: "CNY",
+      book: "日常账本",
+      account: "ledger",
+      category: "运动",
+      title: "赛事报名",
+      merchant: "",
+      note: "",
+      tags: [],
+      reimbursable: false,
+      receipt_data_url: "",
+      created_at: "2026-07-12T08:00:00+08:00",
+      updated_at: "2026-07-12T08:01:00+08:00",
+      deleted_at: null,
+    }],
+  });
+
+  await pushCloudState(supabase, "user_1", {
+    transactions: [],
+    budgets: {},
+    accounts: [],
+    preferences: {
+      deletedTransactionIds: ["txn_soft_deleted"],
+      deletedTransactionTombstones: [{
+        id: "txn_soft_deleted",
+        deletedAt: "2026-07-12T09:00:00+08:00",
+      }],
+    },
+  });
+
+  assert.equal(supabase.tables.viatica_transactions.length, 1);
+  assert.equal(supabase.tables.viatica_transactions[0].deleted_at, "2026-07-12T01:00:00.000Z");
+  assert.equal(supabase.tables.viatica_transactions[0].updated_at, "2026-07-12T01:00:00.000Z");
+  assert.equal(supabase.operations.some((operation) => operation.type === "delete"), false);
+});
+
+test("falls back to physical deletion before the soft-delete migration is applied", async () => {
+  const supabase = createMemorySupabase({
+    viatica_transactions: [{
+      user_id: "user_1",
+      client_id: "txn_legacy_delete",
+      type: "expense",
+      occurred_at: "2026-07-12T08:00:00+08:00",
+      amount: 188,
+      category: "运动",
+      title: "赛事报名",
+    }],
+  }, { missingDeletedAtColumn: true });
+
+  await pushCloudState(supabase, "user_1", {
+    transactions: [],
+    budgets: {},
+    accounts: [],
+    preferences: {
+      deletedTransactionIds: ["txn_legacy_delete"],
+      deletedTransactionTombstones: [{
+        id: "txn_legacy_delete",
+        deletedAt: "2026-07-12T09:00:00+08:00",
+      }],
+    },
+  });
+
+  assert.deepEqual(supabase.tables.viatica_transactions, []);
+  assert.equal(supabase.operations.some((operation) => operation.type === "delete"), true);
 });
 
 test("pushes a new transaction with a single insert path", async () => {

@@ -10,6 +10,7 @@ export const EMPTY_STATE = {
     locale: "zh",
     startingAssets: 0,
     deletedTransactionIds: [],
+    deletedTransactionTombstones: [],
     merchantRules: [],
     recurringTransactions: [],
     projects: [],

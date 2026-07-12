@@ -95,6 +95,20 @@ the catalog on another device.
 Confirmed recurring occurrences are ordinary transactions. They save locally
 first and use the normal cloud transaction mutation path when signed in.
 
+## Cross-device transaction deletion
+
+Deleting a transaction records a local timestamped tombstone immediately. With
+the `viatica_transactions.deleted_at` migration applied, cloud sync keeps the
+row as a tombstone instead of physically deleting it. Every device receives
+that tombstone and compares it with the transaction's `updated_at`; the newer
+state wins. Visible ledger lists exclude winning tombstones, while retained
+tombstones prevent an offline device from uploading a stale copy later.
+
+`preferences.deletedTransactionIds` remains as a compatibility index for old
+local caches. New clients also store `deletedTransactionTombstones` with the
+deletion timestamp. If the cloud schema has not been migrated yet, the client
+falls back to the previous physical-delete path without blocking bookkeeping.
+
 `buildAevumOverview()` is an aggregate-only candidate boundary: it exposes
 period totals and top-category totals, not recent transaction rows. It is not
 wired to Aevum at runtime yet.

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildAevumOverview,
+  compareTransactionsNewestFirst,
   filterTransactions,
   isProjectOnlyTransaction,
   normalizeBudgets,
@@ -125,6 +126,33 @@ test("keeps repayment as an expense category and retires learning to other", () 
   assert.equal(budgets["还款"], 2000);
   assert.equal(budgets["其他"], 600);
   assert.equal("学习" in budgets, false);
+});
+
+test("sorts equal-period transactions deterministically across devices", () => {
+  const transactions = [
+    normalizeTransaction({
+      id: "txn_older",
+      amount: 18,
+      title: "赛事报名",
+      occurredAt: "2026-07-12T08:00:00+08:00",
+      createdAt: "2026-07-12T08:01:00+08:00",
+      updatedAt: "2026-07-12T08:01:00+08:00",
+    }),
+    normalizeTransaction({
+      id: "txn_newer",
+      amount: 12,
+      category: "交通",
+      title: "交通",
+      occurredAt: "2026-07-12T08:00:00+08:00",
+      createdAt: "2026-07-12T08:02:00+08:00",
+      updatedAt: "2026-07-12T08:02:00+08:00",
+    }),
+  ];
+
+  assert.deepEqual(
+    [...transactions].sort(compareTransactionsNewestFirst).map((txn) => txn.id),
+    ["txn_newer", "txn_older"],
+  );
 });
 
 test("updates legacy capture labels to the current category presentation", () => {

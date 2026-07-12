@@ -55,6 +55,7 @@ import {
   saveAevumProfile,
 } from "./core/profileSync.js";
 import {
+  compareTransactionsNewestFirst,
   filterTransactions,
   isProjectOnlyTransaction,
   normalizeBudgets,
@@ -246,6 +247,7 @@ delete state.preferences.dataMode;
 delete state.preferences.deletedAccounts;
 state.preferences.startingAssets = normalizeStartingAssets(state.preferences.startingAssets);
 if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
+if (!Array.isArray(state.preferences.deletedTransactionTombstones)) state.preferences.deletedTransactionTombstones = [];
 state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
 state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
 state.preferences.projects = normalizeProjectNames(state.preferences.projects);
@@ -817,14 +819,14 @@ const MANUAL_SECTIONS = [
         "“资产”先看资产概览；资产金额按一个初始资金总额加流水净额计算，不再维护微信、支付宝、银行卡这类子账户。",
         "收入可以只选主分类保存；红包、退款和其他收入的具体说明直接写在备注里。",
         "需要演示时，退出当前 Aevum 账号并登录专用 Demo 账号；演示数据存在云端，不再使用本机内置 Demo 模式。",
-        "登录 Aevum 账号后，真实流水和分类预算会与 Supabase 云端合并同步；新增或修改会先保存到本机，再在后台写入云端。打开、回到前台或保持页面可见时，其他设备会自动拉取云端新数据。",
+        "登录 Aevum 账号后，真实流水和分类预算会与 Supabase 云端合并同步；新增、修改或删除会先保存到本机，再在后台写入云端。删除状态会同步到其他设备，避免旧流水再次出现。打开、回到前台或保持页面可见时，其他设备会自动拉取云端新数据。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
         "Assets leads with the Assets Overview row. The amount is one starting-assets total plus ledger net, without wallet or bank sub-accounts.",
         "Income can be saved from the primary category alone; describe gifts, refunds, and other income in the note when needed.",
         "For demos, sign out of your current Aevum account and sign in with the dedicated Demo account. Demo data now lives in the cloud instead of a bundled local mode.",
-        "After signing in to the Aevum account, real entries and category budgets merge with Supabase cloud data. New or edited entries save locally first, then write to the cloud in the background. Other foreground devices pull fresh cloud data on launch, focus, and low-frequency visible-page refresh.",
+        "After signing in to the Aevum account, real entries and category budgets merge with Supabase cloud data. New, edited, or deleted entries save locally first, then write to the cloud in the background. Deletion state syncs to other devices so stale entries do not return. Other foreground devices pull fresh cloud data on launch, focus, and low-frequency visible-page refresh.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
       ],
     },
@@ -2311,6 +2313,7 @@ function applyLedgerState(nextState, { preserveLocale = true } = {}) {
   delete state.preferences.deletedAccounts;
   state.preferences.startingAssets = normalizeStartingAssets(state.preferences.startingAssets);
   if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
+  if (!Array.isArray(state.preferences.deletedTransactionTombstones)) state.preferences.deletedTransactionTombstones = [];
   state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
   state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
   state.preferences.projects = normalizeProjectNames(state.preferences.projects);
@@ -2616,8 +2619,8 @@ function syncTransactionMutation(txn, mode, options = {}) {
   syncCloudMutation((expectedUser) => saveCloudTransaction(txn, expectedUser, { mode }), options);
 }
 
-function syncTransactionDelete(id, options = {}) {
-  syncCloudMutation((expectedUser) => deleteCloudTransaction(id, expectedUser), options);
+function syncTransactionDelete(id, deletedAt, options = {}) {
+  syncCloudMutation((expectedUser) => deleteCloudTransaction(id, deletedAt, expectedUser), options);
 }
 
 function activePagerPane() {
@@ -3912,7 +3915,7 @@ function render() {
   const periodTransactions = rangeFilterTransactions(typeTransactions, state.ledgerPeriod);
   const ledgerSummary = summarizeLedgerPeriod(periodTransactions, activeState.budgets);
   const filteredTransactions = ledgerFlowTransactions(periodTransactions)
-    .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt));
+    .sort(compareTransactionsNewestFirst);
   const editingTransaction = state.transactions.find((txn) => txn.id === state.editingTransactionId) || null;
   const syncFeedbackClass = state.cloudSync.feedback ? " sync-feedback-active" : "";
 
@@ -7231,14 +7234,19 @@ document.addEventListener("click", (event) => {
   if (action === "delete") {
     if (!confirm(t("confirm.delete"))) return;
     const deletedId = node.dataset.id;
+    const deletedAt = new Date().toISOString();
     state.transactions = state.transactions.filter((txn) => txn.id !== deletedId);
     state.preferences.deletedTransactionIds = uniqueItems([
       ...(state.preferences.deletedTransactionIds || []),
       deletedId,
     ]);
+    state.preferences.deletedTransactionTombstones = [
+      ...(state.preferences.deletedTransactionTombstones || []).filter((item) => item?.id !== deletedId),
+      { id: deletedId, deletedAt },
+    ];
     const preservePending = Boolean(state.cloudSync.pendingMutation);
     persist({ schedule: false });
-    syncTransactionDelete(deletedId, { preservePending });
+    syncTransactionDelete(deletedId, deletedAt, { preservePending });
     render();
     toast(t("toast.deleted"));
   }

@@ -82,6 +82,12 @@ and sync with the shared Aevum Supabase project using `viatica_*` tables. First
 sync is merge-first rather than overwrite-first, and mutations save locally
 before background cloud writes.
 
+Transaction deletion is represented by a synced `deleted_at` tombstone on
+`viatica_transactions`. Devices merge active rows and tombstones by the latest
+transaction timestamp, so an offline device cannot restore a row deleted on
+another device. Legacy databases without `deleted_at` temporarily fall back to
+physical deletion until the reviewed migration is applied.
+
 `preferences.merchantRules`, `preferences.recurringTransactions`, and
 `preferences.projects` currently stay in the active device's local cache. They
 are not columns in `viatica_preferences` and therefore do not sync as

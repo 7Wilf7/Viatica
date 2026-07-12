@@ -1,3 +1,5 @@
+import { compareTransactionsNewestFirst } from "./ledger.js";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function pad2(value) {
@@ -65,7 +67,7 @@ export function buildMonthCalendarCells(year, month, { weekStartsOn = 1 } = {}) 
 export function transactionsForDate(transactions = [], dateKey) {
   return (transactions || [])
     .filter((txn) => !isProjectOnly(txn) && localDateKey(txn.occurredAt) === dateKey)
-    .sort((a, b) => Number(new Date(b.occurredAt)) - Number(new Date(a.occurredAt)));
+    .sort(compareTransactionsNewestFirst);
 }
 
 export function summarizeDayTransactions(transactions = []) {

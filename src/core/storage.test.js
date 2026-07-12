@@ -66,4 +66,5 @@ test("fills missing local preference collections with safe defaults", () => {
   const preferences = loadStateForOwner("user-123", storage).preferences;
   assert.equal(preferences.startingAssets, 0);
   assert.deepEqual(preferences.projects, []);
+  assert.deepEqual(preferences.deletedTransactionTombstones, []);
 });

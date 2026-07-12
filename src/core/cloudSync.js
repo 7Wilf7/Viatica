@@ -1,6 +1,7 @@
 import { getCloudClient, getCloudUser } from "./cloud.js";
 import { DEMO_ACCOUNTS } from "./demoData.js";
 import {
+  compareTransactionsNewestFirst,
   normalizeBudgets,
   normalizeTransaction,
 } from "./ledger.js";
@@ -76,6 +77,29 @@ function uniqueDeletedIds(preferences = {}) {
   return [...new Set((preferences.deletedTransactionIds || []).map(String).filter(Boolean))];
 }
 
+function normalizeDeletionTombstones(preferences = {}) {
+  const byId = new Map();
+  for (const value of preferences.deletedTransactionTombstones || []) {
+    const id = String(value?.id || "").trim();
+    if (!id) continue;
+    const deletedAt = value?.deletedAt || value?.deleted_at || "";
+    const existing = byId.get(id);
+    if (!existing || timeValue(deletedAt) >= timeValue(existing.deletedAt)) {
+      byId.set(id, { id, deletedAt });
+    }
+  }
+  for (const id of uniqueDeletedIds(preferences)) {
+    if (!byId.has(id)) byId.set(id, { id, deletedAt: "" });
+  }
+  return [...byId.values()];
+}
+
+function mergeDeletionTombstones(...preferencesList) {
+  return normalizeDeletionTombstones({
+    deletedTransactionTombstones: preferencesList.flatMap(normalizeDeletionTombstones),
+  });
+}
+
 function normalizeStartingAssets(value) {
   const amount = Number(value ?? 0);
   return Number.isFinite(amount) ? Math.round(amount * 100) / 100 : 0;
@@ -116,6 +140,12 @@ function normalizeCloudTransaction(row, now = new Date()) {
     transaction.updatedAt = "";
   }
   return transaction;
+}
+
+function cloudDeletionTombstone(row = {}) {
+  const id = String(row.client_id || row.local_id || row.id || "").trim();
+  const deletedAt = row.deleted_at || row.deletedAt || "";
+  return id && deletedAt ? { id, deletedAt } : null;
 }
 
 export function isDemoSeedTransaction(value = {}) {
@@ -172,17 +202,17 @@ export function mergePendingLocalTransactions(ownerState = {}, pendingState = {}
   const pendingWithoutDemo = stripDemoSeedArtifacts(pendingState, {
     stripLikelySeedAccounts: hasDemoSeedArtifacts(pendingState),
   });
-  const deletedTransactionIds = [
-    ...new Set([
-      ...uniqueDeletedIds(ownerState.preferences),
-      ...uniqueDeletedIds(pendingWithoutDemo.preferences),
-    ]),
-  ];
+  const deletedTransactionTombstones = mergeDeletionTombstones(
+    ownerState.preferences || {},
+    pendingWithoutDemo.preferences || {},
+  );
+  const deletedTransactionIds = deletedTransactionTombstones.map((item) => item.id);
   return mergeLedgerStates({
     ...ownerState,
     preferences: {
       ...(ownerState.preferences || {}),
       deletedTransactionIds,
+      deletedTransactionTombstones,
     },
   }, {
     transactions: pendingWithoutDemo.transactions || [],
@@ -214,6 +244,7 @@ function toTransactionRow(txn, userId, mode = "client_id") {
     receipt_data_url: txn.receiptDataUrl || "",
     created_at: asIso(txn.createdAt || txn.occurredAt),
     updated_at: asIso(txn.updatedAt || txn.createdAt || txn.occurredAt),
+    deleted_at: null,
   };
   if (mode === "client_id") row.client_id = txn.id;
   if (mode === "local_id") row.local_id = txn.id;
@@ -251,8 +282,11 @@ function mergeBudgetsByFreshness(localState = {}, remoteState = {}) {
 }
 
 export function mergeLedgerStates(localState = {}, remoteState = {}, now = new Date()) {
-  const deletedTransactionIds = uniqueDeletedIds(localState.preferences);
-  const deleted = new Set(deletedTransactionIds);
+  const deletionTombstones = mergeDeletionTombstones(
+    localState.preferences || {},
+    remoteState.preferences || {},
+  );
+  const tombstoneById = new Map(deletionTombstones.map((item) => [item.id, item]));
   const byId = new Map();
   const addTransaction = (txn, { remote = false } = {}) => {
     try {
@@ -261,7 +295,6 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
         normalized.createdAt = "";
         normalized.updatedAt = "";
       }
-      if (deleted.has(normalized.id)) return;
       const existing = byId.get(normalized.id);
       byId.set(normalized.id, existing ? newer(existing, normalized) : normalized);
     } catch {
@@ -272,8 +305,16 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
   (localState.transactions || []).forEach((txn) => addTransaction(txn));
   (remoteState.transactions || []).forEach((txn) => addTransaction(txn, { remote: true }));
 
+  const activeTombstones = [...tombstoneById.values()].filter((tombstone) => {
+    const transaction = byId.get(tombstone.id);
+    if (!transaction || !tombstone.deletedAt) return true;
+    return timeValue(tombstone.deletedAt) >= timeValue(transaction.updatedAt || transaction.createdAt);
+  });
+  const deleted = new Set(activeTombstones.map((item) => item.id));
   const transactions = [...byId.values()]
-    .sort((a, b) => Number(new Date(b.occurredAt)) - Number(new Date(a.occurredAt)));
+    .filter((txn) => !deleted.has(txn.id))
+    .sort(compareTransactionsNewestFirst);
+  const deletedTransactionIds = [...deleted];
 
   const budgets = mergeBudgetsByFreshness(localState, remoteState);
 
@@ -298,6 +339,7 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
       ...localPreferences,
       startingAssets,
       deletedTransactionIds,
+      deletedTransactionTombstones: activeTombstones,
     },
   };
 }
@@ -317,11 +359,18 @@ async function fetchCloudState(supabase, userId) {
     selectRows(supabase, TABLES.preferences, userId, "updated_at"),
   ]);
 
+  const deletedTransactionTombstones = transactionRows.map(cloudDeletionTombstone).filter(Boolean);
   return {
-    transactions: transactionRows.map((row) => normalizeCloudTransaction(row)),
+    transactions: transactionRows
+      .filter((row) => !cloudDeletionTombstone(row))
+      .map((row) => normalizeCloudTransaction(row)),
     budgets: normalizeBudgetRows(budgetRows),
     accounts: [],
-    preferences: normalizePreferenceRows(preferenceRows),
+    preferences: {
+      ...normalizePreferenceRows(preferenceRows),
+      deletedTransactionIds: deletedTransactionTombstones.map((item) => item.id),
+      deletedTransactionTombstones,
+    },
   };
 }
 
@@ -352,10 +401,14 @@ function transactionKeys(txn = {}) {
 }
 
 function transactionUpdateRows(txn, userId) {
-  const rows = [
+  const rowsWithSoftDelete = [
     toTransactionRow(txn, userId, "client_id"),
     toTransactionRow(txn, userId, "local_id"),
     toTransactionRow(txn, userId, "none"),
+  ];
+  const rows = [
+    ...rowsWithSoftDelete,
+    ...rowsWithSoftDelete.map(withoutSoftDelete),
   ];
   return [
     ...rows,
@@ -376,11 +429,20 @@ function withoutTimestamps(row) {
   return rest;
 }
 
+function withoutSoftDelete(row) {
+  const { deleted_at, ...rest } = row;
+  return rest;
+}
+
 function transactionInsertRowVariants(transactions, userId) {
-  const rows = [
+  const rowsWithSoftDelete = [
     transactions.map((txn) => toTransactionRow(txn, userId, "client_id")),
     transactions.map((txn) => toTransactionRow(txn, userId, "local_id")),
     transactions.map((txn) => toTransactionRow(txn, userId, "id")),
+  ];
+  const rows = [
+    ...rowsWithSoftDelete,
+    ...rowsWithSoftDelete.map((items) => items.map(withoutSoftDelete)),
   ];
   return [
     ...rows,
@@ -641,9 +703,41 @@ async function deleteCloudTransactionsByIds(supabase, userId, ids = []) {
   if (!supportedColumn && lastSchemaError) throw lastSchemaError;
 }
 
+async function softDeleteCloudTransactions(supabase, userId, tombstones = []) {
+  for (const tombstone of tombstones) {
+    const id = String(tombstone?.id || "").trim();
+    if (!id) continue;
+    const deletedAt = asIso(tombstone.deletedAt);
+    let schemaSupported = false;
+
+    for (const column of ["client_id", "local_id", "id"]) {
+      const result = await supabase
+        .from(TABLES.transactions)
+        .update({ deleted_at: deletedAt, updated_at: deletedAt })
+        .eq("user_id", userId)
+        .eq(column, id)
+        .select(column);
+      if (!result.error) {
+        schemaSupported = true;
+        if ((result.data || []).length) break;
+        continue;
+      }
+      const message = `${result.error?.message || ""} ${result.error?.details || ""}`.toLowerCase();
+      if (isSchemaFallbackError(result.error) && /deleted_at/.test(message)) return false;
+      if (!isSchemaFallbackError(result.error)) throw result.error;
+    }
+
+    if (!schemaSupported) return false;
+  }
+  return true;
+}
+
 export async function pushCloudState(supabase, userId, state) {
-  const deletedTransactionIds = uniqueDeletedIds(state.preferences);
-  await deleteCloudTransactionsByIds(supabase, userId, deletedTransactionIds);
+  const deletionTombstones = normalizeDeletionTombstones(state.preferences);
+  const softDeleteSupported = await softDeleteCloudTransactions(supabase, userId, deletionTombstones);
+  if (!softDeleteSupported) {
+    await deleteCloudTransactionsByIds(supabase, userId, deletionTombstones.map((item) => item.id));
+  }
   await upsertTransactions(supabase, userId, state.transactions || []);
   await upsertBudgets(supabase, userId, state.budgets || {});
   await upsertPreferences(supabase, userId, state.preferences || {});
@@ -688,7 +782,9 @@ export async function syncViaticaLedger(localState, expectedUser = null) {
   };
 }
 
-export async function deleteCloudTransaction(id, expectedUser = null) {
+export async function deleteCloudTransaction(id, deletedAt = new Date().toISOString(), expectedUser = null) {
   const { supabase, user } = await verifiedCloudContext(expectedUser);
-  await deleteCloudTransactionsByIds(supabase, user.id, [id]);
+  const tombstone = { id, deletedAt };
+  const softDeleteSupported = await softDeleteCloudTransactions(supabase, user.id, [tombstone]);
+  if (!softDeleteSupported) await deleteCloudTransactionsByIds(supabase, user.id, [id]);
 }
