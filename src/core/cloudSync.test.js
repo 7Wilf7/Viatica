@@ -25,6 +25,7 @@ function createMemorySupabase(initial = {}, options = {}) {
     viatica_accounts: clone(initial.viatica_accounts || []),
     viatica_preferences: clone(initial.viatica_preferences || []),
     viatica_projects: clone(initial.viatica_projects || []),
+    viatica_preference_items: clone(initial.viatica_preference_items || []),
   };
   const operations = [];
   let hiddenAccountSelects = options.hideExistingAccountsOnce ? 1 : 0;
@@ -38,6 +39,9 @@ function createMemorySupabase(initial = {}, options = {}) {
   function execute(table, state) {
     if (table === "viatica_projects" && options.missingProjectsTable) {
       return Promise.resolve({ data: null, error: { message: 'relation "viatica_projects" does not exist' } });
+    }
+    if (table === "viatica_preference_items" && options.missingPreferenceItemsTable) {
+      return Promise.resolve({ data: null, error: { message: 'relation "viatica_preference_items" does not exist' } });
     }
     const rows = tables[table] || [];
     if (state.kind === "select") {
@@ -123,6 +127,9 @@ function createMemorySupabase(initial = {}, options = {}) {
           if (table === "viatica_projects" && options.missingProjectsTable) {
             return Promise.resolve({ data: null, error: { message: 'relation "viatica_projects" does not exist' } });
           }
+          if (table === "viatica_preference_items" && options.missingPreferenceItemsTable) {
+            return Promise.resolve({ data: null, error: { message: 'relation "viatica_preference_items" does not exist' } });
+          }
           if (options.missingDeletedAtColumn && rowsToInsert.some((item) => (
             Object.prototype.hasOwnProperty.call(item, "deleted_at")
           ))) {
@@ -191,6 +198,24 @@ function createMemorySupabase(initial = {}, options = {}) {
                 error: {
                   code: "23505",
                   message: 'duplicate key value violates unique constraint "viatica_projects_pkey"',
+                },
+              });
+            }
+          }
+          if (table === "viatica_preference_items") {
+            const conflict = rowsToInsert.some((item) =>
+              tables[table].some((existing) => (
+                existing.user_id === item.user_id
+                && existing.collection === item.collection
+                && existing.item_key === item.item_key
+              ))
+            );
+            if (conflict) {
+              return Promise.resolve({
+                data: null,
+                error: {
+                  code: "23505",
+                  message: 'duplicate key value violates unique constraint "viatica_preference_items_pkey"',
                 },
               });
             }
@@ -355,6 +380,94 @@ test("propagates a deleted empty project across devices", () => {
 
   assert.deepEqual(merged.preferences.projects, []);
   assert.equal(merged.preferences.projectCatalogEntries[0].deletedAt, "2026-07-12T11:00:00+08:00");
+});
+
+test("merges bookkeeping memory and recurring rules across devices", () => {
+  const merged = mergeLedgerStates({
+    transactions: [],
+    budgets: {},
+    preferences: {
+      merchantRules: [{
+        id: "rule_breakfast",
+        key: "expense:早餐店",
+        basis: "早餐店",
+        type: "expense",
+        category: "餐饮",
+        title: "早餐",
+        useCount: 2,
+        updatedAt: "2026-07-12T08:00:00+08:00",
+      }],
+      recurringTransactions: [],
+    },
+  }, {
+    transactions: [],
+    budgets: {},
+    preferences: {
+      merchantRules: [{
+        id: "rule_breakfast_cloud",
+        key: "expense:早餐店",
+        basis: "早餐店",
+        type: "expense",
+        category: "生活",
+        title: "早餐",
+        useCount: 3,
+        updatedAt: "2026-07-12T09:00:00+08:00",
+      }],
+      recurringTransactions: [{
+        id: "rec_rent",
+        type: "expense",
+        title: "房租",
+        category: "生活",
+        amount: 3000,
+        dayOfMonth: 1,
+        nextDate: "2026-08-01",
+        updatedAt: "2026-07-12T09:00:00+08:00",
+      }],
+    },
+  });
+
+  assert.equal(merged.preferences.merchantRules.length, 1);
+  assert.equal(merged.preferences.merchantRules[0].category, "生活");
+  assert.deepEqual(merged.preferences.recurringTransactions.map((rule) => rule.id), ["rec_rent"]);
+});
+
+test("propagates deleted bookkeeping memory and recurring rules", () => {
+  const deletedAt = "2026-07-12T10:00:00+08:00";
+  const merged = mergeLedgerStates({
+    transactions: [],
+    budgets: {},
+    preferences: {
+      merchantRules: [{
+        id: "rule_breakfast",
+        key: "expense:早餐店",
+        basis: "早餐店",
+        type: "expense",
+        category: "餐饮",
+        updatedAt: "2026-07-12T08:00:00+08:00",
+      }],
+      recurringTransactions: [{
+        id: "rec_rent",
+        type: "expense",
+        title: "房租",
+        category: "生活",
+        amount: 3000,
+        nextDate: "2026-08-01",
+        updatedAt: "2026-07-12T08:00:00+08:00",
+      }],
+    },
+  }, {
+    transactions: [],
+    budgets: {},
+    preferences: {
+      merchantRuleTombstones: [{ key: "expense:早餐店", deletedAt }],
+      recurringRuleTombstones: [{ id: "rec_rent", deletedAt }],
+    },
+  });
+
+  assert.deepEqual(merged.preferences.merchantRules, []);
+  assert.deepEqual(merged.preferences.recurringTransactions, []);
+  assert.deepEqual(merged.preferences.merchantRuleTombstones, [{ key: "expense:早餐店", deletedAt }]);
+  assert.deepEqual(merged.preferences.recurringRuleTombstones, [{ id: "rec_rent", deletedAt }]);
 });
 
 test("uses newer non-zero cloud starting assets", () => {
@@ -872,6 +985,85 @@ test("keeps ledger sync working before the projects table migration", async () =
   });
 
   assert.deepEqual(supabase.tables.viatica_projects, []);
+  assert.equal(supabase.tables.viatica_preferences.length, 1);
+});
+
+test("syncs bookkeeping memory and recurring rules as preference items", async () => {
+  const supabase = createMemorySupabase();
+  await pushCloudState(supabase, "user_1", {
+    transactions: [],
+    budgets: {},
+    accounts: [],
+    preferences: {
+      merchantRules: [{
+        id: "rule_breakfast",
+        key: "expense:早餐店",
+        basis: "早餐店",
+        type: "expense",
+        category: "餐饮",
+        title: "早餐",
+        useCount: 2,
+        updatedAt: "2026-07-12T08:00:00+08:00",
+      }],
+      recurringTransactions: [{
+        id: "rec_rent",
+        type: "expense",
+        title: "房租",
+        category: "生活",
+        amount: 3000,
+        dayOfMonth: 1,
+        nextDate: "2026-08-01",
+        updatedAt: "2026-07-12T08:00:00+08:00",
+      }],
+    },
+  });
+
+  assert.equal(supabase.tables.viatica_preference_items.length, 2);
+  assert.deepEqual(
+    supabase.tables.viatica_preference_items.map((row) => row.collection).sort(),
+    ["merchant_rule", "recurring_transaction"],
+  );
+
+  await pushCloudState(supabase, "user_1", {
+    transactions: [],
+    budgets: {},
+    accounts: [],
+    preferences: {
+      merchantRules: [],
+      merchantRuleTombstones: [{
+        key: "expense:早餐店",
+        deletedAt: "2026-07-12T09:00:00+08:00",
+      }],
+      recurringTransactions: [],
+      recurringRuleTombstones: [{
+        id: "rec_rent",
+        deletedAt: "2026-07-12T09:00:00+08:00",
+      }],
+    },
+  });
+
+  assert.equal(supabase.tables.viatica_preference_items.every((row) => Boolean(row.deleted_at)), true);
+});
+
+test("keeps ledger sync working before the preference items migration", async () => {
+  const supabase = createMemorySupabase({}, { missingPreferenceItemsTable: true });
+  await pushCloudState(supabase, "user_1", {
+    transactions: [],
+    budgets: {},
+    accounts: [],
+    preferences: {
+      merchantRules: [{
+        id: "rule_local",
+        key: "expense:本机",
+        basis: "本机",
+        type: "expense",
+        category: "其他",
+        updatedAt: "2026-07-12T08:00:00+08:00",
+      }],
+    },
+  });
+
+  assert.deepEqual(supabase.tables.viatica_preference_items, []);
   assert.equal(supabase.tables.viatica_preferences.length, 1);
 });
 

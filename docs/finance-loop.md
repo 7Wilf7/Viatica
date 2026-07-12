@@ -87,11 +87,11 @@ The local state keeps these collections under `preferences`:
 - `recurringTransactions`
 
 They are normalized by the relevant core modules and persisted inside the
-active `viatica:v1` or account-specific local cache. The current
-`viatica_preferences` cloud row stores only supported scalar preferences such
-as locale and starting assets. Bookkeeping memory and recurring rules therefore
-do not sync across devices yet. Project catalog metadata is also cached locally
-under `projectCatalogEntries`, but syncs independently through
+active `viatica:v1` or account-specific local cache. The scalar
+`viatica_preferences` row still stores locale and starting assets, while
+bookkeeping memory and recurring rules sync as separate account-scoped JSON
+items through `viatica_preference_items`. Project catalog metadata is cached
+locally under `projectCatalogEntries`, but syncs independently through
 `viatica_projects`; transaction-linked project names continue to sync with the
 transaction itself.
 
@@ -157,8 +157,6 @@ Never reset real browser storage to prepare a test.
 
 ## Known Gaps
 
-- Bookkeeping memory, recurring rules, and empty project placeholders are
-  device-local.
 - JSON restore preview and conflict-safe recovery are not implemented.
 - Recurring rules are monthly only.
 - Review signals do not explain causal relationships beyond their deterministic

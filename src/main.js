@@ -239,7 +239,9 @@ state.preferences = {
   locale: "zh",
   startingAssets: 0,
   merchantRules: [],
+  merchantRuleTombstones: [],
   recurringTransactions: [],
+  recurringRuleTombstones: [],
   projects: [],
   ...state.preferences,
 };
@@ -249,7 +251,9 @@ state.preferences.startingAssets = normalizeStartingAssets(state.preferences.sta
 if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
 if (!Array.isArray(state.preferences.deletedTransactionTombstones)) state.preferences.deletedTransactionTombstones = [];
 state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
+if (!Array.isArray(state.preferences.merchantRuleTombstones)) state.preferences.merchantRuleTombstones = [];
 state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
+if (!Array.isArray(state.preferences.recurringRuleTombstones)) state.preferences.recurringRuleTombstones = [];
 state.preferences.projects = normalizeProjectNames(state.preferences.projects);
 if (!Array.isArray(state.preferences.projectCatalogEntries)) state.preferences.projectCatalogEntries = [];
 state.accounts = [];
@@ -780,14 +784,14 @@ const MANUAL_SECTIONS = [
     items: {
       zh: [
         "“添加”里可以直接选日期，也可以从“日历”点某一天后选择“从这一天补记”。",
-        "长按流水可以再记一笔。保存过的商家 / 标题会成为可见的本机记账记忆；当前只用于查看和整理，不会自动改写新流水。",
-        "周期账单来自已有流水，已到期和未来 30 天的项目会进入待确认列表；确认才入账，跳过只推进下一次，修改本次会先回到添加页。",
+        "长按流水可以再记一笔。保存过的商家 / 标题会成为可见的账号级记账记忆并跨设备同步；当前只用于查看和整理，不会自动改写新流水。",
+        "周期账单规则会跨设备同步；已到期和未来 30 天的项目会进入待确认列表。确认才入账，跳过只推进下一次，修改本次会先回到添加页。",
         "复盘页只读：先由本地代码计算比上月多花、预算风险、疑似重复和疑似周期，不会调用 AI 或修改历史流水。",
       ],
       en: [
         "Add can choose a date directly, or Calendar can open a day and start Backfill From This Day.",
-        "Long-press an entry to repeat it. Saved merchants or titles become visible local bookkeeping memory for review and organization; they do not rewrite new entries.",
-        "Recurring bills come from existing entries. Overdue items and those due within 30 days appear for review. Confirm writes the entry, Skip only advances the next date, and Modify This Time returns to Add first.",
+        "Long-press an entry to repeat it. Saved merchants or titles become visible account bookkeeping memory that syncs across devices; it is for review and organization and does not rewrite new entries.",
+        "Recurring bill rules sync across devices. Overdue items and those due within 30 days appear for review. Confirm writes the entry, Skip only advances the next date, and Modify This Time returns to Add first.",
         "Review is read-only: local code calculates month increases, budget risks, possible duplicates, and likely recurring costs without calling AI or mutating history.",
       ],
     },
@@ -1620,7 +1624,7 @@ const MESSAGES = {
     "settings.budgetInvalid": "预算必须是 0 或正数。",
     "settings.rulesTitle": "记账记忆",
     "settings.rulesHint": "已保存的商家与分类记忆",
-    "settings.rulesPageHint": "这些本机记忆来自已保存的商家 / 标题；当前只用于查看和整理，不会自动改写新流水，可以删除或改分类。",
+    "settings.rulesPageHint": "这些账号记忆来自已保存的商家 / 标题，会跨设备同步；当前只用于查看和整理，不会自动改写新流水，可以删除或改分类。",
     "settings.noRules": "还没有记账记忆。保存带商家或标题的流水后会出现在这里。",
     "settings.recurringTitle": "周期账单",
     "settings.recurringHint": "查看和删除待确认项目",
@@ -1911,7 +1915,7 @@ const MESSAGES = {
     "settings.budgetInvalid": "Budgets must be 0 or positive.",
     "settings.rulesTitle": "Bookkeeping Memory",
     "settings.rulesHint": "Saved merchant and category memory",
-    "settings.rulesPageHint": "This local memory comes from saved merchants or titles. It is for review and organization only and does not rewrite new entries; you can delete it or change its category.",
+    "settings.rulesPageHint": "This account memory comes from saved merchants or titles and syncs across devices. It is for review and organization only and does not rewrite new entries; you can delete it or change its category.",
     "settings.noRules": "No bookkeeping memory yet. Save an entry with a merchant or title to create one.",
     "settings.recurringTitle": "Recurring Bills",
     "settings.recurringHint": "Review and delete pending items",
@@ -2219,9 +2223,27 @@ function recordProjectCatalogEntry(name, { deleted = false, at = new Date().toIS
   state.preferences.updatedAt = at;
 }
 
+function recordPreferenceItemTombstone(collection, keyField, key, at = new Date().toISOString()) {
+  const normalizedKey = String(key || "").trim();
+  if (!normalizedKey) return;
+  state.preferences[collection] = [
+    ...(state.preferences[collection] || []).filter((item) => String(item?.[keyField] || "") !== normalizedKey),
+    { [keyField]: normalizedKey, deletedAt: at },
+  ];
+  state.preferences.updatedAt = at;
+}
+
+function clearPreferenceItemTombstone(collection, keyField, key) {
+  const normalizedKey = String(key || "").trim();
+  state.preferences[collection] = (state.preferences[collection] || [])
+    .filter((item) => String(item?.[keyField] || "") !== normalizedKey);
+}
+
 function normalizePreferenceCollections() {
   state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
+  if (!Array.isArray(state.preferences.merchantRuleTombstones)) state.preferences.merchantRuleTombstones = [];
   state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
+  if (!Array.isArray(state.preferences.recurringRuleTombstones)) state.preferences.recurringRuleTombstones = [];
   state.preferences.projects = normalizeProjectNames(state.preferences.projects);
   if (!Array.isArray(state.preferences.projectCatalogEntries)) state.preferences.projectCatalogEntries = [];
 }
@@ -2329,7 +2351,9 @@ function applyLedgerState(nextState, { preserveLocale = true } = {}) {
   if (!Array.isArray(state.preferences.deletedTransactionIds)) state.preferences.deletedTransactionIds = [];
   if (!Array.isArray(state.preferences.deletedTransactionTombstones)) state.preferences.deletedTransactionTombstones = [];
   state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
+  if (!Array.isArray(state.preferences.merchantRuleTombstones)) state.preferences.merchantRuleTombstones = [];
   state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
+  if (!Array.isArray(state.preferences.recurringRuleTombstones)) state.preferences.recurringRuleTombstones = [];
   state.preferences.projects = normalizeProjectNames(state.preferences.projects);
   if (!Array.isArray(state.preferences.projectCatalogEntries)) state.preferences.projectCatalogEntries = [];
   state.accounts = [];
@@ -3716,6 +3740,8 @@ function repeatTransaction(id, dateKey = "") {
 
 function rememberTransaction(txn) {
   state.preferences.merchantRules = updateMerchantRules(state.preferences.merchantRules, txn);
+  const rememberedRule = state.preferences.merchantRules[0];
+  if (rememberedRule?.key) clearPreferenceItemTombstone("merchantRuleTombstones", "key", rememberedRule.key);
   touchPreferences();
 }
 
@@ -3723,6 +3749,13 @@ function makeRecurringFromTransaction(id) {
   const txn = state.transactions.find((item) => item.id === id);
   if (!txn || txn.projectOnly) return;
   const rule = createRecurringRuleFromTransaction(txn);
+  const replacedRules = (state.preferences.recurringTransactions || []).filter((item) => (
+    item.type === rule.type
+    && item.category === rule.category
+    && item.title === rule.title
+    && item.merchant === rule.merchant
+    && Number(item.amount) === Number(rule.amount)
+  ));
   state.preferences.recurringTransactions = normalizeRecurringRules([
     rule,
     ...(state.preferences.recurringTransactions || []).filter((item) => (
@@ -3735,6 +3768,13 @@ function makeRecurringFromTransaction(id) {
       )
     )),
   ]);
+  replacedRules.forEach((item) => recordPreferenceItemTombstone(
+    "recurringRuleTombstones",
+    "id",
+    item.id,
+    rule.updatedAt,
+  ));
+  clearPreferenceItemTombstone("recurringRuleTombstones", "id", rule.id);
   touchPreferences();
   persist();
   toast(t("toast.recurringCreated"));
@@ -3751,6 +3791,7 @@ function advanceRecurringPreference(ruleId, occurrenceDate) {
       rule.id === ruleId ? advanceRecurringRule(rule, occurrenceDate) : rule
     )),
   );
+  clearPreferenceItemTombstone("recurringRuleTombstones", "id", ruleId);
   touchPreferences();
 }
 
@@ -5056,9 +5097,9 @@ function renderSettingsTab() {
       ${renderSettingsAccountCard()}
 
       ${renderSettingsSection(t("settings.productSection"), [
-        renderSettingsCell(t("settings.budgetTitle"), t("settings.budgetHint"), "", "budgets"),
-        renderSettingsCell(t("settings.rulesTitle"), t("settings.rulesHint"), "", "rules"),
-        renderSettingsCell(t("settings.recurringTitle"), t("settings.recurringHint"), "", "recurring"),
+        renderSettingsCell(t("settings.budgetTitle"), "", "", "budgets"),
+        renderSettingsCell(t("settings.rulesTitle"), "", "", "rules"),
+        renderSettingsCell(t("settings.recurringTitle"), "", "", "recurring"),
         renderSettingsCell(t("settings.languageTitle"), "", renderLanguageSwitch()),
         renderSettingsCell(t("settings.manualTitle"), "", "", "manual"),
         renderAppUpdateChecker(),
@@ -6418,6 +6459,9 @@ function chooseOption(optionNode) {
         category: value,
         updatedAt: new Date().toISOString(),
       } : rule);
+    clearPreferenceItemTombstone("merchantRuleTombstones", "key", (
+      state.preferences.merchantRules.find((rule) => rule.id === ruleId)?.key
+    ));
     touchPreferences();
     persist();
     render();
@@ -7158,17 +7202,21 @@ document.addEventListener("click", (event) => {
     render();
   }
   if (action === "delete-merchant-rule") {
+    const deletedRule = normalizeMerchantRules(state.preferences.merchantRules)
+      .find((rule) => rule.id === node.dataset.ruleId);
     state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules)
       .filter((rule) => rule.id !== node.dataset.ruleId);
-    touchPreferences();
+    recordPreferenceItemTombstone("merchantRuleTombstones", "key", deletedRule?.key);
     persist();
     render();
     toast(t("toast.ruleDeleted"));
   }
   if (action === "delete-recurring-rule") {
+    const deletedRule = normalizeRecurringRules(state.preferences.recurringTransactions)
+      .find((rule) => rule.id === node.dataset.ruleId);
     state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions)
       .filter((rule) => rule.id !== node.dataset.ruleId);
-    touchPreferences();
+    recordPreferenceItemTombstone("recurringRuleTombstones", "id", deletedRule?.id);
     persist();
     render();
     toast(t("toast.recurringDeleted"));

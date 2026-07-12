@@ -89,10 +89,10 @@ of copying training-specific behavior.
   without noisy toast popups. Manual sync may show compact syncing/saved/error
   feedback, but routine capture should feel as close to invisible sync as
   possible.
-- `preferences.merchantRules` and `preferences.recurringTransactions` remain
-  local-only in the current schema; confirmed recurring entries sync as normal transactions,
-  but the rules themselves do not. Do not claim cross-device rule sync without
-  a reviewed schema change.
+- `preferences.merchantRules` and `preferences.recurringTransactions` are
+  cached locally and sync as account-scoped items through
+  `viatica_preference_items`; confirmed recurring entries continue to sync as
+  normal transactions.
 - Recurring reminders must stay confirmation-first, and financial Review must
   stay deterministic and read-only. Neither may silently mutate historical
   transactions. This protects ledger truth; it does not mean every Agent

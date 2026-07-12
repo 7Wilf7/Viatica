@@ -1,5 +1,6 @@
 import { getCloudClient, getCloudUser } from "./cloud.js";
 import { DEMO_ACCOUNTS } from "./demoData.js";
+import { normalizeMerchantRules, normalizeRecurringRules } from "./financeLoop.js";
 import {
   compareTransactionsNewestFirst,
   normalizeBudgets,
@@ -14,6 +15,11 @@ const TABLES = {
   accounts: "viatica_accounts",
   preferences: "viatica_preferences",
   projects: "viatica_projects",
+  preferenceItems: "viatica_preference_items",
+};
+const PREFERENCE_ITEM_COLLECTIONS = {
+  merchantRules: "merchant_rule",
+  recurringTransactions: "recurring_transaction",
 };
 const DEMO_ACCOUNT_EMAIL = "demo@demo.com";
 const DEMO_ACCOUNT_OPENING_BY_NAME = new Map(
@@ -131,6 +137,76 @@ function mergeProjectCatalogEntries(...preferencesList) {
   return normalizeProjectCatalogEntries({
     projectCatalogEntries: preferencesList.flatMap(normalizeProjectCatalogEntries),
   });
+}
+
+function normalizeRuleTombstones(values = [], keyField) {
+  const byKey = new Map();
+  for (const value of values || []) {
+    const key = String(value?.[keyField] || "").trim();
+    if (!key) continue;
+    const deletedAt = value.deletedAt || value.deleted_at || "";
+    const existing = byKey.get(key);
+    if (!existing || timeValue(deletedAt) >= timeValue(existing.deletedAt)) {
+      byKey.set(key, { [keyField]: key, deletedAt });
+    }
+  }
+  return [...byKey.values()];
+}
+
+function mergeRuleCollection(localPreferences, remotePreferences, {
+  collection,
+  normalize,
+  keyField,
+  tombstoneCollection,
+  limit = Infinity,
+}) {
+  const rulesByKey = new Map();
+  for (const rule of normalize([
+    ...(localPreferences?.[collection] || []),
+    ...(remotePreferences?.[collection] || []),
+  ])) {
+    const key = String(rule?.[keyField] || "").trim();
+    if (!key) continue;
+    const existing = rulesByKey.get(key);
+    if (!existing || timeValue(rule.updatedAt) >= timeValue(existing.updatedAt)) rulesByKey.set(key, rule);
+  }
+
+  const tombstones = normalizeRuleTombstones([
+    ...(localPreferences?.[tombstoneCollection] || []),
+    ...(remotePreferences?.[tombstoneCollection] || []),
+  ], keyField);
+  const activeTombstones = tombstones.filter((tombstone) => {
+    const rule = rulesByKey.get(tombstone[keyField]);
+    return !rule || timeValue(tombstone.deletedAt) >= timeValue(rule.updatedAt);
+  });
+  const deleted = new Set(activeTombstones.map((item) => item[keyField]));
+  const rules = [...rulesByKey.values()]
+    .filter((rule) => !deleted.has(rule[keyField]))
+    .sort((a, b) => timeValue(b.updatedAt) - timeValue(a.updatedAt))
+    .slice(0, limit);
+  return { rules, tombstones: activeTombstones };
+}
+
+function mergePreferenceRuleCollections(localPreferences = {}, remotePreferences = {}) {
+  const merchant = mergeRuleCollection(localPreferences, remotePreferences, {
+    collection: "merchantRules",
+    normalize: normalizeMerchantRules,
+    keyField: "key",
+    tombstoneCollection: "merchantRuleTombstones",
+    limit: 40,
+  });
+  const recurring = mergeRuleCollection(localPreferences, remotePreferences, {
+    collection: "recurringTransactions",
+    normalize: normalizeRecurringRules,
+    keyField: "id",
+    tombstoneCollection: "recurringRuleTombstones",
+  });
+  return {
+    merchantRules: merchant.rules,
+    merchantRuleTombstones: merchant.tombstones,
+    recurringTransactions: recurring.rules,
+    recurringRuleTombstones: recurring.tombstones,
+  };
 }
 
 function normalizeStartingAssets(value) {
@@ -254,6 +330,10 @@ export function mergePendingLocalTransactions(ownerState = {}, pendingState = {}
     preferences: {
       projects: pendingWithoutDemo.preferences?.projects || [],
       projectCatalogEntries: pendingWithoutDemo.preferences?.projectCatalogEntries || [],
+      merchantRules: pendingWithoutDemo.preferences?.merchantRules || [],
+      merchantRuleTombstones: pendingWithoutDemo.preferences?.merchantRuleTombstones || [],
+      recurringTransactions: pendingWithoutDemo.preferences?.recurringTransactions || [],
+      recurringRuleTombstones: pendingWithoutDemo.preferences?.recurringRuleTombstones || [],
     },
   }, now);
 }
@@ -329,6 +409,87 @@ function toProjectRow(entry, userId) {
   };
 }
 
+function preferenceItemPayload(row = {}) {
+  if (row.payload && typeof row.payload === "object") return row.payload;
+  try {
+    return JSON.parse(row.payload || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function normalizePreferenceItemRows(rows = []) {
+  const preferences = {
+    merchantRules: [],
+    merchantRuleTombstones: [],
+    recurringTransactions: [],
+    recurringRuleTombstones: [],
+  };
+  for (const row of rows) {
+    const itemKey = String(row.item_key || row.itemKey || "").trim();
+    if (!itemKey) continue;
+    const deletedAt = row.deleted_at || row.deletedAt || "";
+    const updatedAt = row.updated_at || row.updatedAt || deletedAt;
+    if (row.collection === PREFERENCE_ITEM_COLLECTIONS.merchantRules) {
+      if (deletedAt) preferences.merchantRuleTombstones.push({ key: itemKey, deletedAt });
+      else preferences.merchantRules.push({ ...preferenceItemPayload(row), key: itemKey, updatedAt });
+    }
+    if (row.collection === PREFERENCE_ITEM_COLLECTIONS.recurringTransactions) {
+      if (deletedAt) preferences.recurringRuleTombstones.push({ id: itemKey, deletedAt });
+      else preferences.recurringTransactions.push({ ...preferenceItemPayload(row), id: itemKey, updatedAt });
+    }
+  }
+  preferences.merchantRules = normalizeMerchantRules(preferences.merchantRules);
+  preferences.recurringTransactions = normalizeRecurringRules(preferences.recurringTransactions);
+  return preferences;
+}
+
+function preferenceItemRows(preferences = {}, userId) {
+  const merged = mergePreferenceRuleCollections(preferences, {});
+  const rows = [];
+  for (const rule of merged.merchantRules) {
+    rows.push({
+      user_id: userId,
+      collection: PREFERENCE_ITEM_COLLECTIONS.merchantRules,
+      item_key: rule.key,
+      payload: rule,
+      updated_at: asIso(rule.updatedAt || rule.createdAt),
+      deleted_at: null,
+    });
+  }
+  for (const tombstone of merged.merchantRuleTombstones) {
+    rows.push({
+      user_id: userId,
+      collection: PREFERENCE_ITEM_COLLECTIONS.merchantRules,
+      item_key: tombstone.key,
+      payload: {},
+      updated_at: asIso(tombstone.deletedAt),
+      deleted_at: asIso(tombstone.deletedAt),
+    });
+  }
+  for (const rule of merged.recurringTransactions) {
+    rows.push({
+      user_id: userId,
+      collection: PREFERENCE_ITEM_COLLECTIONS.recurringTransactions,
+      item_key: rule.id,
+      payload: rule,
+      updated_at: asIso(rule.updatedAt || rule.createdAt),
+      deleted_at: null,
+    });
+  }
+  for (const tombstone of merged.recurringRuleTombstones) {
+    rows.push({
+      user_id: userId,
+      collection: PREFERENCE_ITEM_COLLECTIONS.recurringTransactions,
+      item_key: tombstone.id,
+      payload: {},
+      updated_at: asIso(tombstone.deletedAt),
+      deleted_at: asIso(tombstone.deletedAt),
+    });
+  }
+  return rows;
+}
+
 function mergeBudgetsByFreshness(localState = {}, remoteState = {}) {
   const localBudgets = localState.budgets || {};
   const remoteBudgets = remoteState.budgets || {};
@@ -378,6 +539,7 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
 
   const localPreferences = localState.preferences || {};
   const remotePreferences = remoteState.preferences || {};
+  const preferenceRules = mergePreferenceRuleCollections(localPreferences, remotePreferences);
   const projectCatalogEntries = mergeProjectCatalogEntries(localPreferences, remotePreferences);
   const projects = normalizeProjectNames(
     projectCatalogEntries.filter((entry) => !entry.deletedAt).map((entry) => entry.name),
@@ -404,6 +566,7 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
       deletedTransactionTombstones: activeTombstones,
       projects,
       projectCatalogEntries,
+      ...preferenceRules,
     },
   };
 }
@@ -426,15 +589,17 @@ async function selectOptionalRows(supabase, table, userId, orderColumn = "update
 }
 
 async function fetchCloudState(supabase, userId) {
-  const [transactionRows, budgetRows, preferenceRows, projectRows] = await Promise.all([
+  const [transactionRows, budgetRows, preferenceRows, projectRows, preferenceItemRowsFromCloud] = await Promise.all([
     selectRows(supabase, TABLES.transactions, userId, "occurred_at"),
     selectRows(supabase, TABLES.budgets, userId, "category"),
     selectRows(supabase, TABLES.preferences, userId, "updated_at"),
     selectOptionalRows(supabase, TABLES.projects, userId, "updated_at"),
+    selectOptionalRows(supabase, TABLES.preferenceItems, userId, "updated_at"),
   ]);
 
   const deletedTransactionTombstones = transactionRows.map(cloudDeletionTombstone).filter(Boolean);
   const projectCatalogEntries = normalizeProjectRows(projectRows);
+  const cloudPreferenceItems = normalizePreferenceItemRows(preferenceItemRowsFromCloud);
   return {
     transactions: transactionRows
       .filter((row) => !cloudDeletionTombstone(row))
@@ -447,6 +612,7 @@ async function fetchCloudState(supabase, userId) {
       deletedTransactionTombstones,
       projects: projectCatalogEntries.filter((entry) => !entry.deletedAt).map((entry) => entry.name),
       projectCatalogEntries,
+      ...cloudPreferenceItems,
     },
   };
 }
@@ -588,6 +754,9 @@ function sameColumnValue(column, left, right) {
   if (column.endsWith("_at")) return timeValue(left) === timeValue(right);
   if (Array.isArray(left) || Array.isArray(right)) {
     return JSON.stringify(left || []) === JSON.stringify(right || []);
+  }
+  if ((left && typeof left === "object") || (right && typeof right === "object")) {
+    return JSON.stringify(left || {}) === JSON.stringify(right || {});
   }
   if (typeof right === "number") return Number(left || 0) === right;
   if (typeof right === "boolean") return Boolean(left) === right;
@@ -774,6 +943,42 @@ async function upsertProjects(supabase, userId, preferences = {}) {
   }
 }
 
+async function upsertPreferenceItems(supabase, userId, preferences = {}) {
+  const rows = preferenceItemRows(preferences, userId);
+  if (!rows.length) return;
+
+  let existingRows;
+  try {
+    existingRows = await selectRows(supabase, TABLES.preferenceItems, userId, null);
+  } catch (error) {
+    if (isSchemaFallbackError(error)) return;
+    throw error;
+  }
+
+  const existingByKey = indexRows(existingRows, (row) => [`${row.collection}:${row.item_key}`]);
+  for (const row of rows) {
+    const itemKey = `${row.collection}:${row.item_key}`;
+    const existing = existingByKey.get(itemKey);
+    try {
+      if (existing) {
+        if (!rowMatchesExisting(row, existing)) {
+          await updateRowByFilters(
+            supabase,
+            TABLES.preferenceItems,
+            [row],
+            [["user_id", userId], ["collection", row.collection], ["item_key", row.item_key]],
+          );
+        }
+      } else {
+        await insertRow(supabase, TABLES.preferenceItems, [row]);
+      }
+    } catch (error) {
+      if (isSchemaFallbackError(error)) return;
+      throw error;
+    }
+  }
+}
+
 async function deleteCloudAccountsByNames(supabase, userId, names = []) {
   const uniqueNames = [...new Set(names.map(String).map((name) => name.trim()).filter(Boolean))];
   if (!uniqueNames.length) return;
@@ -855,6 +1060,7 @@ export async function pushCloudState(supabase, userId, state) {
   await upsertBudgets(supabase, userId, state.budgets || {});
   await upsertPreferences(supabase, userId, state.preferences || {});
   await upsertProjects(supabase, userId, state.preferences || {});
+  await upsertPreferenceItems(supabase, userId, state.preferences || {});
   await deleteAllCloudAccounts(supabase, userId, state.accounts || []);
 }
 

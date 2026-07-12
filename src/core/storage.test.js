@@ -68,4 +68,6 @@ test("fills missing local preference collections with safe defaults", () => {
   assert.deepEqual(preferences.projects, []);
   assert.deepEqual(preferences.projectCatalogEntries, []);
   assert.deepEqual(preferences.deletedTransactionTombstones, []);
+  assert.deepEqual(preferences.merchantRuleTombstones, []);
+  assert.deepEqual(preferences.recurringRuleTombstones, []);
 });

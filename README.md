@@ -88,13 +88,13 @@ transaction timestamp, so an offline device cannot restore a row deleted on
 another device. Legacy databases without `deleted_at` temporarily fall back to
 physical deletion until the reviewed migration is applied.
 
-`preferences.merchantRules` and `preferences.recurringTransactions` currently
-stay in the active device's local cache. They are not columns in
-`viatica_preferences` and therefore do not sync as collections across devices.
-The managed project catalog syncs through `viatica_projects`, including empty
-projects and deletion tombstones; project names attached to transactions remain
-part of normal transaction sync. A recurring item becomes cloud-backed only
-after Wilf confirms it and Viatica saves the resulting normal transaction.
+`preferences.merchantRules` and `preferences.recurringTransactions` remain in
+the active device cache for offline use and sync as account-scoped JSON items
+through `viatica_preference_items`, including deletion tombstones. The managed
+project catalog syncs through `viatica_projects`, including empty projects and
+deletion tombstones; project names attached to transactions remain part of
+normal transaction sync. Confirmed recurring occurrences are ordinary cloud
+transactions in addition to the synced reminder rule.
 
 ## Android APK Release Flow
 
