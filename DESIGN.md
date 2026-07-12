@@ -92,9 +92,11 @@ not grant shared access to private ledger data.
   `src/assets/logo.js`; PWA launcher icons in `public/icons/` are generated
   copies of the same mark.
 - Brand exposure should stay product-native: the script-style Viatica wordmark
-  reveals left to right at a constant linear speed while the Logo remains
-  static, and Settings keeps a compact Aevum account header. Do not turn the app
-  into a landing page.
+  uses the family `min(12.5vmin, 52px)` size and reveals left to right over
+  1200ms with the shared fast-slow-fast pacing while the
+  `min(33vmin, 158px)` Logo remains static. The core splash clock is 1800ms.
+  Settings keeps a compact Aevum account header. Do not turn the app into a
+  landing page.
 - Viatica owns a small custom monoline glyph set for bottom navigation,
   categories, accounts, and row actions. Category icons may use subtle
   differentiated colors, but they should stay soft and tool-like, not childish

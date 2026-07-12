@@ -307,6 +307,8 @@ label span {
   pointer-events: none;
   overflow: hidden;
   isolation: isolate;
+  --family-splash-logo-size: min(33vmin, 158px);
+  --family-splash-wordmark-size: min(12.5vmin, 52px);
 }
 
 .boot-splash-stack {
@@ -320,8 +322,8 @@ label span {
 }
 
 .boot-logo-stage {
-  width: min(33vmin, 158px);
-  height: min(33vmin, 158px);
+  width: var(--family-splash-logo-size);
+  height: var(--family-splash-logo-size);
 }
 
 .boot-splash-logo {
@@ -339,7 +341,7 @@ label span {
 .boot-wordmark {
   font-family: TSSign, "Segoe Script", cursive;
   color: var(--ink);
-  font-size: min(12.5vmin, 52px);
+  font-size: var(--family-splash-wordmark-size);
   font-weight: 400;
   letter-spacing: 0;
   line-height: 1;
@@ -366,8 +368,10 @@ label span {
 }
 
 @keyframes viaticaWordReveal {
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0 0 0 0); }
+  0% { clip-path: inset(0 100% 0 0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  26% { clip-path: inset(0 56% 0 0); animation-timing-function: linear; }
+  74% { clip-path: inset(0 42% 0 0); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+  100% { clip-path: inset(0 0 0 0); }
 }
 
 .tab-pager {
