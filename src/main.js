@@ -251,6 +251,7 @@ if (!Array.isArray(state.preferences.deletedTransactionTombstones)) state.prefer
 state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
 state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
 state.preferences.projects = normalizeProjectNames(state.preferences.projects);
+if (!Array.isArray(state.preferences.projectCatalogEntries)) state.preferences.projectCatalogEntries = [];
 state.accounts = [];
 if (!LOCALES.some((item) => item.id === state.preferences.locale)) state.preferences.locale = "zh";
 state.filters.book = "all";
@@ -819,14 +820,14 @@ const MANUAL_SECTIONS = [
         "“资产”先看资产概览；资产金额按一个初始资金总额加流水净额计算，不再维护微信、支付宝、银行卡这类子账户。",
         "收入可以只选主分类保存；红包、退款和其他收入的具体说明直接写在备注里。",
         "需要演示时，退出当前 Aevum 账号并登录专用 Demo 账号；演示数据存在云端，不再使用本机内置 Demo 模式。",
-        "登录 Aevum 账号后，真实流水和分类预算会与 Supabase 云端合并同步；新增、修改或删除会先保存到本机，再在后台写入云端。删除状态会同步到其他设备，避免旧流水再次出现。打开、回到前台或保持页面可见时，其他设备会自动拉取云端新数据。",
+        "登录 Aevum 账号后，真实流水、分类预算和项目目录会与 Supabase 云端合并同步；新增、修改或删除会先保存到本机，再在后台写入云端。流水和项目的删除状态会同步到其他设备，避免旧内容再次出现。打开、回到前台或保持页面可见时，其他设备会自动拉取云端新数据。",
         "PWA 更新后如果仍看到旧界面，用“清缓存并重载”；它不会清除 `viatica:v1` 里的账本数据。",
       ],
       en: [
         "Assets leads with the Assets Overview row. The amount is one starting-assets total plus ledger net, without wallet or bank sub-accounts.",
         "Income can be saved from the primary category alone; describe gifts, refunds, and other income in the note when needed.",
         "For demos, sign out of your current Aevum account and sign in with the dedicated Demo account. Demo data now lives in the cloud instead of a bundled local mode.",
-        "After signing in to the Aevum account, real entries and category budgets merge with Supabase cloud data. New, edited, or deleted entries save locally first, then write to the cloud in the background. Deletion state syncs to other devices so stale entries do not return. Other foreground devices pull fresh cloud data on launch, focus, and low-frequency visible-page refresh.",
+        "After signing in to the Aevum account, real entries, category budgets, and the project catalog merge with Supabase cloud data. New, edited, or deleted content saves locally first, then writes to the cloud in the background. Transaction and project deletion state syncs to other devices so stale content does not return. Other foreground devices pull fresh cloud data on launch, focus, and low-frequency visible-page refresh.",
         "If the PWA still shows an old interface after an update, use Clear cache and reload; it keeps `viatica:v1` ledger data.",
       ],
     },
@@ -2206,10 +2207,23 @@ function touchPreferences() {
   state.preferences.updatedAt = new Date().toISOString();
 }
 
+function recordProjectCatalogEntry(name, { deleted = false, at = new Date().toISOString() } = {}) {
+  const project = normalizeProjectLabel(name);
+  if (!project) return;
+  state.preferences.projectCatalogEntries = [
+    ...(state.preferences.projectCatalogEntries || []).filter((entry) => (
+      normalizeProjectLabel(entry?.name) !== project
+    )),
+    { name: project, updatedAt: at, deletedAt: deleted ? at : "" },
+  ];
+  state.preferences.updatedAt = at;
+}
+
 function normalizePreferenceCollections() {
   state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
   state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
   state.preferences.projects = normalizeProjectNames(state.preferences.projects);
+  if (!Array.isArray(state.preferences.projectCatalogEntries)) state.preferences.projectCatalogEntries = [];
 }
 
 function chunkList(items, size) {
@@ -2317,6 +2331,7 @@ function applyLedgerState(nextState, { preserveLocale = true } = {}) {
   state.preferences.merchantRules = normalizeMerchantRules(state.preferences.merchantRules);
   state.preferences.recurringTransactions = normalizeRecurringRules(state.preferences.recurringTransactions);
   state.preferences.projects = normalizeProjectNames(state.preferences.projects);
+  if (!Array.isArray(state.preferences.projectCatalogEntries)) state.preferences.projectCatalogEntries = [];
   state.accounts = [];
 }
 
@@ -6599,7 +6614,7 @@ function createCalendarProject(trigger) {
   state.calendarProject = project;
   state.calendarProjectEditing = "";
   state.calendarProjectDeleteConfirm = "";
-  touchPreferences();
+  recordProjectCatalogEntry(project);
   persist();
   render();
   toast(t("calendar.projectCreated"));
@@ -6619,7 +6634,9 @@ function saveCalendarProjectName(trigger) {
   if (normalizeProjectLabel(state.calendarProject) === currentName) state.calendarProject = nextName;
   state.calendarProjectEditing = "";
   state.calendarProjectDeleteConfirm = "";
-  touchPreferences();
+  const renamedAt = new Date().toISOString();
+  recordProjectCatalogEntry(currentName, { deleted: true, at: renamedAt });
+  recordProjectCatalogEntry(nextName, { at: renamedAt });
   persist();
   render();
   toast(t("calendar.projectRenamed"));
@@ -6641,7 +6658,7 @@ function deleteCalendarProject(projectName) {
   if (normalizeProjectLabel(state.calendarProject) === project.project) state.calendarProject = remaining[0] || "";
   state.calendarProjectEditing = "";
   state.calendarProjectDeleteConfirm = "";
-  touchPreferences();
+  recordProjectCatalogEntry(project.project, { deleted: true });
   persist();
   render();
   toast(t("calendar.projectDeleted"));

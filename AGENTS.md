@@ -150,8 +150,9 @@ of copying training-specific behavior.
   duplicate project statistics under Ledger Charts.
 - Create and manage the project catalog inside Calendar's Project view; Add
   selects existing projects instead of accepting free-text project names. Empty
-  catalog projects are local-only until an approved cloud schema exists, while
-  projects attached to transactions follow normal transaction sync.
+  catalog projects, renames, and deletion tombstones sync through
+  `viatica_projects`, while projects attached to transactions also follow normal
+  transaction sync.
 - Calendar owns Month Summary, Pending Recurring, Review, Projects, and
   date-bound day details. Keep these as focused views instead of adding another
   dashboard.

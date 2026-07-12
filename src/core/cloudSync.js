@@ -3,6 +3,8 @@ import { DEMO_ACCOUNTS } from "./demoData.js";
 import {
   compareTransactionsNewestFirst,
   normalizeBudgets,
+  normalizeProjectLabel,
+  normalizeProjectNames,
   normalizeTransaction,
 } from "./ledger.js";
 
@@ -11,6 +13,7 @@ const TABLES = {
   budgets: "viatica_budgets",
   accounts: "viatica_accounts",
   preferences: "viatica_preferences",
+  projects: "viatica_projects",
 };
 const DEMO_ACCOUNT_EMAIL = "demo@demo.com";
 const DEMO_ACCOUNT_OPENING_BY_NAME = new Map(
@@ -97,6 +100,36 @@ function normalizeDeletionTombstones(preferences = {}) {
 function mergeDeletionTombstones(...preferencesList) {
   return normalizeDeletionTombstones({
     deletedTransactionTombstones: preferencesList.flatMap(normalizeDeletionTombstones),
+  });
+}
+
+function normalizeProjectCatalogEntries(preferences = {}) {
+  const byName = new Map();
+  const add = (value) => {
+    const name = normalizeProjectLabel(typeof value === "string" ? value : value?.name);
+    if (!name) return;
+    const updatedAt = typeof value === "string" ? "" : (value?.updatedAt || value?.updated_at || "");
+    const deletedAt = typeof value === "string" ? "" : (value?.deletedAt || value?.deleted_at || "");
+    const candidate = { name, updatedAt, deletedAt };
+    const existing = byName.get(name);
+    if (!existing) {
+      byName.set(name, candidate);
+      return;
+    }
+    const candidateTime = timeValue(candidate.updatedAt || candidate.deletedAt);
+    const existingTime = timeValue(existing.updatedAt || existing.deletedAt);
+    if (candidateTime > existingTime || (candidateTime === existingTime && candidate.deletedAt && !existing.deletedAt)) {
+      byName.set(name, candidate);
+    }
+  };
+  (preferences.projectCatalogEntries || []).forEach(add);
+  (preferences.projects || []).forEach(add);
+  return [...byName.values()];
+}
+
+function mergeProjectCatalogEntries(...preferencesList) {
+  return normalizeProjectCatalogEntries({
+    projectCatalogEntries: preferencesList.flatMap(normalizeProjectCatalogEntries),
   });
 }
 
@@ -218,7 +251,10 @@ export function mergePendingLocalTransactions(ownerState = {}, pendingState = {}
     transactions: pendingWithoutDemo.transactions || [],
     budgets: {},
     accounts: [],
-    preferences: {},
+    preferences: {
+      projects: pendingWithoutDemo.preferences?.projects || [],
+      projectCatalogEntries: pendingWithoutDemo.preferences?.projectCatalogEntries || [],
+    },
   }, now);
 }
 
@@ -271,6 +307,28 @@ function normalizeBudgetRows(rows = []) {
   return budgets;
 }
 
+function normalizeProjectRows(rows = []) {
+  return rows.flatMap((row) => {
+    const name = normalizeProjectLabel(row.name);
+    if (!name) return [];
+    return [{
+      name,
+      updatedAt: row.updated_at || row.updatedAt || "",
+      deletedAt: row.deleted_at || row.deletedAt || "",
+    }];
+  });
+}
+
+function toProjectRow(entry, userId) {
+  const updatedAt = asIso(entry.updatedAt || entry.deletedAt);
+  return {
+    user_id: userId,
+    name: normalizeProjectLabel(entry.name),
+    updated_at: updatedAt,
+    deleted_at: entry.deletedAt ? asIso(entry.deletedAt) : null,
+  };
+}
+
 function mergeBudgetsByFreshness(localState = {}, remoteState = {}) {
   const localBudgets = localState.budgets || {};
   const remoteBudgets = remoteState.budgets || {};
@@ -320,6 +378,10 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
 
   const localPreferences = localState.preferences || {};
   const remotePreferences = remoteState.preferences || {};
+  const projectCatalogEntries = mergeProjectCatalogEntries(localPreferences, remotePreferences);
+  const projects = normalizeProjectNames(
+    projectCatalogEntries.filter((entry) => !entry.deletedAt).map((entry) => entry.name),
+  );
   const localStartingAssets = normalizeStartingAssets(localPreferences.startingAssets);
   const remoteStartingAssets = normalizeStartingAssets(remotePreferences.startingAssets);
   const remoteIsNewer = timeValue(remotePreferences.updatedAt) > timeValue(localPreferences.updatedAt);
@@ -340,6 +402,8 @@ export function mergeLedgerStates(localState = {}, remoteState = {}, now = new D
       startingAssets,
       deletedTransactionIds,
       deletedTransactionTombstones: activeTombstones,
+      projects,
+      projectCatalogEntries,
     },
   };
 }
@@ -352,14 +416,25 @@ async function selectRows(supabase, table, userId, orderColumn = "updated_at") {
   return data || [];
 }
 
+async function selectOptionalRows(supabase, table, userId, orderColumn = "updated_at") {
+  try {
+    return await selectRows(supabase, table, userId, orderColumn);
+  } catch (error) {
+    if (isSchemaFallbackError(error)) return [];
+    throw error;
+  }
+}
+
 async function fetchCloudState(supabase, userId) {
-  const [transactionRows, budgetRows, preferenceRows] = await Promise.all([
+  const [transactionRows, budgetRows, preferenceRows, projectRows] = await Promise.all([
     selectRows(supabase, TABLES.transactions, userId, "occurred_at"),
     selectRows(supabase, TABLES.budgets, userId, "category"),
     selectRows(supabase, TABLES.preferences, userId, "updated_at"),
+    selectOptionalRows(supabase, TABLES.projects, userId, "updated_at"),
   ]);
 
   const deletedTransactionTombstones = transactionRows.map(cloudDeletionTombstone).filter(Boolean);
+  const projectCatalogEntries = normalizeProjectRows(projectRows);
   return {
     transactions: transactionRows
       .filter((row) => !cloudDeletionTombstone(row))
@@ -370,6 +445,8 @@ async function fetchCloudState(supabase, userId) {
       ...normalizePreferenceRows(preferenceRows),
       deletedTransactionIds: deletedTransactionTombstones.map((item) => item.id),
       deletedTransactionTombstones,
+      projects: projectCatalogEntries.filter((entry) => !entry.deletedAt).map((entry) => entry.name),
+      projectCatalogEntries,
     },
   };
 }
@@ -661,6 +738,42 @@ async function upsertPreferences(supabase, userId, preferences = {}) {
   await insertRow(supabase, TABLES.preferences, rows);
 }
 
+async function upsertProjects(supabase, userId, preferences = {}) {
+  const entries = normalizeProjectCatalogEntries(preferences);
+  if (!entries.length) return;
+
+  let existingRows;
+  try {
+    existingRows = await selectRows(supabase, TABLES.projects, userId, null);
+  } catch (error) {
+    if (isSchemaFallbackError(error)) return;
+    throw error;
+  }
+
+  const existingByName = indexRows(existingRows, (row) => [normalizeProjectLabel(row.name)]);
+  for (const entry of entries) {
+    const row = toProjectRow(entry, userId);
+    const existing = existingByName.get(row.name);
+    try {
+      if (existing) {
+        if (!rowMatchesExisting(row, existing)) {
+          await updateRowByFilters(
+            supabase,
+            TABLES.projects,
+            [row],
+            [["user_id", userId], ["name", row.name]],
+          );
+        }
+      } else {
+        await insertRow(supabase, TABLES.projects, [row]);
+      }
+    } catch (error) {
+      if (isSchemaFallbackError(error)) return;
+      throw error;
+    }
+  }
+}
+
 async function deleteCloudAccountsByNames(supabase, userId, names = []) {
   const uniqueNames = [...new Set(names.map(String).map((name) => name.trim()).filter(Boolean))];
   if (!uniqueNames.length) return;
@@ -741,6 +854,7 @@ export async function pushCloudState(supabase, userId, state) {
   await upsertTransactions(supabase, userId, state.transactions || []);
   await upsertBudgets(supabase, userId, state.budgets || {});
   await upsertPreferences(supabase, userId, state.preferences || {});
+  await upsertProjects(supabase, userId, state.preferences || {});
   await deleteAllCloudAccounts(supabase, userId, state.accounts || []);
 }
 

@@ -24,6 +24,7 @@ function createMemorySupabase(initial = {}, options = {}) {
     viatica_budgets: clone(initial.viatica_budgets || []),
     viatica_accounts: clone(initial.viatica_accounts || []),
     viatica_preferences: clone(initial.viatica_preferences || []),
+    viatica_projects: clone(initial.viatica_projects || []),
   };
   const operations = [];
   let hiddenAccountSelects = options.hideExistingAccountsOnce ? 1 : 0;
@@ -35,6 +36,9 @@ function createMemorySupabase(initial = {}, options = {}) {
   }
 
   function execute(table, state) {
+    if (table === "viatica_projects" && options.missingProjectsTable) {
+      return Promise.resolve({ data: null, error: { message: 'relation "viatica_projects" does not exist' } });
+    }
     const rows = tables[table] || [];
     if (state.kind === "select") {
       if (table === "viatica_transactions" && hiddenTransactionSelects > 0) {
@@ -116,6 +120,9 @@ function createMemorySupabase(initial = {}, options = {}) {
         },
         insert(row) {
           const rowsToInsert = Array.isArray(row) ? row : [row];
+          if (table === "viatica_projects" && options.missingProjectsTable) {
+            return Promise.resolve({ data: null, error: { message: 'relation "viatica_projects" does not exist' } });
+          }
           if (options.missingDeletedAtColumn && rowsToInsert.some((item) => (
             Object.prototype.hasOwnProperty.call(item, "deleted_at")
           ))) {
@@ -170,6 +177,20 @@ function createMemorySupabase(initial = {}, options = {}) {
                 error: {
                   code: "23505",
                   message: 'duplicate key value violates unique constraint "viatica_preferences_pkey"',
+                },
+              });
+            }
+          }
+          if (table === "viatica_projects") {
+            const conflict = rowsToInsert.some((item) =>
+              tables[table].some((existing) => existing.user_id === item.user_id && existing.name === item.name)
+            );
+            if (conflict) {
+              return Promise.resolve({
+                data: null,
+                error: {
+                  code: "23505",
+                  message: 'duplicate key value violates unique constraint "viatica_projects_pkey"',
                 },
               });
             }
@@ -288,7 +309,7 @@ test("keeps local starting assets when cloud only has the default zero", () => {
   assert.equal(merged.preferences.startingAssets, 1977.45);
 });
 
-test("keeps the local-only project catalog during cloud merge", () => {
+test("merges local and cloud project catalogs", () => {
   const merged = mergeLedgerStates({
     transactions: [],
     budgets: {},
@@ -301,11 +322,39 @@ test("keeps the local-only project catalog during cloud merge", () => {
     budgets: {},
     preferences: {
       locale: "zh",
+      projects: ["霞慕尼训练营"],
+      projectCatalogEntries: [{
+        name: "霞慕尼训练营",
+        updatedAt: "2026-07-12T10:30:00+08:00",
+        deletedAt: "",
+      }],
       updatedAt: "2026-07-12T11:00:00+08:00",
     },
   });
 
-  assert.deepEqual(merged.preferences.projects, ["东北 100 家", "崇礼越野赛"]);
+  assert.deepEqual(merged.preferences.projects, ["东北 100 家", "崇礼越野赛", "霞慕尼训练营"]);
+});
+
+test("propagates a deleted empty project across devices", () => {
+  const merged = mergeLedgerStates({
+    transactions: [],
+    budgets: {},
+    preferences: { projects: ["旧项目"] },
+  }, {
+    transactions: [],
+    budgets: {},
+    preferences: {
+      projects: [],
+      projectCatalogEntries: [{
+        name: "旧项目",
+        updatedAt: "2026-07-12T11:00:00+08:00",
+        deletedAt: "2026-07-12T11:00:00+08:00",
+      }],
+    },
+  });
+
+  assert.deepEqual(merged.preferences.projects, []);
+  assert.equal(merged.preferences.projectCatalogEntries[0].deletedAt, "2026-07-12T11:00:00+08:00");
 });
 
 test("uses newer non-zero cloud starting assets", () => {
@@ -611,7 +660,7 @@ test("carries signed-out pending transactions into an existing account cache", (
     }],
     budgets: { "餐饮": 2000 },
     accounts: [{ id: "acct_account", name: "其他", openingBalance: 100 }],
-    preferences: { deletedTransactionIds: [] },
+    preferences: { deletedTransactionIds: [], projects: ["账号项目"] },
   }, {
     transactions: [{
       id: "txn_pending",
@@ -624,13 +673,14 @@ test("carries signed-out pending transactions into an existing account cache", (
     }],
     budgets: { "交通": 9999 },
     accounts: [{ id: "acct_pending", name: "现金", openingBalance: 9999 }],
-    preferences: {},
+    preferences: { projects: ["启动阶段项目"] },
   }, new Date("2026-07-01T10:00:00+08:00"));
 
   assert.deepEqual(merged.transactions.map((txn) => txn.id).sort(), ["txn_account", "txn_pending"]);
   assert.equal(merged.budgets["餐饮"], 2000);
   assert.equal(merged.budgets["交通"], 600);
   assert.deepEqual(merged.accounts, []);
+  assert.deepEqual(merged.preferences.projects, ["账号项目", "启动阶段项目"]);
 });
 
 test("pending transaction carryover strips demo seeds and preserves deletes", () => {
@@ -765,6 +815,64 @@ test("keeps cloud transaction tombstones instead of physically deleting rows", a
   assert.equal(supabase.tables.viatica_transactions[0].deleted_at, "2026-07-12T01:00:00.000Z");
   assert.equal(supabase.tables.viatica_transactions[0].updated_at, "2026-07-12T01:00:00.000Z");
   assert.equal(supabase.operations.some((operation) => operation.type === "delete"), false);
+});
+
+test("creates and tombstones cloud project catalog rows", async () => {
+  const supabase = createMemorySupabase();
+  const activeEntry = {
+    name: "霞慕尼训练营",
+    updatedAt: "2026-07-12T10:00:00+08:00",
+    deletedAt: "",
+  };
+
+  await pushCloudState(supabase, "user_1", {
+    transactions: [],
+    budgets: {},
+    accounts: [],
+    preferences: { projects: [activeEntry.name], projectCatalogEntries: [activeEntry] },
+  });
+
+  assert.equal(supabase.tables.viatica_projects.length, 1);
+  assert.equal(supabase.tables.viatica_projects[0].name, activeEntry.name);
+  assert.equal(supabase.tables.viatica_projects[0].deleted_at, null);
+
+  await pushCloudState(supabase, "user_1", {
+    transactions: [],
+    budgets: {},
+    accounts: [],
+    preferences: {
+      projects: [],
+      projectCatalogEntries: [{
+        name: activeEntry.name,
+        updatedAt: "2026-07-12T11:00:00+08:00",
+        deletedAt: "2026-07-12T11:00:00+08:00",
+      }],
+    },
+  });
+
+  assert.equal(supabase.tables.viatica_projects.length, 1);
+  assert.equal(supabase.tables.viatica_projects[0].deleted_at, "2026-07-12T03:00:00.000Z");
+});
+
+test("keeps ledger sync working before the projects table migration", async () => {
+  const supabase = createMemorySupabase({}, { missingProjectsTable: true });
+
+  await pushCloudState(supabase, "user_1", {
+    transactions: [],
+    budgets: {},
+    accounts: [],
+    preferences: {
+      projects: ["本机项目"],
+      projectCatalogEntries: [{
+        name: "本机项目",
+        updatedAt: "2026-07-12T10:00:00+08:00",
+        deletedAt: "",
+      }],
+    },
+  });
+
+  assert.deepEqual(supabase.tables.viatica_projects, []);
+  assert.equal(supabase.tables.viatica_preferences.length, 1);
 });
 
 test("falls back to physical deletion before the soft-delete migration is applied", async () => {
