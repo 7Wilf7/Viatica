@@ -62,6 +62,7 @@ import {
   normalizeProjectLabel,
   normalizeProjectNames,
   normalizeTransaction,
+  nextTransactionActionId,
   projectNamesForLedger,
   projectLabelFromTags,
   renameProjectTransactions,
@@ -765,13 +766,13 @@ const MANUAL_SECTIONS = [
       zh: [
         "“账本”顶部是类型筛选 + 流水 / 图表切换：流水用于查单笔记录，图表就是统计。",
         "“日历”用于快速定位日期，并查看本月支出、收入和有记录的天数。",
-        "账本周期可切换所有时间、本周、本月、今年；支出、收入和记录数会跟着周期变化。需要时点放大镜搜索，或用分类筛选。长按单笔流水可以编辑或删除。",
+        "账本周期可切换所有时间、本周、本月、今年；支出、收入和记录数会跟着周期变化。需要时点放大镜搜索，或用分类筛选。点一下单笔流水可展开操作，再点一次收起。",
         "项目用于把一次比赛、一次旅行这类相关流水归在一起；在“日历 → 项目”右侧点 + 创建和管理项目，再在“加一笔”里直接选择。项目页只在选中的项目标签显示名称和金额，流水数跟在“项目流水”标题旁。已经在记账起点前付过的钱，可以勾选“仅记录项目”，它只进项目汇总，不影响资产和日常支出，也不会显示日期或时间段。",
       ],
       en: [
         "Ledger starts with type filtering plus Flow / Charts: Flow reviews individual entries, and Charts means statistics.",
         "Calendar locates dates quickly and shows monthly spending, income, and active ledger days.",
-        "Switch the Ledger period between All Time, This Week, This Month, and This Year. Expense, income, and entry count follow that period. Use the magnifier for search or Category when needed. Long-press an entry to edit or delete it.",
+        "Switch the Ledger period between All Time, This Week, This Month, and This Year. Expense, income, and entry count follow that period. Use the magnifier for search or Category when needed. Tap an entry to show its actions, then tap it again to collapse them.",
         "Projects group related entries for a race, trip, or similar event. Create and manage them with + under Calendar → Projects, then select one directly in Add. The selected project chip owns its name and amount, while the entry count sits beside Project Entries. For money paid before your ledger start date, mark it Project only: it counts toward the project without changing assets, normal spending, or date/time ledger context.",
       ],
     },
@@ -784,13 +785,13 @@ const MANUAL_SECTIONS = [
     items: {
       zh: [
         "“添加”里可以直接选日期，也可以从“日历”点某一天后选择“从这一天补记”。",
-        "长按流水可以再记一笔。保存过的商家 / 标题会成为可见的账号级记账记忆并跨设备同步；当前只用于查看和整理，不会自动改写新流水。",
+        "点开流水后可以再记一笔。保存过的商家 / 标题会成为可见的账号级记账记忆并跨设备同步；当前只用于查看和整理，不会自动改写新流水。",
         "周期账单规则会跨设备同步；已到期和未来 30 天的项目会进入待确认列表。确认才入账，跳过只推进下一次，修改本次会先回到添加页。",
         "复盘页只读：先由本地代码计算比上月多花、预算风险、疑似重复和疑似周期，不会调用 AI 或修改历史流水。",
       ],
       en: [
         "Add can choose a date directly, or Calendar can open a day and start Backfill From This Day.",
-        "Long-press an entry to repeat it. Saved merchants or titles become visible account bookkeeping memory that syncs across devices; it is for review and organization and does not rewrite new entries.",
+        "Open an entry to repeat it. Saved merchants or titles become visible account bookkeeping memory that syncs across devices; it is for review and organization and does not rewrite new entries.",
         "Recurring bill rules sync across devices. Overdue items and those due within 30 days appear for review. Confirm writes the entry, Skip only advances the next date, and Modify This Time returns to Add first.",
         "Review is read-only: local code calculates month increases, budget risks, possible duplicates, and likely recurring costs without calling AI or mutating history.",
       ],
@@ -3843,6 +3844,7 @@ let longPressTimer = 0;
 let longPressTarget = null;
 let longPressPoint = null;
 let openTransactionActionId = "";
+let suppressTransactionClickUntil = 0;
 
 function setActionRowExpanded(row, expanded) {
   if (!row) return;
@@ -3875,6 +3877,15 @@ function openActionRow(row) {
   if (!row?.dataset?.transactionId) return;
   closeActionRows(row);
   setActionRowExpanded(row, true);
+}
+
+function toggleActionRow(row) {
+  const nextId = nextTransactionActionId(openTransactionActionId, row?.dataset?.transactionId);
+  if (!nextId) {
+    closeActionRows();
+    return;
+  }
+  openActionRow(row);
 }
 
 function runLongPressAction(node) {
@@ -6055,7 +6066,7 @@ function renderTransactionRow(txn) {
     : "";
   const actionsOpen = openTransactionActionId === txn.id;
   return `
-    <article class="txn-row action-row ${escapeHtml(transactionTone(txn))} ${projectOnly ? "project-only" : ""} ${actionsOpen ? "action-open" : ""}" data-long-press-actions data-transaction-id="${escapeHtml(txn.id)}" tabindex="0" aria-expanded="${actionsOpen ? "true" : "false"}">
+    <article class="txn-row action-row ${escapeHtml(transactionTone(txn))} ${projectOnly ? "project-only" : ""} ${actionsOpen ? "action-open" : ""}" data-action="toggle-transaction-actions" data-long-press-actions data-transaction-id="${escapeHtml(txn.id)}" tabindex="0" aria-expanded="${actionsOpen ? "true" : "false"}">
       <div class="txn-main">
         ${renderTransactionIconBadge(txn)}
         <div class="txn-copy">
@@ -6741,6 +6752,7 @@ document.addEventListener("pointerdown", (event) => {
       runLongPressAction(longPressTarget);
     } else {
       openActionRow(longPressTarget);
+      suppressTransactionClickUntil = Date.now() + 800;
     }
     clearLongPress();
   }, 520);
@@ -6957,6 +6969,15 @@ document.addEventListener("click", (event) => {
 
   if (action === "toggle-choice") {
     toggleChoiceMenu(node.closest("[data-choice]"));
+  }
+  if (action === "toggle-transaction-actions") {
+    const suppressLongPressClick = node.dataset.transactionId === openTransactionActionId
+      && Date.now() <= suppressTransactionClickUntil;
+    suppressTransactionClickUntil = 0;
+    if (suppressLongPressClick) {
+      return;
+    }
+    toggleActionRow(node);
   }
   if (action === "choose-option") {
     chooseOption(node);

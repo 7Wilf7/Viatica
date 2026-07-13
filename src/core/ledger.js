@@ -83,6 +83,12 @@ export function compareTransactionsNewestFirst(a = {}, b = {}) {
   return String(b.id || "").localeCompare(String(a.id || ""));
 }
 
+export function nextTransactionActionId(currentId = "", targetId = "") {
+  const nextId = String(targetId || "");
+  if (!nextId) return "";
+  return String(currentId || "") === nextId ? "" : nextId;
+}
+
 export function summarizeProjects(transactions = []) {
   const byProject = new Map();
 

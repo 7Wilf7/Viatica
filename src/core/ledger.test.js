@@ -8,6 +8,7 @@ import {
   normalizeBudgets,
   normalizeProjectNames,
   normalizeTransaction,
+  nextTransactionActionId,
   projectNamesForLedger,
   projectLabelFromTags,
   renameProjectTransactions,
@@ -33,6 +34,13 @@ test("normalizes an expense with book and legacy reimbursable fields", () => {
   assert.equal(txn.account, "ledger");
   assert.equal(normalizeTransaction({ amount: 50, account: "招商银行", title: "测试" }).account, "ledger");
   assert.equal(txn.reimbursable, true);
+});
+
+test("toggles a transaction action row on repeated selection", () => {
+  assert.equal(nextTransactionActionId("", "txn_1"), "txn_1");
+  assert.equal(nextTransactionActionId("txn_1", "txn_1"), "");
+  assert.equal(nextTransactionActionId("txn_1", "txn_2"), "txn_2");
+  assert.equal(nextTransactionActionId("txn_1", ""), "");
 });
 
 test("summarizes ledger net without opening-balance accounts", () => {

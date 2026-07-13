@@ -107,7 +107,8 @@ not grant shared access to private ledger data.
   Ledger and Calendar retain their independent scroll positions across
   background sync and local view renders. Editing a ledger row stores a row
   anchor so Save or Cancel returns to the same row instead of the top.
-  Long-press actions expand inline below the selected transaction so Repeat,
+  Tapping a transaction selects it and expands its actions inline; tapping the
+  selected transaction again collapses it. Long press remains available. Repeat,
   Edit, Recurring, and Delete remain visible without horizontal scrolling; the
   open row stays open across background refreshes until an action or outside tap
   closes it.
