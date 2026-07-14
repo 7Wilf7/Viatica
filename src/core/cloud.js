@@ -28,6 +28,15 @@ export function isCloudTimeoutError(error) {
   return error?.name === "TimeoutError" || /timed out|timeout/i.test(error?.message || "");
 }
 
+export function cloudErrorCategory(error) {
+  if (isCloudTimeoutError(error)) return "timeout";
+  const message = error?.message || "";
+  if (/failed to fetch|networkerror|network request failed|load failed|err_blocked_by_client/i.test(message)) {
+    return "network";
+  }
+  return "";
+}
+
 export function isCloudAuthConfigured() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }

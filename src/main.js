@@ -13,6 +13,7 @@ import {
 } from "./core/constants.js";
 import { exportTransactionsCsv, importTransactionsCsv } from "./core/csv.js";
 import {
+  cloudErrorCategory,
   getCloudSession,
   isCloudTimeoutError,
   isCloudAuthConfigured,
@@ -1488,6 +1489,9 @@ const MESSAGES = {
     "sync.uploading": "正在同步数据",
     "sync.saved": "已保存到云端",
     "sync.failed": "同步未完成",
+    "sync.failedNetwork": "无法连接 Supabase",
+    "sync.failedOffline": "当前离线",
+    "sync.failedTimeout": "同步超时",
     "tab.capture": "添加",
     "tab.ledger": "账本",
     "tab.calendar": "日历",
@@ -1691,7 +1695,10 @@ const MESSAGES = {
     "toast.authSignedOut": "已退出 Aevum 账号。",
     "toast.cloudSyncDone": "账本已同步。",
     "toast.cloudSyncFailed": "云同步失败：{message}",
+    "toast.cloudSyncNetwork": "无法连接 Supabase，请检查浏览器拦截设置或网络。",
+    "toast.cloudSyncOffline": "当前离线，请恢复网络后重试。",
     "toast.cloudSyncSignIn": "请先登录 Aevum 账号再同步。",
+    "toast.cloudSyncTimeout": "连接 Supabase 超时，请稍后重试。",
     "manual.changelogHeading": "产品迭代过程",
     "filter.search": "搜索标题、商家、项目、标签",
     "filter.allTypes": "全部类型",
@@ -1779,6 +1786,9 @@ const MESSAGES = {
     "sync.uploading": "Syncing Data",
     "sync.saved": "Saved To Cloud",
     "sync.failed": "Sync Incomplete",
+    "sync.failedNetwork": "Cannot Reach Supabase",
+    "sync.failedOffline": "You Are Offline",
+    "sync.failedTimeout": "Sync Timed Out",
     "tab.capture": "Add",
     "tab.ledger": "Ledger",
     "tab.calendar": "Calendar",
@@ -1982,7 +1992,10 @@ const MESSAGES = {
     "toast.authSignedOut": "Signed out of Aevum.",
     "toast.cloudSyncDone": "Ledger synced.",
     "toast.cloudSyncFailed": "Cloud sync failed: {message}",
+    "toast.cloudSyncNetwork": "Cannot reach Supabase. Check browser blocking settings or your network.",
+    "toast.cloudSyncOffline": "You are offline. Reconnect and try again.",
     "toast.cloudSyncSignIn": "Sign in to Aevum before syncing.",
+    "toast.cloudSyncTimeout": "Supabase took too long to respond. Try again.",
     "manual.changelogHeading": "Product History",
     "filter.search": "Search title, merchant, project, tags",
     "filter.allTypes": "All Types",
@@ -2568,11 +2581,9 @@ async function syncCloudNow({ silent = false, feedback = !silent } = {}) {
       return;
     }
     state.cloudSync.status = "error";
-    state.cloudSync.error = isCloudTimeoutError(error)
-      ? "timeout"
-      : error?.message || "";
+    state.cloudSync.error = cloudErrorCategory(error) || error?.message || "";
     if (!isCloudTimeoutError(error) && !silent) {
-      toast(t("toast.cloudSyncFailed", { message: state.cloudSync.error || t("settings.cloudSyncError") }));
+      toast(cloudSyncErrorMessage(state.cloudSync.error, { detailed: true }));
     }
     if (state.cloudSync.pendingMutation) scheduleCloudSync(CLOUD_SYNC_RETRY_DELAY_MS);
   } finally {
@@ -2639,9 +2650,7 @@ async function syncCloudMutation(write, { feedback = false, preservePending = fa
       return;
     }
     state.cloudSync.status = "error";
-    state.cloudSync.error = isCloudTimeoutError(error)
-      ? "timeout"
-      : error?.message || "";
+    state.cloudSync.error = cloudErrorCategory(error) || error?.message || "";
     if (state.cloudSync.pendingMutation) scheduleCloudSync(CLOUD_SYNC_RETRY_DELAY_MS);
   } finally {
     if (state.cloudSync.status === "synced" && !state.cloudSync.pendingMutation) {
@@ -4015,8 +4024,16 @@ function cloudSyncFeedbackKind() {
 function cloudSyncFeedbackLabel() {
   const kind = cloudSyncFeedbackKind();
   if (kind === "done") return t("sync.saved");
-  if (kind === "error") return t("sync.failed");
+  if (kind === "error") return cloudSyncErrorMessage(state.cloudSync.error);
   return t("sync.uploading");
+}
+
+function cloudSyncErrorMessage(error, { detailed = false } = {}) {
+  if (error === "network") return t(detailed ? "toast.cloudSyncNetwork" : "sync.failedNetwork");
+  if (error === "offline") return t(detailed ? "toast.cloudSyncOffline" : "sync.failedOffline");
+  if (error === "timeout") return t(detailed ? "toast.cloudSyncTimeout" : "sync.failedTimeout");
+  if (!detailed) return t("sync.failed");
+  return t("toast.cloudSyncFailed", { message: error || t("settings.cloudSyncError") });
 }
 
 function renderCloudSyncFeedback() {
