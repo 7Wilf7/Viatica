@@ -4011,7 +4011,7 @@ function render() {
   `;
   ledgerViewMotionDir = 0;
   restoreScrollPositionsAfterRender();
-  requestAnimationFrame(positionWheelPickerColumns);
+  requestAnimationFrame(() => positionWheelPickerColumns());
   scheduleBootSplashDismiss();
 }
 
@@ -5944,7 +5944,7 @@ function syncWheelPickerLayer() {
   const root = document.querySelector("[data-wheel-picker-root]");
   if (!root) return;
   root.innerHTML = renderWheelPickerModal();
-  requestAnimationFrame(positionWheelPickerColumns);
+  requestAnimationFrame(() => positionWheelPickerColumns());
 }
 
 function refreshWheelPickerDayColumn() {
